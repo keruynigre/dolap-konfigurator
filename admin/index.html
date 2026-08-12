@@ -149,6 +149,7 @@
     </div>
     <div class="tabs">
       <button type="button" class="tab active" data-tab="stats">İstatistikler</button>
+      <button type="button" class="tab" data-tab="stores">Mağazalar (Excel)</button>
       <button type="button" class="tab" data-tab="prices">Fiyatlar (Excel)</button>
     </div>
 
@@ -197,6 +198,39 @@
                 <tr><th>Model</th><th class="num">Tasarım</th><th class="num">Teklif</th></tr>
               </thead>
               <tbody id="series-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="tab-stores">
+      <div class="price-box">
+        <p class="hint">
+          Mağaza kodlarını Excel ile ekleyin veya güncelleyin. Aynı kod tekrar yüklenirse ad/şehir güncellenir.
+          Şu an test için 10 mağaza tanımlı (<code>BAMBI-001</code> … <code>BAMBI-010</code>).
+        </p>
+        <div class="row-actions">
+          <button class="btn btn-ghost" type="button" id="dl-stores-template">Şablon indir (.xlsx)</button>
+          <a class="btn btn-ghost" href="../assets/admin/magaza-listesi-10.xlsx" download>Hazır 10 mağaza dosyası</a>
+          <label class="btn btn-primary" style="width:auto; display:inline-block; cursor:pointer;">
+            Excel yükle
+            <input type="file" id="stores-file" accept=".xlsx,.xls,.csv" hidden>
+          </label>
+        </div>
+        <p class="err" id="stores-err"></p>
+        <p class="ok hidden" id="stores-ok"></p>
+        <div class="card">
+          <h2>Şablon sütunları</h2>
+          <div class="table-wrap" style="max-height:none">
+            <table>
+              <thead>
+                <tr><th>code</th><th>name</th><th>city</th><th>active</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>BAMBI-001</td><td>Bambi Merkez Showroom</td><td>İstanbul</td><td>true</td></tr>
+                <tr><td>BAMBI-004</td><td>Bursa Mağaza</td><td>Bursa</td><td>true</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -335,6 +369,7 @@
       document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       const tab = btn.dataset.tab;
       document.getElementById('tab-stats').classList.toggle('hidden', tab !== 'stats');
+      document.getElementById('tab-stores').classList.toggle('hidden', tab !== 'stores');
       document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
     });
   });
@@ -402,6 +437,70 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  const STORE_TEMPLATE_ROWS = [
+    ['code', 'name', 'city', 'active'],
+    ['BAMBI-001', 'Bambi Merkez Showroom', 'İstanbul', 'true'],
+    ['BAMBI-002', 'Ankara Mağaza', 'Ankara', 'true'],
+    ['BAMBI-003', 'İzmir Mağaza', 'İzmir', 'true'],
+    ['BAMBI-004', 'Bursa Mağaza', 'Bursa', 'true'],
+    ['BAMBI-005', 'Antalya Mağaza', 'Antalya', 'true'],
+    ['BAMBI-006', 'Adana Mağaza', 'Adana', 'true'],
+    ['BAMBI-007', 'Gaziantep Mağaza', 'Gaziantep', 'true'],
+    ['BAMBI-008', 'Konya Mağaza', 'Konya', 'true'],
+    ['BAMBI-009', 'Trabzon Mağaza', 'Trabzon', 'true'],
+    ['BAMBI-010', 'Eskişehir Mağaza', 'Eskişehir', 'true']
+  ];
+
+  document.getElementById('dl-stores-template').addEventListener('click', () => {
+    const ws = XLSX.utils.aoa_to_sheet(STORE_TEMPLATE_ROWS);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'magazalar');
+    XLSX.writeFile(wb, 'bambi-magaza-sablonu.xlsx');
+  });
+
+  document.getElementById('stores-file').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    const errEl = document.getElementById('stores-err');
+    const okEl = document.getElementById('stores-ok');
+    errEl.textContent = '';
+    okEl.classList.add('hidden');
+    if (!file) return;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const items = [];
+      for (const r of rows) {
+        const code = String(r.code || '').trim();
+        const name = String(r.name || '').trim();
+        if (!code || !name) continue;
+        items.push({
+          code,
+          name,
+          city: String(r.city || '').trim(),
+          active: String(r.active == null ? 'true' : r.active).trim()
+        });
+      }
+      if (!items.length) {
+        errEl.textContent = 'Geçerli mağaza satırı bulunamadı (code + name gerekli).';
+        return;
+      }
+      const { data, error } = await sb.rpc('upsert_dealers', { p_items: items });
+      if (error || !data || !data.ok) {
+        errEl.textContent = (error && error.message) || 'Yükleme başarısız.';
+        return;
+      }
+      okEl.textContent = data.count + ' mağaza eklendi/güncellendi.';
+      okEl.classList.remove('hidden');
+      await loadStats();
+    } catch (err) {
+      errEl.textContent = 'Dosya okunamadı: ' + (err.message || err);
+    }
+  });
 
   const TEMPLATE_ROWS = [
     ['item_type','series_id','body_type','finish_id','accessory_key','label','price','price_single','price_pair'],
