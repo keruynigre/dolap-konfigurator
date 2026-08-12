@@ -149,6 +149,7 @@
     </div>
     <div class="tabs">
       <button type="button" class="tab active" data-tab="stats">İstatistikler</button>
+      <button type="button" class="tab" data-tab="leads">Teklifler</button>
       <button type="button" class="tab" data-tab="stores">Mağazalar (Excel)</button>
       <button type="button" class="tab" data-tab="prices">Fiyatlar (Excel)</button>
     </div>
@@ -204,6 +205,43 @@
       </div>
     </section>
 
+    <section class="panel hidden" id="tab-leads">
+      <div class="filters">
+        <div class="field">
+          <label for="leads-from">Başlangıç</label>
+          <input type="date" id="leads-from">
+        </div>
+        <div class="field">
+          <label for="leads-to">Bitiş</label>
+          <input type="date" id="leads-to">
+        </div>
+        <button class="btn btn-primary" type="button" id="leads-refresh" style="width:auto">Yenile</button>
+      </div>
+      <div class="card">
+        <h2>Gönderilen teklif formları</h2>
+        <div class="search-row">
+          <input type="search" id="leads-search" placeholder="Ad, telefon, e-posta veya mağaza ara…">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tarih</th>
+                <th>Ad Soyad</th>
+                <th>Telefon</th>
+                <th>E-posta</th>
+                <th>Mağaza</th>
+                <th>Model</th>
+                <th class="num">Tutar</th>
+                <th>Not</th>
+              </tr>
+            </thead>
+            <tbody id="leads-rows"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="panel hidden" id="tab-stores">
       <div class="price-box">
         <p class="hint">
@@ -253,6 +291,25 @@
         <p class="err" id="price-err"></p>
         <p class="ok hidden" id="price-ok"></p>
         <div class="card">
+          <h2>Fiyat değişiklik logu</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Yükleyen</th>
+                  <th>E-posta</th>
+                  <th>Dosya</th>
+                  <th class="num">Versiyon</th>
+                  <th class="num">Satır</th>
+                  <th>Durum</th>
+                </tr>
+              </thead>
+              <tbody id="price-log-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
           <h2>Şablon sütunları</h2>
           <div class="table-wrap" style="max-height:none">
             <table>
@@ -286,6 +343,7 @@
   };
 
   let dealersCache = [];
+  let leadsCache = [];
 
   const loginView = document.getElementById('login-view');
   const appView = document.getElementById('app-view');
@@ -333,7 +391,11 @@
     appView.classList.add('open');
     document.getElementById('from').value = daysAgoISO(30);
     document.getElementById('to').value = todayISO();
+    document.getElementById('leads-from').value = daysAgoISO(30);
+    document.getElementById('leads-to').value = todayISO();
     await loadStats();
+    await loadLeads();
+    await loadPriceLogs();
   }
 
   function showLogin() {
@@ -369,6 +431,7 @@
       document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
       const tab = btn.dataset.tab;
       document.getElementById('tab-stats').classList.toggle('hidden', tab !== 'stats');
+      document.getElementById('tab-leads').classList.toggle('hidden', tab !== 'leads');
       document.getElementById('tab-stores').classList.toggle('hidden', tab !== 'stores');
       document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
     });
@@ -376,6 +439,8 @@
 
   document.getElementById('refresh-btn').addEventListener('click', loadStats);
   document.getElementById('dealer-search').addEventListener('input', renderDealers);
+  document.getElementById('leads-refresh').addEventListener('click', loadLeads);
+  document.getElementById('leads-search').addEventListener('input', renderLeads);
 
   async function loadStats() {
     const from = document.getElementById('from').value || daysAgoISO(30);
@@ -428,6 +493,70 @@
         '<td class="num">' + d.session_count + '</td>' +
         '<td class="num">' + d.design_count + '</td>' +
         '<td class="num">' + d.quote_count + '</td>' +
+      '</tr>'
+    ).join('');
+  }
+
+  function fmtMoney(n) {
+    if (n == null || n === '') return '—';
+    try {
+      return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(n));
+    } catch (_) {
+      return String(n);
+    }
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleString('tr-TR');
+    } catch (_) {
+      return String(iso);
+    }
+  }
+
+  async function loadLeads() {
+    const from = document.getElementById('leads-from').value || daysAgoISO(30);
+    const to = document.getElementById('leads-to').value || todayISO();
+    const { data, error } = await sb.rpc('admin_quote_leads', {
+      p_from: from,
+      p_to: to,
+      p_limit: 300
+    });
+    if (error || !data || !data.ok) {
+      console.error(error || data);
+      document.getElementById('leads-rows').innerHTML =
+        '<tr><td colspan="8" class="muted">Teklifler yüklenemedi</td></tr>';
+      return;
+    }
+    leadsCache = data.leads || [];
+    renderLeads();
+  }
+
+  function renderLeads() {
+    const q = (document.getElementById('leads-search').value || '').trim().toLowerCase();
+    const rows = leadsCache.filter(l => {
+      if (!q) return true;
+      return [
+        l.customer_name, l.customer_phone, l.customer_email,
+        l.dealer_code, l.dealer_name, l.series_id, l.customer_note
+      ].join(' ').toLowerCase().includes(q);
+    });
+    const body = document.getElementById('leads-rows');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="muted">Bu aralıkta teklif yok</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(l =>
+      '<tr>' +
+        '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
+        '<td>' + escapeHtml(l.customer_name) + '</td>' +
+        '<td>' + escapeHtml(l.customer_phone) + '</td>' +
+        '<td>' + escapeHtml(l.customer_email) + '</td>' +
+        '<td>' + escapeHtml((l.dealer_code || '') + (l.dealer_name ? ' · ' + l.dealer_name : '')) + '</td>' +
+        '<td>' + escapeHtml(SERIES_LABELS[l.series_id] || l.series_id || '—') + '</td>' +
+        '<td class="num">' + escapeHtml(fmtMoney(l.total_price)) + '</td>' +
+        '<td>' + escapeHtml(l.customer_note || '—') + '</td>' +
       '</tr>'
     ).join('');
   }
@@ -573,12 +702,40 @@
         errEl.textContent = (error && error.message) || 'Yayınlama başarısız.';
         return;
       }
-      okEl.textContent = 'Yayınlandı: v' + data.version + ' · ' + data.count + ' satır aktif.';
+      okEl.textContent = 'Yayınlandı: v' + data.version + ' · ' + data.count + ' satır aktif'
+        + (data.uploaded_by_email ? ' · ' + data.uploaded_by_email : '') + '.';
       okEl.classList.remove('hidden');
+      await loadPriceLogs();
     } catch (err) {
       errEl.textContent = 'Dosya okunamadı: ' + (err.message || err);
     }
   });
+
+  async function loadPriceLogs() {
+    const body = document.getElementById('price-log-rows');
+    if (!body) return;
+    const { data, error } = await sb.rpc('admin_price_logs', { p_limit: 100 });
+    if (error || !data || !data.ok) {
+      body.innerHTML = '<tr><td colspan="7" class="muted">Log yüklenemedi</td></tr>';
+      return;
+    }
+    const logs = data.logs || [];
+    if (!logs.length) {
+      body.innerHTML = '<tr><td colspan="7" class="muted">Henüz fiyat yüklemesi yok</td></tr>';
+      return;
+    }
+    body.innerHTML = logs.map(l =>
+      '<tr>' +
+        '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
+        '<td>' + escapeHtml(l.uploaded_by_name || '—') + '</td>' +
+        '<td>' + escapeHtml(l.uploaded_by_email || '—') + '</td>' +
+        '<td>' + escapeHtml(l.filename || '—') + '</td>' +
+        '<td class="num">v' + escapeHtml(l.version) + '</td>' +
+        '<td class="num">' + escapeHtml(l.item_count != null ? l.item_count : '—') + '</td>' +
+        '<td>' + (l.active ? '<strong style="color:var(--brass)">Aktif</strong>' : '<span class="muted">Eski</span>') + '</td>' +
+      '</tr>'
+    ).join('');
+  }
 
   (async function boot() {
     const ok = await requireAdmin();

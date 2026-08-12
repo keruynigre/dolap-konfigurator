@@ -116,6 +116,28 @@
     track('quote', seriesId || lastTrackedSeries);
   }
 
+  /** Teklif formunu sunucuya kaydet (müşteri bilgileri + özet). quote_count burada artar. */
+  async function submitQuoteLead(opts) {
+    opts = opts || {};
+    const s = loadSession();
+    const sb = getClient();
+    if (!s || !sb) return { ok: false, error: 'no_session' };
+    try {
+      const { data, error } = await sb.rpc('submit_quote_lead', {
+        p_session_id: s.session_id,
+        p_customer: opts.customer || {},
+        p_series_id: opts.seriesId || lastTrackedSeries || null,
+        p_total_price: opts.totalPrice != null ? opts.totalPrice : null,
+        p_layout_mode: opts.layoutMode || null,
+        p_payload: opts.payload || null
+      });
+      if (error) return { ok: false, error: error.message || 'rpc_error' };
+      return data || { ok: false, error: 'unknown' };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  }
+
   function initIfLoggedIn() {
     if (loadSession()) startHeartbeat();
   }
@@ -126,6 +148,7 @@
     getSession,
     trackDesign,
     trackQuote,
+    submitQuoteLead,
     initIfLoggedIn,
     getClient
   };

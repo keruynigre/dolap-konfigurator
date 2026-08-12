@@ -1970,7 +1970,25 @@
     console.log('Teklif talebi', payload);
     try {
       const series = getLockedDoorSeries() || activeDoorSeries;
-      if (window.DolapDealer) window.DolapDealer.trackQuote(series);
+      const totals = payload.totals || {};
+      const pricing = totals.pricing || {};
+      if (window.DolapDealer && window.DolapDealer.submitQuoteLead) {
+        await window.DolapDealer.submitQuoteLead({
+          customer: payload.customer,
+          seriesId: series,
+          totalPrice: pricing.total != null ? pricing.total : null,
+          layoutMode: totals.mode || null,
+          payload: {
+            config: payload.config,
+            accessories: payload.accessories,
+            totals: payload.totals,
+            lineItems: payload.lineItems,
+            createdAt: payload.createdAt
+          }
+        });
+      } else if (window.DolapDealer) {
+        window.DolapDealer.trackQuote(series);
+      }
     } catch (_) { /* ignore */ }
     quoteFormWrap.classList.add('hidden');
     quoteSuccess.classList.add('visible');
