@@ -1043,7 +1043,7 @@
       <div class="canvas empty" id="canvas">
         <div class="empty-msg">Henüz gövde eklenmedi.<br>Soldan bir gövde tipi seçerek başlayın.</div>
       </div>
-      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. Köşe dolapta izometrik görünümü açabilirsiniz.</p>
+      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İzometrik görünümü açabilirsiniz.</p>
     </main>
   </div>
 </div>
@@ -1052,8 +1052,8 @@
   <div class="iso-dialog" role="dialog" aria-modal="true" aria-labelledby="iso-title">
     <div class="iso-head">
       <div>
-        <h2 id="iso-title">Köşe dolap — izometrik görünüm</h2>
-        <p>Nihai L formundaki ürünün gerçekçi 3D önizlemesi. Sol tıkla gövde konumunu değiştirin; sağ tıkla kamerayı döndürün; tekerlek veya +/− ile yakınlaştırın.</p>
+        <h2 id="iso-title">İzometrik görünüm</h2>
+        <p id="iso-sub">Ürünün 3D önizlemesi. Sol tıkla gövde sırasını değiştirin; sağ tıkla kamerayı döndürün; tekerlek veya +/− ile yakınlaştırın.</p>
       </div>
       <button type="button" class="iso-close" id="iso-close">Kapat</button>
     </div>
@@ -1954,9 +1954,15 @@
     return modules.some(m => m.type === 'corner');
   }
 
+  function hasIsoLayout(){
+    return modules.length > 0;
+  }
+
   function updateIsoButton(){
     if (!isoBtn) return;
-    isoBtn.hidden = !hasCornerLayout();
+    const show = hasIsoLayout();
+    isoBtn.hidden = !show;
+    if (!show && isoModal.classList.contains('open')) closeIsoModal();
   }
 
   function doorPreviewStyle(ref){
@@ -2481,28 +2487,10 @@
     const HEIGHT = 2.3;
     const U = 0.01;
     const faces = [];
-    const cornerIdx = modules.findIndex(m => m.type === 'corner');
-    if (cornerIdx < 0) return faces;
+    if (!modules.length) return faces;
 
     const P = (px, py, pz) => isoProject(px, py, pz, ox, oy, scale);
-    const leftMods = modules.slice(0, cornerIdx);
-    const rightMods = modules.slice(cornerIdx + 1);
-    const cornerMod = modules[cornerIdx];
-    const cW = moduleWidth(cornerMod) * U;
-
-    const leftSpan = leftMods.reduce((s, m) => s + moduleWidth(m) * U, 0);
-    const rightSpan = rightMods.reduce((s, m) => s + moduleWidth(m) * U, 0);
-
-    faces.push({
-      depth: -1000,
-      draw: (ctx) => {
-        isoPoly(ctx, [
-          P(0, 0, 0), P(cW + rightSpan, 0, 0), P(cW + rightSpan, 0, DEPTH),
-          P(cW, 0, DEPTH), P(DEPTH, 0, cW), P(DEPTH, 0, cW + leftSpan),
-          P(0, 0, cW + leftSpan)
-        ], 'rgba(201,163,90,0.07)', 'rgba(201,163,90,0.22)');
-      }
-    });
+    const cornerIdx = modules.findIndex(m => m.type === 'corner');
 
     function doorRevealsInterior(mat){
       if (!mat) return true;
@@ -2594,10 +2582,70 @@
       faces.push(...doorFaces);
     }
 
+    // Düz (köşesiz) sıra: tüm gövdeler +X boyunca, kapaklar +Z yüzünde
+    if (cornerIdx < 0) {
+      const totalW = modules.reduce((s, m) => s + moduleWidth(m) * U, 0);
+      faces.push({
+        depth: -1000,
+        draw: (ctx) => {
+          isoPoly(ctx, [
+            P(0, 0, 0), P(totalW, 0, 0), P(totalW, 0, DEPTH), P(0, 0, DEPTH)
+          ], 'rgba(201,163,90,0.07)', 'rgba(201,163,90,0.22)');
+        }
+      });
+
+      let xCursor = 0;
+      modules.forEach((mod) => {
+        const w = moduleWidth(mod) * U;
+        faces.push(...isoCabinetBox(xCursor, 0, w, DEPTH, HEIGHT, doorPreviewStyle(null), 'z', ox, oy, scale, { skipDoor: true }));
+        addBayFronts(mod, 'z', xCursor, 0, w, 'right');
+        isoModuleHits.push({
+          id: mod.id,
+          arm: 'flat',
+          pts: [
+            P(xCursor, 0, 0), P(xCursor + w, 0, 0),
+            P(xCursor + w, 0, DEPTH + 0.06), P(xCursor, 0, DEPTH + 0.06),
+            P(xCursor, HEIGHT, DEPTH + 0.06), P(xCursor + w, HEIGHT, DEPTH + 0.06),
+            P(xCursor + w, HEIGHT, 0), P(xCursor, HEIGHT, 0)
+          ]
+        });
+        const anchor = P(xCursor + w * 0.15, HEIGHT * 0.5, DEPTH + 0.08);
+        isoDropSlots.push({
+          insertIndex: modules.findIndex(m => m.id === mod.id),
+          x: anchor.x, y: anchor.y, arm: 'flat'
+        });
+        xCursor += w;
+      });
+      {
+        const anchor = P(xCursor + 0.12, HEIGHT * 0.5, DEPTH + 0.08);
+        isoDropSlots.push({ insertIndex: modules.length, x: anchor.x, y: anchor.y, arm: 'flat', edge: true });
+      }
+      return faces;
+    }
+
+    const leftMods = modules.slice(0, cornerIdx);
+    const rightMods = modules.slice(cornerIdx + 1);
+    const cornerMod = modules[cornerIdx];
+    const cW = moduleWidth(cornerMod) * U;
+
+    const leftSpan = leftMods.reduce((s, m) => s + moduleWidth(m) * U, 0);
+    const rightSpan = rightMods.reduce((s, m) => s + moduleWidth(m) * U, 0);
+
+    faces.push({
+      depth: -1000,
+      draw: (ctx) => {
+        isoPoly(ctx, [
+          P(0, 0, 0), P(cW + rightSpan, 0, 0), P(cW + rightSpan, 0, DEPTH),
+          P(cW, 0, DEPTH), P(DEPTH, 0, cW), P(DEPTH, 0, cW + leftSpan),
+          P(0, 0, cW + leftSpan)
+        ], 'rgba(201,163,90,0.07)', 'rgba(201,163,90,0.22)');
+      }
+    });
+
     let zCursor = cW;
     // Sol kol: dizi [dış ... köşeye bitişik], görselde ters (köşeden dışa)
     const leftArr = leftMods.slice().reverse();
-    leftArr.forEach((mod, i) => {
+    leftArr.forEach((mod) => {
       const w = moduleWidth(mod) * U;
       faces.push(...isoCabinetBox(0, zCursor, DEPTH, w, HEIGHT, doorPreviewStyle(null), 'x', ox, oy, scale, { skipDoor: true }));
       addBayFronts(mod, 'x', 0, zCursor, w, 'left');
@@ -2612,10 +2660,6 @@
           P(DEPTH + 0.06, HEIGHT, zCursor), P(0, HEIGHT, zCursor)
         ]
       });
-      // bu gövdenin "önüne" (köşeye daha yakın tarafa) bırakma = dizideki insert
-      // leftArr[0] köşeye bitişik → modules index = cornerIdx - 1 - i after reverse...
-      // leftMods = [outer,...,inner]; leftArr = [inner,...,outer]
-      // insert before this mod in modules: index of mod
       const anchor = P(DEPTH + 0.08, HEIGHT * 0.5, zCursor + w * 0.15);
       isoDropSlots.push({
         insertIndex: modules.findIndex(m => m.id === mod.id),
@@ -2716,15 +2760,19 @@
     }
 
     const layout = getLayoutTotals();
-    const span = Math.max(layout.left, layout.right, 150) * 0.01 + 1.2;
+    const depthM = 0.58;
+    const heightM = BODY_HEIGHT_CM * 0.01;
+    const isCorner = layout.mode === 'corner';
+    const span = (isCorner
+      ? Math.max(layout.left, layout.right, 150)
+      : Math.max(layout.total, 150)) * 0.01 + 1.2;
     const scale = (Math.min(w, h) / (span * 2.6)) * zoom;
 
     const leftM = layout.left * 0.01;
     const rightM = layout.right * 0.01;
-    const depthM = 0.58;
-    const heightM = BODY_HEIGHT_CM * 0.01;
+    const totalM = layout.total * 0.01;
     const cW = (layout.cornerCm || 95) * 0.01;
-    const samplePts = [
+    const samplePts = isCorner ? [
       [0, 0, 0], [rightM, 0, 0], [rightM, 0, depthM], [cW, 0, depthM],
       [depthM, 0, cW], [depthM, 0, leftM], [0, 0, leftM],
       [0, heightM, 0], [rightM, heightM, 0], [rightM, heightM, depthM],
@@ -2733,6 +2781,12 @@
       [-0.24, 0, -0.16], [-0.24, heightM + 0.12, -0.16],
       [rightM, heightM + 0.12, -0.16], [-0.24, heightM + 0.12, leftM],
       [-0.24, 0, leftM], [-0.24, heightM, leftM]
+    ] : [
+      [0, 0, 0], [totalM, 0, 0], [totalM, 0, depthM], [0, 0, depthM],
+      [0, heightM, 0], [totalM, heightM, 0], [totalM, heightM, depthM], [0, heightM, depthM],
+      [-0.24, 0, -0.16], [-0.24, heightM + 0.12, -0.16],
+      [totalM, heightM + 0.12, -0.16], [-0.24, heightM + 0.12, depthM],
+      [-0.24, 0, depthM], [-0.24, heightM, depthM]
     ];
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     samplePts.forEach(([px, py, pz]) => {
@@ -2778,7 +2832,7 @@
   }
 
   function captureIsoSnapshotDataUrl(width, height){
-    if (!hasCornerLayout()) return null;
+    if (!hasIsoLayout()) return null;
     const w = width || 900;
     const h = height || 560;
     const canvas = document.createElement('canvas');
@@ -2872,8 +2926,29 @@
     const back = -0.14; // arka duvar tarafına kaydır
     const leftM = layout.left * 0.01;
     const rightM = layout.right * 0.01;
+    const totalM = layout.total * 0.01;
     const P = (x, y, z) => isoProject(x, y, z, ox, oy, scale);
     const color = isLight ? 'rgba(42,36,28,0.92)' : 'rgba(201,163,90,0.95)';
+
+    if (layout.mode !== 'corner') {
+      drawIsoDimSegment(
+        ctx,
+        P(0.02, HEIGHT + lift, back),
+        P(totalM - 0.02, HEIGHT + lift, back),
+        'Toplam ' + layout.total + ' cm',
+        color
+      );
+      const side = -0.22;
+      drawIsoDimSegment(
+        ctx,
+        P(side, 0.02, 0.04),
+        P(side, HEIGHT - 0.02, 0.04),
+        BODY_HEIGHT_CM + ' cm',
+        color,
+        'side'
+      );
+      return;
+    }
 
     // Sağ kol: arka kenar boyunca (+X, z≈0)
     drawIsoDimSegment(
@@ -2912,15 +2987,19 @@
   }
 
   function openIsoModal(){
-    if (!hasCornerLayout()) return;
+    if (!hasIsoLayout()) return;
     isoModal.classList.add('open');
     isoModal.setAttribute('aria-hidden', 'false');
-    const layout = getLayoutTotals();
-    isoFoot.innerHTML =
-      '<span>Sol kol: <strong>' + layout.left + ' cm</strong></span>' +
-      '<span>Sağ kol: <strong>' + layout.right + ' cm</strong></span>' +
-      '<span>Yükseklik: <strong>' + BODY_HEIGHT_CM + ' cm</strong></span>' +
-      '<span>Gövdeyi sürükleyip sol/sağ kola bırakın · sağ tık: kamera</span>';
+    const titleEl = document.getElementById('iso-title');
+    const subEl = document.getElementById('iso-sub');
+    if (hasCornerLayout()) {
+      if (titleEl) titleEl.textContent = 'Köşe dolap — izometrik görünüm';
+      if (subEl) subEl.textContent = 'L formundaki ürünün 3D önizlemesi. Sol tıkla gövde konumunu değiştirin; sağ tıkla kamerayı döndürün; tekerlek veya +/− ile yakınlaştırın.';
+    } else {
+      if (titleEl) titleEl.textContent = 'Dolap — izometrik görünüm';
+      if (subEl) subEl.textContent = 'Düz dizilimin 3D önizlemesi. Sol tıkla gövde sırasını değiştirin; sağ tıkla kamerayı döndürün; tekerlek veya +/− ile yakınlaştırın.';
+    }
+    refreshIsoFoot();
     cancelAnimationFrame(isoAnim);
     const loop = () => {
       drawIsoFrame();
@@ -3017,11 +3096,18 @@
   function refreshIsoFoot(){
     const layout = getLayoutTotals();
     if (!isoFoot) return;
-    isoFoot.innerHTML =
-      '<span>Sol kol: <strong>' + layout.left + ' cm</strong></span>' +
-      '<span>Sağ kol: <strong>' + layout.right + ' cm</strong></span>' +
-      '<span>Yükseklik: <strong>' + BODY_HEIGHT_CM + ' cm</strong></span>' +
-      '<span>Gövdeyi sürükleyip sol/sağ kola bırakın · sağ tık: kamera</span>';
+    if (layout.mode === 'corner') {
+      isoFoot.innerHTML =
+        '<span>Sol kol: <strong>' + layout.left + ' cm</strong></span>' +
+        '<span>Sağ kol: <strong>' + layout.right + ' cm</strong></span>' +
+        '<span>Yükseklik: <strong>' + BODY_HEIGHT_CM + ' cm</strong></span>' +
+        '<span>Gövdeyi sürükleyip sol/sağ kola bırakın · sağ tık: kamera</span>';
+    } else {
+      isoFoot.innerHTML =
+        '<span>Toplam: <strong>' + layout.total + ' cm</strong></span>' +
+        '<span>Yükseklik: <strong>' + BODY_HEIGHT_CM + ' cm</strong></span>' +
+        '<span>Gövdeyi sürükleyerek sırayı değiştirin · sağ tık: kamera</span>';
+    }
   }
 
   function onIsoPointerDown(e){
