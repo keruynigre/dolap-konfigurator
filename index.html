@@ -239,19 +239,20 @@
     font-size: 12px; color: var(--ink-dim); line-height: 1.45; text-align: center;
   }
   .material-palette {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
+    display: none;
   }
   .mat-tile {
     border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--radius);
-    padding: 6px; color: var(--ink); font-size: 11px; cursor: grab;
+    padding: 4px; color: var(--ink); font-size: 11px; cursor: pointer;
     display: flex; flex-direction: column; align-items: stretch;
+    flex: 1 1 0; min-width: 0; max-width: 100%;
     transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s; user-select: none;
   }
   .mat-tile:hover { border-color: var(--brass); }
-  .mat-tile:active { cursor: grabbing; transform: scale(0.97); }
-  .mat-tile.dragging { opacity: 0.45; }
+  .mat-tile:active { transform: scale(0.97); }
   .mat-tile .swatch {
-    width: 100%; aspect-ratio: 40 / 132; min-height: 168px; border-radius: 2px; pointer-events: none;
+    width: 100%; aspect-ratio: 1 / 2.8; height: auto; min-height: 0;
+    max-height: 118px; border-radius: 2px; pointer-events: none;
     position: relative; overflow: hidden;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
   }
@@ -268,13 +269,13 @@
     background-repeat: no-repeat;
   }
   .mat-tile .mat-name {
-    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
     z-index: 2; pointer-events: none;
-    font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700;
-    letter-spacing: 0.03em; line-height: 1.2; text-align: center;
+    font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.02em; line-height: 1.15; text-align: center;
     color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.75);
-    background: rgba(16, 14, 12, 0.72); padding: 5px 8px; border-radius: 3px;
-    max-width: calc(100% - 10px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: rgba(16, 14, 12, 0.72); padding: 3px 5px; border-radius: 2px;
+    max-width: calc(100% - 6px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
   .mat-tile .swatch.on-light .mat-name {
     color: #1a1712; text-shadow: 0 1px 1px rgba(255,255,255,.65);
@@ -780,18 +781,69 @@
     }
   }
 
-  .door-slot { position: absolute; overflow: hidden; transform-style: preserve-3d; z-index: 2; box-sizing: border-box; }
+  .door-slot { position: absolute; overflow: hidden; transform-style: preserve-3d; z-index: 2; box-sizing: border-box; cursor: pointer; pointer-events: auto; }
   .door-slot.is-ayna-join { z-index: 3; }
   .door-slot.empty {
     border: 2px dashed rgba(201, 163, 90, 0.42); background: rgba(201, 163, 90, 0.07);
-    cursor: copy; pointer-events: auto;
   }
   .door-slot.empty::after {
     content: "+"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-family: 'Space Grotesk', sans-serif; font-size: 37px; color: rgba(201, 163, 90, 0.55); pointer-events: none;
   }
-  .door-slot.drop-target { border-color: var(--brass); background: rgba(201, 163, 90, 0.18); box-shadow: inset 0 0 0 1px rgba(201, 163, 90, 0.35); }
   .door-slot.flipping { animation: flip-door 0.44s cubic-bezier(.4,0,.2,1); }
+  .door-slot.picker-open { z-index: 20; }
+
+  .door-picker {
+    position: fixed; z-index: 80;
+    min-width: 168px; max-width: min(280px, calc(100vw - 24px));
+    padding: 10px; border-radius: 6px;
+    background: var(--panel); border: 1px solid var(--brass);
+    box-shadow: 0 12px 36px rgba(0,0,0,.35);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .door-picker-title {
+    font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600;
+    color: var(--ink-dim); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .door-picker-row {
+    display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px;
+  }
+  .door-picker-opt {
+    border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--radius);
+    padding: 3px; cursor: pointer; width: 52px;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .door-picker-opt:hover { border-color: var(--brass); transform: translateY(-1px); }
+  .door-picker-opt .swatch {
+    width: 100%; aspect-ratio: 1 / 2.8; max-height: 118px; border-radius: 2px;
+    position: relative; overflow: hidden; display: block;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
+  }
+  .door-picker-opt .swatch.is-glass {
+    background: linear-gradient(155deg, rgba(201, 163, 90, 0.28), rgba(185, 145, 95, 0.08) 55%, rgba(201, 163, 90, 0.2));
+    border: 1px solid rgba(201, 163, 90, 0.55);
+  }
+  .door-picker-opt .swatch.is-glass.glass-gray {
+    background: linear-gradient(155deg, rgba(170, 176, 184, 0.35), rgba(120, 128, 138, 0.12) 55%, rgba(160, 168, 176, 0.28));
+    border-color: rgba(130, 138, 148, 0.7);
+  }
+  .door-picker-opt .swatch-img {
+    position: absolute; inset: 0; background-repeat: no-repeat;
+  }
+  .door-picker-opt .mat-name {
+    position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
+    z-index: 2; font-family: 'Space Grotesk', sans-serif; font-size: 9px; font-weight: 700;
+    color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.75);
+    background: rgba(16, 14, 12, 0.72); padding: 2px 4px; border-radius: 2px;
+    max-width: calc(100% - 4px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .door-picker-opt .swatch.on-light .mat-name {
+    color: #1a1712; text-shadow: 0 1px 1px rgba(255,255,255,.65);
+    background: rgba(250, 248, 244, 0.88);
+  }
+  .door-picker-hint {
+    font-size: 10.5px; color: var(--ink-dim); line-height: 1.35;
+  }
   @keyframes flip-door { 0% { transform: rotateY(0deg); } 50% { transform: rotateY(90deg); } 100% { transform: rotateY(0deg); } }
   .door-slot .door-content {
     position: absolute; inset: 0;
@@ -927,7 +979,7 @@
     <div class="header-bar">
       <div class="header-lead">
         <h1>Hayalindeki dolabı kur</h1>
-        <p>Gövdeleri yan yana ekleyin, kapak malzemelerini sürükleyip bırakın. Tutacaklar otomatik birbirine bakar; gövde simgesi, çekmece ve silme simgelerini gövde üzerinde kullanın.</p>
+        <p>Gövdeleri yan yana ekleyin, kapak alanına tıklayarak malzeme seçin. Tutacaklar otomatik birbirine bakar; gövde simgesi, çekmece ve silme simgelerini gövde üzerinde kullanın.</p>
       </div>
       <img class="brand-logo" src="assets/brand/bambi-logo.png" alt="bambi — Yatak Sanatı" width="200" height="73">
       <div class="header-end">
@@ -954,7 +1006,7 @@
 
       <section class="control-group door-panel" id="door-panel">
         <h2>Kapak Yerleştir</h2>
-        <p class="door-hint" id="door-panel-hint">Önce kapak modelini seçin. Yalnızca ek ürün almak için model seçip ek ürün ekleyebilirsiniz; kapak için malzemeyi gövdeye sürükleyin.</p>
+        <p class="door-hint" id="door-panel-hint">Önce kapak modelini seçin. Kapak yerleştirmek için gövde üzerindeki kapak alanına tıklayın. Yalnızca ek ürün için model seçip ek ürün ekleyebilirsiniz.</p>
         <p class="series-label" id="series-label">Kapak modeli</p>
         <div class="series-picker" id="series-picker"></div>
         <p class="series-lock-hint" id="series-lock-hint" hidden></p>
@@ -991,7 +1043,7 @@
       <div class="canvas empty" id="canvas">
         <div class="empty-msg">Henüz gövde eklenmedi.<br>Soldan bir gövde tipi seçerek başlayın.</div>
       </div>
-      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak bırakınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. Köşe dolapta izometrik görünümü açabilirsiniz.</p>
+      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. Köşe dolapta izometrik görünümü açabilirsiniz.</p>
     </main>
   </div>
 </div>
@@ -1227,8 +1279,8 @@
         travent_almond: {
           kind: 'image', img: 'assets/doors/travina/travent-almond.webp', crop: [247, 74, 436, 931],
           label: 'Travent-Almond', tier: 'wood', price: { single: 2475.36, pair: 4679.02 },
-          // Alt traverten bandı ~%18; crop altı boş şeffaf kesilmesin diye 931
-          swatch: 'linear-gradient(180deg, #ebe6dc 0%, #ebe6dc 82%, #b8956e 82%, #8f6d4a 100%)', tone: 'on-light'
+          // Alt traverten bandı ~%33; crop altı boş şeffaf kesilmesin diye 931
+          swatch: 'linear-gradient(180deg, #ebe6dc 0%, #ebe6dc 66%, #b8956e 66%, #8f6d4a 100%)', tone: 'on-light'
         },
         ayna: {
           kind: 'image', img: 'assets/doors/travina/ayna-aytasi.webp', crop: [247, 74, 436, 946],
@@ -1286,7 +1338,6 @@
   };
   const priceFmt = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const GLASS_DOOR_BOTTOM_TRIM = 0.0182; // ahşap kapak sprite alt çerçeve hizası (~%1.82)
-  const DOOR_DRAG_TYPE = 'application/x-door-material';
 
   function doorRef(seriesId, finishId){ return seriesId + ':' + finishId; }
   function accessoryRef(seriesId, key){ return seriesId + ':' + key; }
@@ -1949,6 +2000,16 @@
     };
   }
 
+  /** Dünya uzayı yüzey normali kameraya bakıyor mu? (kapak arkasını gizle) */
+  function isoNormalFacesCamera(nx, ny, nz){
+    const cy = Math.cos(isoYaw), sy = Math.sin(isoYaw);
+    const cp = Math.cos(isoPitch), sp = Math.sin(isoPitch);
+    const z1 = nx * sy + nz * cy;
+    const z2 = ny * sp + z1 * cp;
+    // view-z büyüdükçe kamera yakını; normale doğru = z2 > 0
+    return z2 > 0.02;
+  }
+
   function isoPalette(){
     const light = document.documentElement.getAttribute('data-theme') === 'light';
     if (light) {
@@ -2064,6 +2125,10 @@
     }
 
     if (opts.skipDoor) return faces;
+
+    // Kapak yalnızca öne bakıyorsa
+    const doorOut = faceAxis === 'z' ? [0, 0, 1] : [1, 0, 0];
+    if (!isoNormalFacesCamera(doorOut[0], doorOut[1], doorOut[2])) return faces;
 
     const inset = 0.04;
     let doorPts;
@@ -2391,19 +2456,21 @@
       }
     } else {
       faces.push(isoFace([bot[2], bot[3], top[3], top[2]], pal.carcass, pal.edgeSoft));
-      const push = 0.018;
-      const c0x = i0x + nx * push, c0z = i0z + nz * push;
-      const c1x = i1x + nx * push, c1z = i1z + nz * push;
-      const iy = h * 0.025, ih = h * 0.95;
-      faces.push(isoFace([
-        P(c0x, iy, c0z), P(c1x, iy, c1z),
-        P(c1x, iy + ih, c1z), P(c0x, iy + ih, c0z)
-      ], doorStyle.fill, doorStyle.edge, {
-        gloss: !!doorStyle.gloss,
-        band: doorStyle.band || null,
-        bandAt: doorStyle.bandAt,
-        depthBias: 0.45
-      }));
+      if (isoNormalFacesCamera(nx, 0, nz)) {
+        const push = 0.018;
+        const c0x = i0x + nx * push, c0z = i0z + nz * push;
+        const c1x = i1x + nx * push, c1z = i1z + nz * push;
+        const iy = h * 0.025, ih = h * 0.95;
+        faces.push(isoFace([
+          P(c0x, iy, c0z), P(c1x, iy, c1z),
+          P(c1x, iy + ih, c1z), P(c0x, iy + ih, c0z)
+        ], doorStyle.fill, doorStyle.edge, {
+          gloss: !!doorStyle.gloss,
+          band: doorStyle.band || null,
+          bandAt: doorStyle.bandAt,
+          depthBias: 0.45
+        }));
+      }
     }
 
     return faces;
@@ -2467,26 +2534,32 @@
         const reveal = doorRevealsInterior(mat);
 
         if (mat) {
-          const ds = doorPreviewStyle(mat);
-          let pts;
-          if (faceAxis === 'z') {
-            pts = [
-              P(originX + t0 + pad, yDoorBot, originZ + DEPTH + 0.014),
-              P(originX + t1 - pad, yDoorBot, originZ + DEPTH + 0.014),
-              P(originX + t1 - pad, yDoorTop, originZ + DEPTH + 0.014),
-              P(originX + t0 + pad, yDoorTop, originZ + DEPTH + 0.014)
-            ];
-          } else {
-            pts = [
-              P(originX + DEPTH + 0.014, yDoorBot, originZ + t0 + pad),
-              P(originX + DEPTH + 0.014, yDoorBot, originZ + t1 - pad),
-              P(originX + DEPTH + 0.014, yDoorTop, originZ + t1 - pad),
-              P(originX + DEPTH + 0.014, yDoorTop, originZ + t0 + pad)
-            ];
+          // Kapaklar yalnızca önden; arkadan bakınca çizilmez
+          const doorFacesCam = faceAxis === 'z'
+            ? isoNormalFacesCamera(0, 0, 1)
+            : isoNormalFacesCamera(1, 0, 0);
+          if (doorFacesCam) {
+            const ds = doorPreviewStyle(mat);
+            let pts;
+            if (faceAxis === 'z') {
+              pts = [
+                P(originX + t0 + pad, yDoorBot, originZ + DEPTH + 0.014),
+                P(originX + t1 - pad, yDoorBot, originZ + DEPTH + 0.014),
+                P(originX + t1 - pad, yDoorTop, originZ + DEPTH + 0.014),
+                P(originX + t0 + pad, yDoorTop, originZ + DEPTH + 0.014)
+              ];
+            } else {
+              pts = [
+                P(originX + DEPTH + 0.014, yDoorBot, originZ + t0 + pad),
+                P(originX + DEPTH + 0.014, yDoorBot, originZ + t1 - pad),
+                P(originX + DEPTH + 0.014, yDoorTop, originZ + t1 - pad),
+                P(originX + DEPTH + 0.014, yDoorTop, originZ + t0 + pad)
+              ];
+            }
+            doorFaces.push(isoFace(pts, ds.fill, ds.edge, {
+              gloss: !!ds.gloss, band: ds.band || null, bandAt: ds.bandAt, depthBias: 0.85
+            }));
           }
-          doorFaces.push(isoFace(pts, ds.fill, ds.edge, {
-            gloss: !!ds.gloss, band: ds.band || null, bandAt: ds.bandAt, depthBias: 0.85
-          }));
         }
 
         if (reveal) {
@@ -3191,24 +3264,98 @@
   }
 
   function bindDoorSlot(slot, modId, doorIdx){
-    slot.addEventListener('dragover', e => {
-      if (![...e.dataTransfer.types].includes(DOOR_DRAG_TYPE)) return;
+    slot.addEventListener('click', e => {
+      if (e.target.closest('.icon-btn, .door-actions, .door-picker')) return;
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'copy';
-      slot.classList.add('drop-target');
+      selectedId = modId;
+      renderSidebar();
+      openDoorPicker(slot, modId, doorIdx);
     });
-    slot.addEventListener('dragleave', e => {
-      if (!slot.contains(e.relatedTarget)) slot.classList.remove('drop-target');
+  }
+
+  function closeDoorPicker(){
+    document.querySelectorAll('.door-picker').forEach(el => el.remove());
+    document.querySelectorAll('.door-slot.picker-open').forEach(el => el.classList.remove('picker-open'));
+    if (doorPickerOutsideHandler) {
+      document.removeEventListener('pointerdown', doorPickerOutsideHandler, true);
+      doorPickerOutsideHandler = null;
+    }
+  }
+
+  let doorPickerOutsideHandler = null;
+
+  function buildDoorPickerOptionHtml(seriesId, finishId){
+    const m = getDoorMaterial(doorRef(seriesId, finishId));
+    if (!m) return '';
+    const tone = m.tone || 'on-dark';
+    const nameHtml = '<span class="mat-name">' + m.label + '</span>';
+    const THUMB_W = 46, THUMB_H = 128;
+    if (m.kind === 'glass' || !m.img) {
+      const glassCls = 'swatch is-glass ' + tone + (m.glassTone === 'gray' ? ' glass-gray' : '');
+      return '<button type="button" class="door-picker-opt" data-mat="' + doorRef(seriesId, finishId) + '" title="' + m.label + '">' +
+        '<span class="' + glassCls + '">' + nameHtml + '</span></button>';
+    }
+    const crop = m.crop || [0, 0, m.canvasW || CANVAS_W, m.canvasH || CANVAS_H];
+    const bg = doorCropStyles(crop, THUMB_W, THUMB_H, m.canvasW, m.canvasH);
+    return '<button type="button" class="door-picker-opt" data-mat="' + doorRef(seriesId, finishId) + '" title="' + m.label + '">' +
+      '<span class="swatch ' + tone + '">' +
+        '<span class="swatch-img" style="background-image:url(\'' + m.img + '\');' +
+          'background-size:' + bg.backgroundSize + ';' +
+          'background-position:' + bg.backgroundPosition + ';"></span>' +
+        nameHtml +
+      '</span></button>';
+  }
+
+  function openDoorPicker(slot, modId, doorIdx){
+    closeDoorPicker();
+    const locked = getLockedDoorSeries();
+    const seriesId = locked || activeDoorSeries;
+    if (locked) activeDoorSeries = locked;
+    const series = DOOR_SERIES[seriesId];
+    const finishOrder = getSeriesFinishOrder(seriesId);
+    if (!series || !finishOrder.length) return;
+
+    slot.classList.add('picker-open');
+    const picker = document.createElement('div');
+    picker.className = 'door-picker';
+    picker.innerHTML =
+      '<div class="door-picker-title">' + series.label + ' · Kapak ' + (doorIdx + 1) + '</div>' +
+      '<div class="door-picker-row">' +
+        finishOrder.map(id => buildDoorPickerOptionHtml(seriesId, id)).join('') +
+      '</div>' +
+      '<div class="door-picker-hint">Kapak seçmek için tıkla</div>';
+
+    document.body.appendChild(picker);
+
+    const rect = slot.getBoundingClientRect();
+    const pad = 8;
+    let left = rect.left;
+    let top = rect.bottom + pad;
+    // Measure after paint
+    const pw = picker.offsetWidth;
+    const ph = picker.offsetHeight;
+    if (left + pw > window.innerWidth - pad) left = Math.max(pad, window.innerWidth - pw - pad);
+    if (top + ph > window.innerHeight - pad) top = Math.max(pad, rect.top - ph - pad);
+    if (left < pad) left = pad;
+    picker.style.left = left + 'px';
+    picker.style.top = top + 'px';
+
+    picker.querySelectorAll('.door-picker-opt').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        const mat = btn.dataset.mat;
+        closeDoorPicker();
+        if (mat) applyDoorMaterial(modId, doorIdx, mat);
+      });
     });
-    slot.addEventListener('drop', e => {
-      if (![...e.dataTransfer.types].includes(DOOR_DRAG_TYPE)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      slot.classList.remove('drop-target');
-      const mat = e.dataTransfer.getData(DOOR_DRAG_TYPE);
-      if (mat) applyDoorMaterial(modId, doorIdx, mat);
-    });
+
+    doorPickerOutsideHandler = (e) => {
+      if (picker.contains(e.target) || slot.contains(e.target)) return;
+      closeDoorPicker();
+    };
+    setTimeout(() => document.addEventListener('pointerdown', doorPickerOutsideHandler, true), 0);
   }
 
   /** Kaynak görselde kulp solda varsayılır; handleSide:'right' veya cam kapaklarda ters çevrilir. */
@@ -3224,7 +3371,7 @@
     slot.innerHTML = '';
     slot.classList.toggle('empty', !door.material);
     if (!door.material) {
-      slot.setAttribute('aria-label', 'Kapak ' + (doorIdx + 1) + ' — malzeme sürükleyin');
+      slot.setAttribute('aria-label', 'Kapak ' + (doorIdx + 1) + ' — seçmek için tıkla');
       return;
     }
     slot.removeAttribute('aria-label');
@@ -3757,6 +3904,7 @@
 
   function render(opts){
     opts = opts || {};
+    closeDoorPicker();
     canvas.innerHTML = '';
     els.clear();
 
@@ -3862,8 +4010,8 @@
     }
     if (doorPanelHint) {
       doorPanelHint.textContent = locked
-        ? 'Yalnızca seçili modele ait kapak ve ek ürünleri düzenleyebilirsiniz.'
-        : 'Önce kapak modelini seçin. Yalnızca ek ürün almak için model seçip ek ürün ekleyebilirsiniz; kapak için malzemeyi gövdeye sürükleyin.';
+        ? 'Yalnızca seçili modele ait kapak ve ek ürünleri düzenleyebilirsiniz. Kapak alanına tıklayarak seçin.'
+        : 'Önce kapak modelini seçin. Kapak yerleştirmek için gövde üzerindeki kapak alanına tıklayın. Yalnızca ek ürün için model seçip ek ürün ekleyebilirsiniz.';
     }
     if (seriesLabelEl) {
       seriesLabelEl.textContent = locked ? 'Kapak modeli (kilitli)' : 'Kapak modeli';
@@ -3892,54 +4040,8 @@
   }
 
   function renderMaterialPalette(){
-    const series = DOOR_SERIES[activeDoorSeries];
-    const finishOrder = getSeriesFinishOrder(activeDoorSeries);
-    if (!series || !finishOrder.length) {
-      materialPalette.innerHTML = '<div class="series-empty" style="grid-column:1/-1">' +
-        '<strong style="color:var(--ink)">' + (series?.label || '') + '</strong><br>' +
-        'Kapak görselleri henüz eklenmedi. Paylaştığınızda bu modele bağlanacak.' +
-        '</div>';
-      return;
-    }
-
-    // Thumbnail ölçüleri: 2 sütun sidebar (~216px içerik) → ~100×330
-    const THUMB_W = 100, THUMB_H = 330;
-    materialPalette.innerHTML = finishOrder.map(finishId => {
-      const m = getDoorMaterial(doorRef(activeDoorSeries, finishId));
-      if (!m) return '';
-      const ref = doorRef(activeDoorSeries, finishId);
-      const tone = m.tone || 'on-dark';
-      const nameHtml = '<span class="mat-name">' + m.label + '</span>';
-
-      let swatchHtml;
-      if (m.kind === 'glass' || !m.img) {
-        const glassCls = 'swatch is-glass ' + tone + (m.glassTone === 'gray' ? ' glass-gray' : '');
-        swatchHtml = '<span class="' + glassCls + '">' + nameHtml + '</span>';
-      } else {
-        const crop = m.crop || [0, 0, m.canvasW || CANVAS_W, m.canvasH || CANVAS_H];
-        const bg = doorCropStyles(crop, THUMB_W, THUMB_H, m.canvasW, m.canvasH);
-        swatchHtml =
-          '<span class="swatch ' + tone + '">' +
-            '<span class="swatch-img" style="background-image:url(\'' + m.img + '\');' +
-              'background-size:' + bg.backgroundSize + ';' +
-              'background-position:' + bg.backgroundPosition + ';"></span>' +
-            nameHtml +
-          '</span>';
-      }
-
-      return '<div class="mat-tile" draggable="true" data-mat="' + ref + '" title="' + series.label + ' · ' + m.label + '">' +
-        swatchHtml +
-      '</div>';
-    }).join('');
-
-    materialPalette.querySelectorAll('.mat-tile').forEach(tile => {
-      tile.addEventListener('dragstart', e => {
-        e.dataTransfer.setData(DOOR_DRAG_TYPE, tile.dataset.mat);
-        e.dataTransfer.effectAllowed = 'copy';
-        tile.classList.add('dragging');
-      });
-      tile.addEventListener('dragend', () => tile.classList.remove('dragging'));
-    });
+    // Kapak görselleri sol menüde gösterilmez; seçim gövde üzerindeki kapak alanından yapılır.
+    if (materialPalette) materialPalette.innerHTML = '';
   }
 
   function renderAccessoryPalette(){
