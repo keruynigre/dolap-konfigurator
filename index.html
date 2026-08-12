@@ -550,11 +550,132 @@
     display: flex; flex-direction: column; padding: 20px 36px 32px;
     min-width: 0;
   }
+
+  .set-price-pending { color: var(--ink-dim); font-size: 10px; }
+  .sets-open-btn {
+    border: 1px solid var(--brass); background: rgba(201,163,90,.1); color: var(--brass);
+    border-radius: var(--radius); padding: 8px 12px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+  }
+  .sets-open-btn:hover { background: rgba(201,163,90,.18); }
+  .sets-open-btn .sets-badge {
+    display: inline-block; margin-left: 6px; min-width: 18px; padding: 1px 6px;
+    border-radius: 999px; background: var(--brass); color: var(--brass-ink);
+    font-family: 'Space Mono', monospace; font-size: 10px;
+  }
+  .sets-open-btn .sets-badge.hidden { display: none; }
+  .sets-open-btn[hidden] { display: none !important; }
+  .canvas-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .canvas-toolbar-spacer { flex: 1; }
+  .sets-modal {
+    position: fixed; inset: 0; z-index: 95; display: none;
+    align-items: stretch; justify-content: center;
+    background: rgba(10, 9, 8, 0.62); backdrop-filter: blur(6px);
+    padding: 18px;
+  }
+  .sets-modal.open { display: flex; }
+  .sets-sheet {
+    width: min(1100px, 100%); margin: auto; max-height: min(92vh, 820px);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0,0,0,.45);
+    animation: sets-sheet-in 0.28s ease;
+  }
+  @keyframes sets-sheet-in {
+    from { opacity: 0; transform: translateY(18px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  .sets-sheet-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 18px 20px 12px; border-bottom: 1px solid var(--line);
+  }
+  .sets-sheet-head h2 {
+    margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
+  }
+  .sets-sheet-head p { margin: 4px 0 0; color: var(--ink-dim); font-size: 13px; line-height: 1.4; }
+  .sets-sheet-close {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-dim);
+    border-radius: var(--radius); padding: 8px 12px; cursor: pointer; font-size: 12px;
+  }
+  .sets-sheet-close:hover { border-color: var(--brass); color: var(--brass); }
+  .sets-sheet-body { padding: 16px 20px 20px; overflow: auto; }
+  .sets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .set-card {
+    position: relative; border: 1px solid var(--line); background: var(--panel-2);
+    border-radius: 12px; overflow: hidden; cursor: pointer; text-align: left;
+    transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+  }
+  .set-card:hover {
+    border-color: rgba(201,163,90,.55); transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0,0,0,.22);
+  }
+  .set-card.selected {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 1px rgba(201,163,90,.35), 0 14px 32px rgba(0,0,0,.24);
+  }
+  .set-card-media {
+    aspect-ratio: 4 / 3; background: var(--panel);
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .set-card-body { padding: 12px 12px 14px; }
+  .set-card-name { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
+  .set-card-price { margin: 4px 0 10px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--brass); }
+  .set-card .set-sizes { display: flex; flex-wrap: wrap; gap: 5px; }
+  .set-card .set-size-btn {
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink-dim);
+    border-radius: 999px; padding: 5px 8px; font-size: 10px; cursor: pointer;
+    font-family: 'Space Mono', monospace;
+  }
+  .set-card .set-size-btn:hover { border-color: var(--brass); color: var(--ink); }
+  .set-card .set-size-btn.active {
+    border-color: var(--brass); color: var(--brass-ink); background: var(--brass);
+  }
+  .set-card-actions {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px;
+  }
+  .set-card-cta {
+    border: none; border-radius: 999px; padding: 8px 12px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+    background: var(--brass); color: var(--brass-ink);
+  }
+  .set-card-cta.is-remove {
+    background: transparent; color: var(--danger-text); border: 1px solid rgba(201,139,124,.45);
+  }
+  .set-card-check {
+    position: absolute; top: 10px; right: 10px; width: 24px; height: 24px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center;
+    background: var(--brass); color: var(--brass-ink); font-size: 13px; font-weight: 700;
+  }
+  .set-card.selected .set-card-check { display: flex; }
+  .sets-empty { color: var(--ink-dim); font-size: 13px; margin: 24px 0; text-align: center; }
+  .sets-row {
+    display: flex; align-items: flex-end; gap: 32px;
+    padding-left: 44px; width: max-content; margin-top: 8px;
+  }
+  .accessory-stage.is-bed-set { min-width: min(312px, 52vw); }
+  .accessory-stage.is-bed-set img {
+    max-width: min(416px, 55vw); max-height: 325px; width: auto; height: auto;
+    filter: drop-shadow(0 10px 22px rgba(0,0,0,0.32));
+  }
+  html[data-theme="light"] .accessory-stage.is-bed-set img {
+    filter:
+      drop-shadow(0 10px 16px rgba(42, 36, 28, 0.18))
+      drop-shadow(0 22px 28px rgba(42, 36, 28, 0.14));
+  }
+  .accessory-stage.is-bed-set .acc-cap { margin-top: 12px; font-size: 12px; }
+  @media (max-width: 700px) {
+    .sets-modal { padding: 8px; }
+    .sets-sheet { border-radius: 10px; max-height: 96vh; }
+    .sets-grid { grid-template-columns: 1fr; }
+  }
+
   .canvas-toolbar {
     display: flex; align-items: center; justify-content: flex-end; gap: 10px;
     margin-bottom: 10px; min-height: 0;
   }
-  .canvas-toolbar:has(.iso-btn:not([hidden])) { min-height: 36px; }
+  .canvas-toolbar:has(.iso-btn:not([hidden])),
+  .canvas-toolbar:has(.sets-open-btn:not([hidden])) { min-height: 36px; }
   .iso-btn {
     background: var(--panel-2); border: 1px solid var(--brass); color: var(--brass);
     border-radius: var(--radius); padding: 8px 14px; font-size: 12px; font-weight: 600;
@@ -1046,13 +1167,13 @@
           <button type="button" id="dealer-logout">Çıkış</button>
         </div>
       </div>
-      <img class="brand-logo" src="assets/brand/bambi-logo.png" alt="bambi — Yatak Sanatı" width="200" height="73">
+      <img class="brand-logo" src="assets/brand/bambi-logo.png?v=7" alt="bambi — Yatak Sanatı" width="200" height="73">
       <div class="header-end">
         <div class="theme-toggle" role="group" aria-label="Sayfa teması">
           <button type="button" data-theme-set="dark" aria-pressed="true">Karanlık</button>
           <button type="button" data-theme-set="light" aria-pressed="false">Aydınlık</button>
         </div>
-        <img class="brand-script" src="assets/brand/bambim-var-benim.png" alt="Bambi'm var benim." width="280" height="56">
+        <img class="brand-script" src="assets/brand/bambim-var-benim.png?v=7" alt="Bambi'm var benim." width="280" height="56">
       </div>
     </div>
   </header>
@@ -1076,15 +1197,6 @@
         <div class="series-picker" id="series-picker"></div>
         <p class="series-lock-hint" id="series-lock-hint" hidden></p>
         <div class="material-palette" id="material-palette"></div>
-        <details class="acc-section" id="acc-section">
-          <summary>
-            <span>Ek ürünler</span>
-            <span class="acc-count" id="acc-count"></span>
-          </summary>
-          <div class="acc-section-body">
-            <div class="accessory-palette" id="accessory-palette"></div>
-          </div>
-        </details>
         <div id="selected-options"></div>
       </section>
 
@@ -1097,12 +1209,21 @@
           <div class="price-total">Toplam <span id="price-total">₺0</span></div>
         </div>
         <button class="quote-btn" id="quote-btn" type="button" disabled>Teklif Formu Gönder</button>
-        <p class="quote-hint visible" id="quote-hint">Ek ürün seçerek veya gövdeye kapak yerleştirerek teklif alabilirsiniz.</p>
+        <p class="quote-hint visible" id="quote-hint">Set / ek ürün seçerek veya gövdeye kapak yerleştirerek teklif alabilirsiniz.</p>
       </div>
     </aside>
 
     <main class="canvas-wrap">
       <div class="canvas-toolbar">
+        <div class="canvas-toolbar-actions">
+          <button type="button" class="sets-open-btn" id="sets-open-btn">
+            Yatak setleri<span class="sets-badge hidden" id="sets-badge">0</span>
+          </button>
+          <button type="button" class="sets-open-btn" id="acc-open-btn">
+            Ek ürünler<span class="sets-badge hidden" id="acc-badge">0</span>
+          </button>
+        </div>
+        <span class="canvas-toolbar-spacer" aria-hidden="true"></span>
         <button type="button" class="iso-btn" id="iso-btn" hidden>İzometrik görünüm</button>
       </div>
       <div class="canvas empty" id="canvas">
@@ -1110,6 +1231,36 @@
       </div>
       <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İzometrik görünümü açabilirsiniz.</p>
     </main>
+  </div>
+</div>
+
+<div class="sets-modal" id="sets-modal" aria-hidden="true">
+  <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="sets-title">
+    <div class="sets-sheet-head">
+      <div>
+        <h2 id="sets-title">Yatak setleri</h2>
+        <p id="sets-sub">Modele uygun seti seçin, ölçüyü belirleyin ve teklife ekleyin.</p>
+      </div>
+      <button type="button" class="sets-sheet-close" id="sets-close">Kapat</button>
+    </div>
+    <div class="sets-sheet-body">
+      <div class="sets-grid" id="set-palette"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sets-modal" id="acc-modal" aria-hidden="true">
+  <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="acc-title">
+    <div class="sets-sheet-head">
+      <div>
+        <h2 id="acc-title">Ek ürünler</h2>
+        <p id="acc-sub">Modele uygun ek ürünü seçip teklife ekleyin.</p>
+      </div>
+      <button type="button" class="sets-sheet-close" id="acc-close">Kapat</button>
+    </div>
+    <div class="sets-sheet-body">
+      <div class="sets-grid" id="accessory-palette"></div>
+    </div>
   </div>
 </div>
 
@@ -1189,6 +1340,14 @@
   const BODY_HEIGHT_CM = 230;
   const DOOR_WIDTH_CM = 50;
   const FLUSH_REF_H = 890; // all flush body images share this height
+
+  const ASSET_VERSION = '7';
+  /** assets/ uzun cache. Görsel değişince ASSET_VERSION artır. */
+  function assetUrl(src){
+    if (!src || typeof src !== 'string') return src;
+    if (src.indexOf('assets/') === -1) return src;
+    return src + (src.indexOf('?') >= 0 ? '&' : '?') + 'v=' + encodeURIComponent(ASSET_VERSION);
+  }
 
   const ASSETS = {
     body1: "data:image/webp;base64,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",
@@ -1284,6 +1443,22 @@
   const TRAVINA_FURNITURE = 'assets/furniture/travina/';
   const CAPPADOCIA_FURNITURE = 'assets/furniture/cappadocia/';
   const CARIO_PUF = { label: 'Cario Puf', price: 4555.79, img: WELLDORA_FURNITURE + 'puf.png' };
+  const WELLDORA_SETS = 'assets/sets/welldora/';
+  const MONERRA_SETS = 'assets/sets/monerra/';
+  const TRAVINA_SETS = 'assets/sets/travina/';
+  const CAPPADOCIA_SETS = 'assets/sets/cappadocia/';
+  const BED_SET_SIZES = ['140x200', '150x200', '160x200', '180x200', '200x200'];
+  const BED_SET_ORDER = {
+    welldora: ['magnasand', 'biosalt'],
+    monerra: ['climextra', 'blacksand'],
+    travina: ['bohemella', 'borjen'],
+    cappadocia: ['cappadocia_natura']
+  };
+  function bedPrices(){
+    const o = {};
+    BED_SET_SIZES.forEach(s => { o[s] = null; });
+    return o;
+  }
 
   const MODELS_IMG = 'assets/models/';
 
@@ -1304,6 +1479,18 @@
         makyajMasasi: { label: 'Makyaj Masası',   price: 18728.25, img: WELLDORA_FURNITURE + 'makyaj-masasi.png' },
         makyajAynasi: { label: 'Makyaj Aynası',   price: 3497.11,  img: WELLDORA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
+      },
+      sets: {
+        magnasand: {
+          label: 'Magnasand Therapy',
+          img: WELLDORA_SETS + 'magnasand.png',
+          prices: { '140x200': 49428.42, '150x200': 50456.69, '160x200': 52676.83, '180x200': 58270.83, '200x200': 65381.06 }
+        },
+        biosalt: {
+          label: 'Biosalt',
+          img: WELLDORA_SETS + 'biosalt.png',
+          prices: { '140x200': 54881.20, '150x200': 56586.46, '160x200': 59098.47, '180x200': 65135.79, '200x200': 72897.25 }
+        }
       }
     },
     monerra: {
@@ -1338,6 +1525,18 @@
         makyajMasasi: { label: 'Makyaj Masası',   price: 16242.26, img: MONERRA_FURNITURE + 'makyaj-masasi.png' },
         makyajAynasi: { label: 'Makyaj Aynası',   price: 3881.78,  img: MONERRA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
+      },
+      sets: {
+        climextra: {
+          label: 'Climextra',
+          img: MONERRA_SETS + 'climextra.png',
+          prices: { '140x200': 43765.03, '150x200': 44448.75, '160x200': 46501.75, '180x200': 52324.54, '200x200': 58584.89 }
+        },
+        blacksand: {
+          label: 'Blacksand',
+          img: MONERRA_SETS + 'blacksand.png',
+          prices: { '140x200': 51787.51, '150x200': 52392.48, '160x200': 54730.45, '180x200': 60885.98, '200x200': 68072.64 }
+        }
       }
     },
     travina: {
@@ -1366,6 +1565,18 @@
         makyajMasasi: { label: 'Makyaj Masası',   price: 15758.30, img: TRAVINA_FURNITURE + 'makyaj-masasi.png' },
         makyajAynasi: { label: 'Makyaj Aynası',   price: 3228.23,  img: TRAVINA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
+      },
+      sets: {
+        bohemella: {
+          label: 'Bohemella',
+          img: TRAVINA_SETS + 'bohemella.png',
+          prices: { '140x200': 44667.18, '150x200': 45179.27, '160x200': 46570.24, '180x200': 51035.73, '200x200': 57966.25 }
+        },
+        borjen: {
+          label: 'Borjen',
+          img: TRAVINA_SETS + 'borjen.png',
+          prices: { '140x200': 51583.69, '150x200': 52172.76, '160x200': 54484.18, '180x200': 60698.38, '200x200': 68057.52 }
+        }
       }
     },
     cappadocia: {
@@ -1392,6 +1603,13 @@
         makyajMasasi: { label: 'Makyaj Masası',   price: 7409.45,  img: CAPPADOCIA_FURNITURE + 'makyaj-masasi.png' },
         makyajAynasi: { label: 'Ayna',            price: 4569.27,  img: CAPPADOCIA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
+      },
+      sets: {
+        cappadocia_natura: {
+          label: 'Cappadocia Natura',
+          img: CAPPADOCIA_SETS + 'cappadocia-natura.png',
+          prices: { '140x200': 54030.82, '150x200': 54658.44, '160x200': 57148.65, '180x200': 63608.63, '200x200': 71203.49 }
+        }
       }
     }
   };
@@ -1421,6 +1639,15 @@
 
   function doorRef(seriesId, finishId){ return seriesId + ':' + finishId; }
   function accessoryRef(seriesId, key){ return seriesId + ':' + key; }
+  function setRef(seriesId, key){ return seriesId + ':' + key; }
+  function getBedSet(seriesId, key){
+    return DOOR_SERIES[seriesId]?.sets?.[key] || null;
+  }
+  function getBedSetUnitPrice(set, size){
+    if (!set?.prices) return null;
+    const v = set.prices[size];
+    return (v == null || Number.isNaN(Number(v))) ? null : Number(v);
+  }
   function parseDoorRef(ref){
     if (!ref || typeof ref !== 'string') return null;
     if (ref.indexOf(':') === -1) return { seriesId: 'welldora', finishId: ref };
@@ -1472,7 +1699,64 @@
   /** Seçili ek ürünler: Map<"seriesId:accessoryKey", adet> */
   let selectedAccessories = new Map();
   const ACC_QTY_MAX = 10;
+  /** Yatak seti seçimleri: ref -> { size, qty } */
+  let selectedSets = new Map();
+  const SET_QTY_MAX = 10;
   const els = new Map();
+
+  function getSelectedSet(ref){
+    return selectedSets.get(ref) || null;
+  }
+  function setSelectedSet(ref, size, qty){
+    const n = Math.max(0, Math.min(SET_QTY_MAX, Math.round(Number(qty) || 0)));
+    const safeSize = BED_SET_SIZES.includes(size) ? size : (BED_SET_SIZES[2] || BED_SET_SIZES[0]);
+    if (n > 0) {
+      const p = parseDoorRef(ref);
+      const locked = getLockedDoorSeries();
+      if (locked && p?.seriesId && locked !== p.seriesId) return getSelectedSet(ref);
+      if (p?.seriesId) activeDoorSeries = p.seriesId;
+      selectedSets.set(ref, { size: safeSize, qty: n });
+    } else {
+      selectedSets.delete(ref);
+    }
+    return getSelectedSet(ref);
+  }
+  function setSelectedSetSize(ref, size){
+    const cur = getSelectedSet(ref);
+    if (!cur || !cur.qty) return setSelectedSet(ref, size, 0);
+    return setSelectedSet(ref, size, cur.qty);
+  }
+  function bumpSelectedSetQty(ref, delta){
+    const cur = getSelectedSet(ref);
+    if (!cur || !cur.qty) {
+      if (delta > 0) return setSelectedSet(ref, BED_SET_SIZES[2] || BED_SET_SIZES[0], 1);
+      return null;
+    }
+    return setSelectedSet(ref, cur.size, cur.qty + delta);
+  }
+  function listSelectedSets(){
+    const out = [];
+    selectedSets.forEach((entry, ref) => {
+      if (!entry || !entry.qty) return;
+      const p = parseDoorRef(ref);
+      if (!p) return;
+      const set = getBedSet(p.seriesId, p.finishId);
+      const series = getDoorSeriesMeta(p.seriesId);
+      if (!set || !series) return;
+      out.push({
+        ref, seriesId: p.seriesId, seriesLabel: series.label, key: p.finishId,
+        label: set.label, size: entry.size, qty: entry.qty,
+        price: getBedSetUnitPrice(set, entry.size), img: set.img
+      });
+    });
+    return out;
+  }
+  function hasSelectedSets(){
+    for (const entry of selectedSets.values()) {
+      if (entry && entry.qty > 0) return true;
+    }
+    return false;
+  }
 
   function getAccessoryQty(ref){
     return selectedAccessories.get(ref) || 0;
@@ -1524,9 +1808,9 @@
     return false;
   }
 
-  /** Teklif: tüm gövdelerin kapakları dolu olmalı; gövde yoksa en az bir ek ürün yeterli. */
+  /** Teklif: tüm gövdelerin kapakları dolu olmalı; gövde yoksa set/ek ürün yeterli. */
   function isQuoteReady(){
-    if (!modules.length) return hasSelectedAccessories();
+    if (!modules.length) return hasSelectedAccessories() || hasSelectedSets();
     return modules.every(mod => mod.doors.every(d => !!d.material));
   }
 
@@ -1554,7 +1838,7 @@
   }
 
   function formatLayoutDimLabel(t){
-    if (!modules.length) return hasSelectedAccessories() ? 'Yalnızca ek ürün' : '0 cm';
+    if (!modules.length) return (hasSelectedAccessories() || hasSelectedSets()) ? 'Yalnızca ek ürün / set' : '0 cm';
     if (t.mode === 'corner') {
       return 'Sol ' + t.left + ' cm · Sağ ' + t.right + ' cm';
     }
@@ -1632,6 +1916,16 @@
       });
     });
 
+    listSelectedSets().forEach(s => {
+      const unit = s.price == null ? 0 : s.price;
+      lines.push({
+        label: s.seriesLabel + ' · ' + s.label + ' Set · ' + s.size,
+        qty: s.qty,
+        unitPrice: unit,
+        lineTotal: unit * s.qty
+      });
+    });
+
     return lines;
   }
 
@@ -1650,7 +1944,7 @@
       : '<div>Ürün seçilmedi</div>';
 
     const dimLine = !modules.length
-      ? (items.length ? 'Yalnızca ek ürün siparişi' : '—')
+      ? (items.length ? 'Yalnızca ek ürün / set siparişi' : '—')
       : (t.mode === 'corner'
         ? 'Sol: ' + t.left + ' cm · Sağ: ' + t.right + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm'
         : 'Toplam ölçü: ' + t.total + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm');
@@ -1831,6 +2125,16 @@
         }),
         drawer: !!mod.drawer,
         mirrored: !!mod.mirrored
+      })),
+      sets: listSelectedSets().map(s => ({
+        seriesId: s.seriesId,
+        seriesLabel: s.seriesLabel,
+        key: s.key,
+        label: s.label,
+        size: s.size,
+        qty: s.qty,
+        unitPrice: s.price,
+        lineTotal: (s.price == null ? 0 : s.price) * s.qty
       })),
       accessories: listSelectedAccessories().map(a => ({
         ref: a.ref,
@@ -2419,19 +2723,7 @@
           const b = lerp(corners[1], corners[2], t0);
           isoPoly(ctx, [corners[0], corners[1], b, a], opts.band, stroke, opts.lineW);
         }
-        if (opts.empty) {
-          ctx.save();
-          ctx.setLineDash([5, 4]);
-          ctx.strokeStyle = 'rgba(255,255,255,0.22)';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(corners[0].x, corners[0].y);
-          ctx.lineTo(corners[2].x, corners[2].y);
-          ctx.moveTo(corners[1].x, corners[1].y);
-          ctx.lineTo(corners[3].x, corners[3].y);
-          ctx.stroke();
-          ctx.restore();
-        }
+        // Boş kapak: tarama yok — düz dolu yüzey
       }
     };
   }
@@ -2719,7 +3011,6 @@
     }
   }
 
-  /** Köşe gövde: duvar köşesine oturan beşgen prizma + diyagonal kapak / iç raf */
   function isoCornerUnit(cW, depth, h, doorStyle, ox, oy, scale){
     const P = (px, py, pz) => isoProject(px, py, pz, ox, oy, scale);
     const pal = isoPalette();
@@ -2730,18 +3021,39 @@
     const face = pal.carcass;
     const stroke = pal.edgeSoft;
 
-    // Dış duvarlar — kapak ile aynı kalınlık
-    isoPushSolidBox(faces, P, 0, cW, 0, h, 0, t, side, flat, stroke, 0);             // A–B (z=0)
-    isoPushSolidBox(faces, P, 0, t, 0, h, 0, cW, side, flat, stroke, 0);             // A–E (x=0)
-    isoPushSolidBox(faces, P, cW - t, cW, 0, h, 0, depth, side, flat, stroke, 0);     // B–C
-    isoPushSolidBox(faces, P, 0, depth, 0, h, cW - t, cW, side, flat, stroke, 0);     // E–D
-    isoPushSolidBox(faces, P, 0, cW, h - t, h, 0, Math.min(depth, cW), side, flat, stroke, 0.05);
-    isoPushSolidBox(faces, P, 0, Math.min(depth, cW), h - t, h, Math.min(depth, cW), cW, side, flat, stroke, 0.05);
-    isoPushSolidBox(faces, P, 0, cW, 0, t, 0, Math.min(depth, cW), side, flat, stroke, 0);
-    isoPushSolidBox(faces, P, 0, Math.min(depth, cW), 0, t, Math.min(depth, cW), cW, side, flat, stroke, 0);
+    isoPushSolidBox(faces, P, 0, cW, 0, h, 0, t, side, flat, stroke, 0);
+    isoPushSolidBox(faces, P, 0, t, 0, h, 0, cW, side, flat, stroke, 0);
+    isoPushSolidBox(faces, P, cW - t, cW, 0, h, 0, depth, side, flat, stroke, 0);
+    isoPushSolidBox(faces, P, 0, depth, 0, h, cW - t, cW, side, flat, stroke, 0);
 
     const C = { x: cW, z: depth };
     const D = { x: depth, z: cW };
+    function pushLCap(y, fill, bias){
+      faces.push(isoFace([
+        P(0, y, 0), P(cW, y, 0), P(cW, y, depth), P(0, y, depth)
+      ], fill, null, { depthBias: bias }));
+      faces.push(isoFace([
+        P(0, y, depth), P(depth, y, depth), P(depth, y, cW), P(0, y, cW)
+      ], fill, null, { depthBias: bias }));
+      if (cW > depth + 1e-4) {
+        faces.push(isoFace([
+          P(depth, y, depth), P(C.x, y, C.z), P(D.x, y, D.z)
+        ], fill, null, { depthBias: bias }));
+      }
+      faces.push({
+        depth: (P(0, y, 0).depth + P(cW, y, 0).depth) / 2 + bias + 0.01,
+        draw: (ctx) => {
+          isoPoly(ctx, [
+            P(0, y, 0), P(cW, y, 0), P(C.x, y, C.z), P(D.x, y, D.z), P(0, y, cW)
+          ], null, stroke, 1);
+        }
+      });
+    }
+    if (isoNormalFacesCamera(0, 1, 0)) pushLCap(h, flat, 0.06);
+    if (isoNormalFacesCamera(0, -1, 0)) pushLCap(h - t, side, 0.04);
+    if (isoNormalFacesCamera(0, -1, 0)) pushLCap(0, side, 0);
+    if (isoNormalFacesCamera(0, 1, 0)) pushLCap(t, flat, 0.02);
+
     const midX = (C.x + D.x) / 2;
     const midZ = (C.z + D.z) / 2;
     const len = Math.hypot(D.x - C.x, D.z - C.z) || 1;
@@ -2755,64 +3067,35 @@
     const i0z = C.z + alongZ * len * inset;
     const i1x = D.x - alongX * len * inset;
     const i1z = D.z - alongZ * len * inset;
-
     const frontOpen = isoNormalFacesCamera(nx, 0, nz);
 
-    if (doorStyle.kind === 'empty') {
-      if (frontOpen) {
-        const inner = t + 0.02;
-        faces.push(isoFace([
-          P(inner, h * 0.02, inner), P(cW - inner, h * 0.02, inner),
-          P(cW - inner, h * 0.98, inner), P(inner, h * 0.98, inner)
-        ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
-        faces.push(isoFace([
-          P(inner, h * 0.02, inner), P(inner, h * 0.02, cW - inner),
-          P(inner, h * 0.98, cW - inner), P(inner, h * 0.98, inner)
-        ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
-        for (let s = 1; s <= 3; s++) {
-          const y = h * (s / 4);
-          faces.push(isoFace([
-            P(inner + 0.02, y, inner + 0.02),
-            P(cW * 0.72, y, inner + 0.02),
-            P(cW * 0.72, y, depth * 0.72),
-            P(inner + 0.02, y, depth * 0.72)
-          ], pal.shelf, pal.shelfEdge, { depthBias: 0.25 }));
-        }
-      } else {
-        // Arkadan: açık diyagonalı kapalı gövde gibi kapat; raf gösterme
-        faces.push(isoFace([
-          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
-        ], face, stroke, { depthBias: 0.7 }));
-      }
-    } else {
-      // Diyagonal çerçeve kalınlığı
+    function pushClosedDiagonal(bias){
       const fx0 = C.x - nx * t, fz0 = C.z - nz * t;
       const fx1 = D.x - nx * t, fz1 = D.z - nz * t;
+      faces.push(isoFace([
+        P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
+      ], face, stroke, { depthBias: bias }));
       if (frontOpen) {
         faces.push(isoFace([
-          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
-        ], face, stroke, { depthBias: 0.1 }));
-        faces.push(isoFace([
           P(fx0, 0, fz0), P(fx1, 0, fz1), P(fx1, h, fz1), P(fx0, h, fz0)
-        ], side, stroke, { depthBias: 0.12 }));
-        const push = 0.004;
-        const c0x = i0x + nx * push, c0z = i0z + nz * push;
-        const c1x = i1x + nx * push, c1z = i1z + nz * push;
-        const iy = t + 0.01, ih = h - 2 * t - 0.02;
-        isoPushDoorSlab(faces, P, {
-          faceAxis: 'n', style: doorStyle,
-          nx, nz, ax0: c0x, az0: c0z, ax1: c1x, az1: c1z,
-          y0: iy, y1: iy + ih
-        });
-      } else {
-        // Arkadan kapak/raf sızmasın: diyagonalı opak kapat
-        faces.push(isoFace([
-          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
-        ], face, stroke, { depthBias: 0.75 }));
+        ], side, stroke, { depthBias: bias + 0.02 }));
       }
     }
 
-    // Arkaya bakan dış duvarları içten sonra yeniden çiz (raf sızıntısını kes)
+    if (doorStyle.kind === 'empty') {
+      pushClosedDiagonal(frontOpen ? 0.15 : 0.7);
+    } else if (frontOpen) {
+      pushClosedDiagonal(0.1);
+      const push = 0.004;
+      isoPushDoorSlab(faces, P, {
+        faceAxis: 'n', style: doorStyle,
+        nx, nz, ax0: i0x + nx * push, az0: i0z + nz * push, ax1: i1x + nx * push, az1: i1z + nz * push,
+        y0: t + 0.01, y1: h - t - 0.01
+      });
+    } else {
+      pushClosedDiagonal(0.75);
+    }
+
     if (isoNormalFacesCamera(0, 0, -1)) {
       isoPushSolidBox(faces, P, 0, cW, 0, h, 0, t, side, flat, stroke, 0.65);
     }
@@ -3724,6 +4007,10 @@
     return listSelectedAccessories().reduce((sum, a) => sum + (a.price || 0) * (a.qty || 0), 0);
   }
 
+  function calculateSetPricing(){
+    return listSelectedSets().reduce((sum, s) => sum + ((s.price == null ? 0 : s.price) * (s.qty || 0)), 0);
+  }
+
   function calculatePricing(){
     let body = 0, drawer = 0;
     modules.forEach(mod => {
@@ -3732,7 +4019,8 @@
     });
     const doors = calculateDoorPricing();
     const accessories = calculateAccessoryPricing();
-    return { body, doors, drawer, accessories, total: body + doors + drawer + accessories };
+    const sets = calculateSetPricing();
+    return { body, doors, drawer, accessories, sets, total: body + doors + drawer + accessories + sets };
   }
 
   function bindDoorSlot(slot, modId, doorIdx){
@@ -3863,7 +4151,7 @@
     slot.appendChild(actions);
   }
 
-  /** Yerleşik kapak veya ek ürün varsa o model kilitlenir; yoksa null. */
+  /** Yerleşik kapak, set veya ek ürün varsa o model kilitlenir; yoksa null. */
   function getLockedDoorSeries(){
     for (const mod of modules) {
       for (const d of mod.doors) {
@@ -3871,6 +4159,11 @@
         const p = parseDoorRef(d.material);
         if (p?.seriesId && DOOR_SERIES[p.seriesId]) return p.seriesId;
       }
+    }
+    for (const [ref, entry] of selectedSets) {
+      if (!entry || !entry.qty) continue;
+      const p = parseDoorRef(ref);
+      if (p?.seriesId && DOOR_SERIES[p.seriesId]) return p.seriesId;
     }
     for (const [ref, qty] of selectedAccessories) {
       if (!qty) continue;
@@ -3885,6 +4178,10 @@
       const p = parseDoorRef(ref);
       if (!p || p.seriesId !== seriesId) selectedAccessories.delete(ref);
     });
+    [...selectedSets.keys()].forEach(ref => {
+      const p = parseDoorRef(ref);
+      if (!p || p.seriesId !== seriesId) selectedSets.delete(ref);
+    });
   }
 
   function syncDoorSeriesUi(){
@@ -3896,6 +4193,7 @@
     renderSeriesPicker();
     renderMaterialPalette();
     renderAccessoryPalette();
+    renderSetPalette();
   }
 
   function applyDoorMaterial(modId, doorIdx, materialRef){
@@ -4303,7 +4601,7 @@
         onRemove: () => bumpAccessoryQty(a.ref, -1),
         buildContent: stage => {
           const img = document.createElement('img');
-          img.src = a.img;
+          img.src = assetUrl(a.img);
           img.alt = a.label;
           stage.appendChild(img);
         }
@@ -4355,12 +4653,12 @@
             stack.className = 'vanity-stack';
             const mImg = document.createElement('img');
             mImg.className = 'vanity-mirror';
-            mImg.src = mirror.img;
+            mImg.src = assetUrl(mirror.img);
             mImg.alt = mirror.label;
             stack.appendChild(mImg);
             const dImg = document.createElement('img');
             dImg.className = 'vanity-desk';
-            dImg.src = desk.img;
+            dImg.src = assetUrl(desk.img);
             dImg.alt = desk.label;
             stack.appendChild(dImg);
             stage.appendChild(stack);
@@ -4380,6 +4678,37 @@
     return row.children.length ? row : null;
   }
 
+  function buildSetsRow(){
+    const sets = listSelectedSets().filter(s => s.img);
+    if (!sets.length) return null;
+    const row = document.createElement('div');
+    row.className = 'sets-row';
+    sets.forEach(s => {
+      for (let i = 0; i < s.qty; i++) {
+        const priceHtml = s.price == null
+          ? '<span class="set-price-pending">Fiyat bekleniyor</span>'
+          : '<span style="color:var(--brass)">' + priceFmt.format(s.price) + '</span>';
+        row.appendChild(buildAccessoryStage({
+          key: s.key,
+          ref: s.ref,
+          extraClass: 'is-bed-set',
+          title: s.label + ' · ' + s.size + ' — bir adet azaltmak için tıklayın',
+          captionHtml: s.label + ' · ' + s.size +
+            (s.qty > 1 ? ' (' + (i + 1) + '/' + s.qty + ')' : '') +
+            '<br>' + priceHtml,
+          onRemove: () => bumpSelectedSetQty(s.ref, -1),
+          buildContent: stage => {
+            const img = document.createElement('img');
+            img.src = assetUrl(s.img);
+            img.alt = s.label;
+            stage.appendChild(img);
+          }
+        }));
+      }
+    });
+    return row.children.length ? row : null;
+  }
+
   function render(opts){
     opts = opts || {};
     closeDoorPicker();
@@ -4387,14 +4716,16 @@
     els.clear();
 
     const accRow = buildAccessoriesRow();
+    const setsRow = buildSetsRow();
     const hasMods = modules.length > 0;
     const hasAcc = !!accRow;
+    const hasSets = !!setsRow;
 
-    if (!hasMods && !hasAcc) {
+    if (!hasMods && !hasAcc && !hasSets) {
       canvas.classList.add('empty');
       const msg = document.createElement('div');
       msg.className = 'empty-msg';
-      msg.innerHTML = 'Henüz ürün eklenmedi.<br>Soldan gövde ekleyin veya yalnızca ek ürün seçerek fiyat çıkarın.';
+      msg.innerHTML = 'Henüz ürün eklenmedi.<br>Soldan gövde ekleyin veya yalnızca ek ürün / set seçerek fiyat çıkarın.';
       canvas.appendChild(msg);
     } else {
       canvas.classList.remove('empty');
@@ -4429,6 +4760,7 @@
       }
 
       if (hasAcc) stack.appendChild(accRow);
+      if (hasSets) stack.appendChild(setsRow);
       canvas.appendChild(stack);
 
       // Köşe Sol/Sağ ölçüleri DOM'a eklendikten sonra hizala
@@ -4480,7 +4812,7 @@
       if (locked) {
         const name = DOOR_SERIES[locked]?.label || locked;
         seriesLockHint.hidden = false;
-        seriesLockHint.textContent = name + ' modeli kilitli. Tüm kapakları ve ek ürünleri kaldırınca diğer modeller yeniden seçilebilir.';
+        seriesLockHint.textContent = name + ' modeli kilitli. Tüm kapakları, setleri ve ek ürünleri kaldırınca diğer modeller yeniden seçilebilir.';
       } else {
         seriesLockHint.hidden = true;
         seriesLockHint.textContent = '';
@@ -4513,6 +4845,7 @@
         renderSeriesPicker();
         renderMaterialPalette();
         renderAccessoryPalette();
+        renderSetPalette();
       });
     });
   }
@@ -4522,63 +4855,220 @@
     if (materialPalette) materialPalette.innerHTML = '';
   }
 
-  function renderAccessoryPalette(){
+
+  const setPalette = document.getElementById('set-palette');
+  const setsModal = document.getElementById('sets-modal');
+  const setsOpenBtn = document.getElementById('sets-open-btn');
+  const setsCloseBtn = document.getElementById('sets-close');
+  const setsBadge = document.getElementById('sets-badge');
+  const setsSub = document.getElementById('sets-sub');
+  const accModal = document.getElementById('acc-modal');
+  const accOpenBtn = document.getElementById('acc-open-btn');
+  const accCloseBtn = document.getElementById('acc-close');
+  const accBadge = document.getElementById('acc-badge');
+  const accSub = document.getElementById('acc-sub');
+  let setPickerSize = {};
+
+  function updateSetsOpenBadge(){
+    const n = listSelectedSets().reduce((sum, s) => sum + s.qty, 0);
+    if (!setsBadge || !setsOpenBtn) return;
+    if (n > 0) { setsBadge.textContent = String(n); setsBadge.classList.remove('hidden'); }
+    else setsBadge.classList.add('hidden');
+    const order = BED_SET_ORDER[activeDoorSeries] || [];
+    setsOpenBtn.hidden = !order.length;
+  }
+
+  function updateAccOpenBadge(){
+    const n = listSelectedAccessories().reduce((sum, a) => sum + a.qty, 0);
+    if (!accBadge || !accOpenBtn) return;
+    if (n > 0) { accBadge.textContent = String(n); accBadge.classList.remove('hidden'); }
+    else accBadge.classList.add('hidden');
     const series = DOOR_SERIES[activeDoorSeries];
-    const accCountEl = document.getElementById('acc-count');
-    const selectedQty = listSelectedAccessories().reduce((sum, a) => sum + a.qty, 0);
-    if (accCountEl) {
-      accCountEl.textContent = selectedQty > 0 ? selectedQty + ' seçili' : '';
+    const hasAcc = !!(series?.accessories && ACCESSORY_ORDER.some(k => series.accessories[k]));
+    accOpenBtn.hidden = !hasAcc;
+  }
+
+  function closeSetsModal(){
+    if (!setsModal) return;
+    setsModal.classList.remove('open');
+    setsModal.setAttribute('aria-hidden', 'true');
+  }
+  function closeAccModal(){
+    if (!accModal) return;
+    accModal.classList.remove('open');
+    accModal.setAttribute('aria-hidden', 'true');
+  }
+  function openSetsModal(){
+    if (!setsModal) return;
+    closeAccModal();
+    renderSetPalette();
+    setsModal.classList.add('open');
+    setsModal.setAttribute('aria-hidden', 'false');
+  }
+  function openAccModal(){
+    if (!accModal) return;
+    closeSetsModal();
+    renderAccessoryPalette();
+    accModal.classList.add('open');
+    accModal.setAttribute('aria-hidden', 'false');
+  }
+
+  function renderSetPalette(){
+    const series = DOOR_SERIES[activeDoorSeries];
+    const order = BED_SET_ORDER[activeDoorSeries] || [];
+    updateSetsOpenBadge();
+    if (!setPalette) return;
+    if (setsSub) {
+      setsSub.textContent = series?.label
+        ? series.label + ' modeline özel setler. Ölçüyü seçip teklife ekleyin.'
+        : 'Modele uygun seti seçin, ölçüyü belirleyin ve teklife ekleyin.';
     }
-    if (!series?.accessories) {
-      accessoryPalette.innerHTML = '';
+    if (!series?.sets || !order.length) {
+      setPalette.innerHTML = '<p class="sets-empty">Bu modelde yatak seti yok. Önce bir kapak modeli seçin.</p>';
       return;
     }
-    accessoryPalette.innerHTML = ACCESSORY_ORDER.map(key => {
+    setPalette.innerHTML = order.map(key => {
+      const set = series.sets[key];
+      if (!set) return '';
+      const ref = setRef(activeDoorSeries, key);
+      const sel = getSelectedSet(ref);
+      const selected = !!(sel && sel.qty > 0);
+      const size = selected ? sel.size : (setPickerSize[ref] || BED_SET_SIZES[2] || BED_SET_SIZES[0]);
+      setPickerSize[ref] = size;
+      const unit = getBedSetUnitPrice(set, size);
+      const priceLine = unit == null ? '<span class="set-price-pending">Fiyat yakında</span>' : priceFmt.format(unit);
+      const sizesHtml = BED_SET_SIZES.map(sz =>
+        '<button type="button" class="set-size-btn' + (size === sz ? ' active' : '') + '" data-size="' + sz + '">' + sz + '</button>'
+      ).join('');
+      return '<article class="set-card' + (selected ? ' selected' : '') + '" data-set="' + ref + '">' +
+        '<span class="set-card-check" aria-hidden="true">✓</span>' +
+        '<div class="set-card-media" style="background-image:url(\'' + assetUrl(set.img) + '\')"></div>' +
+        '<div class="set-card-body">' +
+          '<h3 class="set-card-name">' + set.label + '</h3>' +
+          '<div class="set-card-price">' + priceLine + '</div>' +
+          '<div class="set-sizes">' + sizesHtml + '</div>' +
+          '<div class="set-card-actions">' +
+            (selected
+              ? '<div class="acc-qty-row">' +
+                  '<button type="button" class="acc-qty-btn" data-qty="-1" aria-label="Azalt">−</button>' +
+                  '<span class="acc-qty-val">' + sel.qty + '</span>' +
+                  '<button type="button" class="acc-qty-btn" data-qty="1" aria-label="Artır"' +
+                    (sel.qty >= SET_QTY_MAX ? ' disabled' : '') + '>+</button>' +
+                '</div>' +
+                '<button type="button" class="set-card-cta is-remove" data-action="remove">Kaldır</button>'
+              : '<span></span><button type="button" class="set-card-cta" data-action="add">Teklife ekle</button>') +
+          '</div></div></article>';
+    }).join('');
+
+    setPalette.querySelectorAll('.set-card').forEach(card => {
+      const ref = card.dataset.set;
+      card.querySelectorAll('.set-size-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          setPickerSize[ref] = btn.dataset.size;
+          const cur = getSelectedSet(ref);
+          if (cur && cur.qty) setSelectedSetSize(ref, btn.dataset.size);
+          renderSetPalette();
+          updatePricingDisplay();
+          if (cur && cur.qty) render();
+        });
+      });
+      card.querySelectorAll('.acc-qty-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          bumpSelectedSetQty(ref, Number(btn.dataset.qty));
+          render(); renderSetPalette();
+        });
+      });
+      card.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (btn.dataset.action === 'remove') {
+            const cur = getSelectedSet(ref);
+            setSelectedSet(ref, cur?.size || setPickerSize[ref], 0);
+          } else {
+            setSelectedSet(ref, setPickerSize[ref] || BED_SET_SIZES[2], 1);
+          }
+          render(); renderSetPalette();
+        });
+      });
+      card.addEventListener('click', e => {
+        if (e.target.closest('.set-size-btn, .acc-qty-btn, .set-card-cta')) return;
+        const cur = getSelectedSet(ref);
+        if (!cur || !cur.qty) setSelectedSet(ref, setPickerSize[ref] || BED_SET_SIZES[2], 1);
+        render(); renderSetPalette();
+      });
+    });
+  }
+
+  function renderAccessoryPalette(){
+    const series = DOOR_SERIES[activeDoorSeries];
+    updateAccOpenBadge();
+    if (!accessoryPalette) return;
+    if (accSub) {
+      accSub.textContent = series?.label
+        ? series.label + ' modeline özel ek ürünler. Seçip teklife ekleyin; sahneye de yansır.'
+        : 'Modele uygun ek ürünü seçip teklife ekleyin.';
+    }
+    if (!series?.accessories) {
+      accessoryPalette.innerHTML = '<p class="sets-empty">Bu modelde ek ürün yok. Önce bir kapak modeli seçin.</p>';
+      return;
+    }
+    const cards = ACCESSORY_ORDER.map(key => {
       const acc = series.accessories[key];
       if (!acc) return '';
       const ref = accessoryRef(activeDoorSeries, key);
       const qty = getAccessoryQty(ref);
       const selected = qty > 0;
-      const thumbStyle = acc.img
-        ? 'background-image:url(\'' + acc.img + '\')'
-        : '';
-      const thumbHtml = acc.img
-        ? ''
-        : 'Görsel<br>bekleniyor';
-      const line = selected
-        ? priceFmt.format(acc.price) + (qty > 1 ? ' · ' + qty + ' adet = ' + priceFmt.format(acc.price * qty) : '')
+      const mediaStyle = acc.img ? 'background-image:url(\'' + assetUrl(acc.img) + '\')' : '';
+      const priceLine = selected && qty > 1
+        ? priceFmt.format(acc.price) + ' · ' + qty + ' adet'
         : priceFmt.format(acc.price);
-      return '<div class="acc-tile' + (selected ? ' selected' : '') + '" data-acc="' + ref + '">' +
-        '<span class="acc-thumb" style="' + thumbStyle + '">' + thumbHtml + '</span>' +
-        '<span class="acc-meta">' +
-          '<span class="acc-name">' + acc.label + '</span>' +
-          '<div class="acc-price">' + line + '</div>' +
-          (selected
-            ? '<div class="acc-qty-row">' +
-                '<button type="button" class="acc-qty-btn" data-qty="-1" aria-label="Azalt">−</button>' +
-                '<span class="acc-qty-val">' + qty + '</span>' +
-                '<button type="button" class="acc-qty-btn" data-qty="1" aria-label="Artır"' +
-                  (qty >= ACC_QTY_MAX ? ' disabled' : '') + '>+</button>' +
-              '</div>'
-            : '<div class="acc-hint">Eklemek için tıkla</div>') +
-        '</span>' +
-      '</div>';
-    }).join('');
+      return '<article class="set-card' + (selected ? ' selected' : '') + '" data-acc="' + ref + '">' +
+        '<span class="set-card-check" aria-hidden="true">✓</span>' +
+        '<div class="set-card-media contain" style="' + mediaStyle + '">' +
+          (acc.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>') +
+        '</div>' +
+        '<div class="set-card-body">' +
+          '<h3 class="set-card-name">' + acc.label + '</h3>' +
+          '<div class="set-card-price">' + priceLine + '</div>' +
+          '<div class="set-card-actions">' +
+            (selected
+              ? '<div class="acc-qty-row">' +
+                  '<button type="button" class="acc-qty-btn" data-qty="-1" aria-label="Azalt">−</button>' +
+                  '<span class="acc-qty-val">' + qty + '</span>' +
+                  '<button type="button" class="acc-qty-btn" data-qty="1" aria-label="Artır"' +
+                    (qty >= ACC_QTY_MAX ? ' disabled' : '') + '>+</button>' +
+                '</div>' +
+                '<button type="button" class="set-card-cta is-remove" data-action="remove">Kaldır</button>'
+              : '<span></span><button type="button" class="set-card-cta" data-action="add">Teklife ekle</button>') +
+          '</div></div></article>';
+    }).filter(Boolean).join('');
+    accessoryPalette.innerHTML = cards || '<p class="sets-empty">Bu modelde ek ürün yok.</p>';
 
-    accessoryPalette.querySelectorAll('.acc-tile').forEach(tile => {
-      const ref = tile.dataset.acc;
-      tile.querySelectorAll('.acc-qty-btn').forEach(btn => {
+    accessoryPalette.querySelectorAll('.set-card').forEach(card => {
+      const ref = card.dataset.acc;
+      card.querySelectorAll('.acc-qty-btn').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
           bumpAccessoryQty(ref, Number(btn.dataset.qty));
-          render();
+          render(); renderAccessoryPalette();
         });
       });
-      tile.addEventListener('click', e => {
-        if (e.target.closest('.acc-qty-btn')) return;
-        if (getAccessoryQty(ref) === 0) setAccessoryQty(ref, 1);
-        else setAccessoryQty(ref, 0);
-        render();
+      card.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (btn.dataset.action === 'remove') setAccessoryQty(ref, 0);
+          else setAccessoryQty(ref, 1);
+          render(); renderAccessoryPalette();
+        });
+      });
+      card.addEventListener('click', e => {
+        if (e.target.closest('.acc-qty-btn, .set-card-cta')) return;
+        if (getAccessoryQty(ref) === 0) {
+          setAccessoryQty(ref, 1);
+          render(); renderAccessoryPalette();
+        }
       });
     });
   }
@@ -4587,6 +5077,7 @@
     renderSeriesPicker();
     renderMaterialPalette();
     renderAccessoryPalette();
+    renderSetPalette();
   }
 
   document.querySelectorAll('.add-btn').forEach(btn => {
@@ -4629,9 +5120,18 @@
     if (isoModal.classList.contains('open')) drawIsoFrame();
   });
 
+  setsOpenBtn?.addEventListener('click', openSetsModal);
+  setsCloseBtn?.addEventListener('click', closeSetsModal);
+  setsModal?.addEventListener('click', (e) => { if (e.target === setsModal) closeSetsModal(); });
+  accOpenBtn?.addEventListener('click', openAccModal);
+  accCloseBtn?.addEventListener('click', closeAccModal);
+  accModal?.addEventListener('click', (e) => { if (e.target === accModal) closeAccModal(); });
+
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (isoModal.classList.contains('open')) closeIsoModal();
+    if (setsModal?.classList.contains('open')) closeSetsModal();
+    else if (accModal?.classList.contains('open')) closeAccModal();
+    else if (isoModal.classList.contains('open')) closeIsoModal();
     else if (quoteModal.classList.contains('open')) closeQuoteModal();
   });
 
