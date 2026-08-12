@@ -1349,6 +1349,8 @@
           kind: 'image', img: 'assets/doors/travina/travent-almond.webp', crop: [247, 74, 436, 931],
           label: 'Travent-Almond', tier: 'wood', price: { single: 2475.36, pair: 4679.02 },
           // Alt traverten bandı ~%33; crop altı boş şeffaf kesilmesin diye 931
+          // Plint görünümü için cam/ayna ile aynı alt trim
+          bottomTrim: true,
           swatch: 'linear-gradient(180deg, #ebe6dc 0%, #ebe6dc 66%, #b8956e 66%, #8f6d4a 100%)', tone: 'on-light'
         },
         ayna: {
@@ -1406,7 +1408,16 @@
     }
   };
   const priceFmt = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const GLASS_DOOR_BOTTOM_TRIM = 0.0182; // ahşap kapak sprite alt çerçeve hizası (~%1.82)
+  /** Kapak altı: gövde plintinin görünmesi (cam / ayna / traverten). */
+  const DOOR_BOTTOM_TRIM = 0.0182;
+
+  function doorNeedsBottomTrim(spec){
+    if (!spec) return false;
+    if (spec.kind === 'glass') return true;
+    if (spec.tier === 'ayna') return true;
+    if (spec.bottomTrim) return true;
+    return false;
+  }
 
   function doorRef(seriesId, finishId){ return seriesId + ':' + finishId; }
   function accessoryRef(seriesId, key){ return seriesId + ':' + key; }
@@ -3968,20 +3979,25 @@
     opts = opts || {};
     const spec = getDoorMaterial(materialRef);
     if (!spec) return document.createElement('div');
+    const trim = (!opts.fullHeight && doorNeedsBottomTrim(spec)) ? DOOR_BOTTOM_TRIM : 0;
     if (spec.kind === 'glass') {
       const div = document.createElement('div');
       div.className = 'glass-effect' + (spec.glassTone === 'gray' ? ' glass-gray' : '');
-      if (!opts.fullHeight) {
-        div.style.bottom = (GLASS_DOOR_BOTTOM_TRIM * 100) + '%';
-      }
+      if (trim) div.style.bottom = (trim * 100) + '%';
       return div;
     }
     const div = document.createElement('div');
     div.className = 'door-surface';
     div.style.backgroundImage = 'url("' + spec.img + '")';
-    const bg = doorCropStyles(spec.crop, w, h, spec.canvasW, spec.canvasH);
+    const drawH = parseFloat(h) * (1 - trim);
+    const bg = doorCropStyles(spec.crop, w, drawH, spec.canvasW, spec.canvasH);
     div.style.backgroundSize = bg.backgroundSize;
     div.style.backgroundPosition = bg.backgroundPosition;
+    if (trim) {
+      div.style.height = 'auto';
+      div.style.top = '0';
+      div.style.bottom = (trim * 100) + '%';
+    }
     div.setAttribute('role', 'img');
     div.setAttribute('aria-label', doorLabel(materialRef));
     return div;

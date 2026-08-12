@@ -83,9 +83,15 @@
   .filters .field input { margin-bottom: 0; }
   .filters .field label { margin-bottom: 4px; }
   .kpis {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px;
   }
-  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpis.kpis-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  @media (max-width: 1100px) {
+    .kpis, .kpis.kpis-6 { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 700px) {
+    .kpis, .kpis.kpis-6 { grid-template-columns: repeat(2, 1fr); }
+  }
   .kpi {
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
     padding: 14px;
@@ -94,7 +100,34 @@
   .kpi .val {
     margin-top: 6px; font-family: 'Space Mono', monospace; font-size: 20px; color: var(--brass);
   }
+  .kpi .sub { margin-top: 4px; font-size: 11px; color: var(--ink-dim); }
+  .funnel {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
+  }
+  @media (max-width: 700px) { .funnel { grid-template-columns: 1fr; } }
+  .funnel-step {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; position: relative;
+  }
+  .funnel-step .step-lbl { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .05em; }
+  .funnel-step .step-val { margin-top: 4px; font-family: 'Space Mono', monospace; font-size: 18px; color: var(--ink); }
+  .funnel-step .step-rate { margin-top: 4px; font-size: 12px; color: var(--brass); font-weight: 600; }
+  .trend {
+    display: flex; align-items: flex-end; gap: 3px; height: 120px; padding: 12px 14px 8px;
+  }
+  .trend-bar {
+    flex: 1; min-width: 0; background: rgba(201,163,90,.28); border-radius: 2px 2px 0 0;
+    position: relative; height: var(--h, 4%);
+  }
+  .trend-bar:hover { background: rgba(201,163,90,.55); }
+  .trend-bar[title] { cursor: default; }
+  .trend-legend {
+    display: flex; justify-content: space-between; padding: 0 14px 12px;
+    font-size: 11px; color: var(--ink-dim);
+  }
   .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 14px; margin-top: 14px; }
+  @media (max-width: 1100px) { .grid-3 { grid-template-columns: 1fr; } }
   @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
@@ -104,6 +137,12 @@
     margin: 0; padding: 12px 14px; font-family: 'Space Grotesk', sans-serif;
     font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line);
   }
+  .badge {
+    display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px;
+    font-family: 'Space Mono', monospace; background: rgba(201,163,90,.12); color: var(--brass);
+  }
+  .badge.warn { background: rgba(201,139,124,.15); color: var(--danger); }
+  .badge.ok { background: rgba(143,191,138,.15); color: #8fbf8a; }
   .search-row { padding: 10px 14px; border-bottom: 1px solid var(--line); }
   .search-row input { margin: 0; }
   .table-wrap { overflow: auto; max-height: 520px; }
@@ -166,11 +205,39 @@
         </div>
         <button class="btn btn-primary" type="button" id="refresh-btn" style="width:auto">Yenile</button>
       </div>
-      <div class="kpis">
-        <div class="kpi"><div class="lbl">Aktif mağaza</div><div class="val" id="kpi-dealers">0</div></div>
-        <div class="kpi"><div class="lbl">Oturum</div><div class="val" id="kpi-sessions">0</div></div>
-        <div class="kpi"><div class="lbl">Kullanım süresi</div><div class="val" id="kpi-time">0 dk</div></div>
-        <div class="kpi"><div class="lbl">Tasarım / Teklif</div><div class="val" id="kpi-dq">0 / 0</div></div>
+      <div class="kpis kpis-6">
+        <div class="kpi"><div class="lbl">Canlı oturum</div><div class="val" id="kpi-live">0</div><div class="sub">son 3 dk</div></div>
+        <div class="kpi"><div class="lbl">Oturum</div><div class="val" id="kpi-sessions">0</div><div class="sub" id="kpi-dealers-sub">0 mağaza</div></div>
+        <div class="kpi"><div class="lbl">Ort. oturum</div><div class="val" id="kpi-avg-session">0 dk</div><div class="sub" id="kpi-time-sub">toplam 0 dk</div></div>
+        <div class="kpi"><div class="lbl">Form teklifi</div><div class="val" id="kpi-leads">0</div><div class="sub" id="kpi-track-quotes">izlenen 0</div></div>
+        <div class="kpi"><div class="lbl">Teklif tutarı</div><div class="val" id="kpi-lead-total">₺0</div><div class="sub" id="kpi-lead-avg">ort. ₺0</div></div>
+        <div class="kpi"><div class="lbl">Pasif mağaza</div><div class="val" id="kpi-inactive">0</div><div class="sub">bu aralıkta 0 oturum</div></div>
+      </div>
+      <div class="funnel">
+        <div class="funnel-step">
+          <div class="step-lbl">1 · Oturum</div>
+          <div class="step-val" id="funnel-sessions">0</div>
+          <div class="step-rate">başlangıç</div>
+        </div>
+        <div class="funnel-step">
+          <div class="step-lbl">2 · Tasarım</div>
+          <div class="step-val" id="funnel-designs">0</div>
+          <div class="step-rate" id="funnel-s2d">%0 dönüşüm</div>
+        </div>
+        <div class="funnel-step">
+          <div class="step-lbl">3 · Teklif (izlenen)</div>
+          <div class="step-val" id="funnel-quotes">0</div>
+          <div class="step-rate" id="funnel-d2q">tasarımdan %0</div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Günlük aktivite (oturum)</h2>
+        <div class="trend" id="daily-trend" aria-label="Günlük oturum trendi"></div>
+        <div class="trend-legend">
+          <span id="trend-from">—</span>
+          <span>Yüksek çubuk = daha çok oturum</span>
+          <span id="trend-to">—</span>
+        </div>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -183,8 +250,10 @@
               <thead>
                 <tr>
                   <th>Kod</th><th>Mağaza</th><th>Şehir</th>
-                  <th class="num">Süre</th><th class="num">Oturum</th>
+                  <th class="num">Süre</th><th class="num">Ort.</th>
+                  <th class="num">Oturum</th>
                   <th class="num">Tasarım</th><th class="num">Teklif</th>
+                  <th class="num">Dönüşüm</th>
                 </tr>
               </thead>
               <tbody id="dealer-rows"></tbody>
@@ -192,11 +261,16 @@
           </div>
         </div>
         <div class="card">
-          <h2>En çok tasarlanan modeller</h2>
+          <h2>Model performansı</h2>
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Model</th><th class="num">Tasarım</th><th class="num">Teklif</th></tr>
+                <tr>
+                  <th>Model</th>
+                  <th class="num">Tasarım</th>
+                  <th class="num">Teklif</th>
+                  <th class="num">Dönüşüm</th>
+                </tr>
               </thead>
               <tbody id="series-rows"></tbody>
             </table>
@@ -216,6 +290,36 @@
           <input type="date" id="leads-to">
         </div>
         <button class="btn btn-primary" type="button" id="leads-refresh" style="width:auto">Yenile</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Teklif formu</div><div class="val" id="leads-kpi-count">0</div></div>
+        <div class="kpi"><div class="lbl">Toplam tutar</div><div class="val" id="leads-kpi-total">₺0</div></div>
+        <div class="kpi"><div class="lbl">Ortalama tutar</div><div class="val" id="leads-kpi-avg">₺0</div></div>
+        <div class="kpi"><div class="lbl">En yüksek</div><div class="val" id="leads-kpi-max">₺0</div></div>
+      </div>
+      <div class="grid-2" style="margin-bottom:14px">
+        <div class="card">
+          <h2>Modele göre teklifler</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Model</th><th class="num">Adet</th><th class="num">Tutar</th></tr>
+              </thead>
+              <tbody id="leads-series-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Mağazaya göre teklifler</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Mağaza</th><th class="num">Adet</th><th class="num">Tutar</th></tr>
+              </thead>
+              <tbody id="leads-dealer-rows"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
       <div class="card">
         <h2>Gönderilen teklif formları</h2>
@@ -442,6 +546,19 @@
   document.getElementById('leads-refresh').addEventListener('click', loadLeads);
   document.getElementById('leads-search').addEventListener('input', renderLeads);
 
+  function fmtPct(n) {
+    const v = Number(n);
+    if (!isFinite(v)) return '%0';
+    return '%' + (Math.round(v * 10) / 10);
+  }
+
+  function shortMoney(n) {
+    const v = Number(n) || 0;
+    if (v >= 1000000) return '₺' + (v / 1000000).toFixed(1).replace('.0', '') + 'M';
+    if (v >= 1000) return '₺' + Math.round(v / 1000) + 'B';
+    return fmtMoney(v);
+  }
+
   async function loadStats() {
     const from = document.getElementById('from').value || daysAgoISO(30);
     const to = document.getElementById('to').value || todayISO();
@@ -452,10 +569,24 @@
       return;
     }
     const t = data.totals || {};
-    document.getElementById('kpi-dealers').textContent = t.dealers || 0;
+    document.getElementById('kpi-live').textContent = t.live_sessions || 0;
     document.getElementById('kpi-sessions').textContent = t.session_count || 0;
-    document.getElementById('kpi-time').textContent = fmtMinutes(t.active_seconds || 0);
-    document.getElementById('kpi-dq').textContent = (t.design_count || 0) + ' / ' + (t.quote_count || 0);
+    document.getElementById('kpi-dealers-sub').textContent = (t.dealers || 0) + ' aktif mağaza';
+    document.getElementById('kpi-avg-session').textContent = fmtMinutes(t.avg_session_seconds || 0);
+    document.getElementById('kpi-time-sub').textContent = 'toplam ' + fmtMinutes(t.active_seconds || 0);
+    document.getElementById('kpi-leads').textContent = t.lead_count || 0;
+    document.getElementById('kpi-track-quotes').textContent = 'izlenen ' + (t.quote_count || 0);
+    document.getElementById('kpi-lead-total').textContent = shortMoney(t.lead_total_price || 0);
+    document.getElementById('kpi-lead-avg').textContent = 'ort. ' + fmtMoney(t.lead_avg_price || 0);
+    document.getElementById('kpi-inactive').textContent = t.inactive_dealers || 0;
+
+    document.getElementById('funnel-sessions').textContent = t.session_count || 0;
+    document.getElementById('funnel-designs').textContent = t.design_count || 0;
+    document.getElementById('funnel-quotes').textContent = t.quote_count || 0;
+    document.getElementById('funnel-s2d').textContent = fmtPct(t.session_to_design_pct) + ' oturum→tasarım';
+    document.getElementById('funnel-d2q').textContent = 'tasarımdan ' + fmtPct(t.design_to_quote_pct);
+
+    renderDailyTrend(data.daily || [], from, to);
 
     dealersCache = data.dealers || [];
     renderDealers();
@@ -463,14 +594,34 @@
     const seriesBody = document.getElementById('series-rows');
     const series = data.series || [];
     if (!series.length) {
-      seriesBody.innerHTML = '<tr><td colspan="3" class="muted">Bu aralıkta veri yok</td></tr>';
+      seriesBody.innerHTML = '<tr><td colspan="4" class="muted">Bu aralıkta veri yok</td></tr>';
     } else {
       seriesBody.innerHTML = series.map(s =>
-        '<tr><td>' + (SERIES_LABELS[s.series_id] || s.series_id) +
+        '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
         '</td><td class="num">' + s.design_count +
-        '</td><td class="num">' + s.quote_count + '</td></tr>'
+        '</td><td class="num">' + s.quote_count +
+        '</td><td class="num"><span class="badge">' + fmtPct(s.design_to_quote_pct) + '</span></td></tr>'
       ).join('');
     }
+  }
+
+  function renderDailyTrend(daily, from, to) {
+    const el = document.getElementById('daily-trend');
+    document.getElementById('trend-from').textContent = from || '—';
+    document.getElementById('trend-to').textContent = to || '—';
+    if (!daily.length) {
+      el.innerHTML = '<div class="muted" style="padding:20px">Trend verisi yok</div>';
+      return;
+    }
+    const max = Math.max(1, ...daily.map(d => Number(d.session_count) || 0));
+    el.innerHTML = daily.map(d => {
+      const n = Number(d.session_count) || 0;
+      const h = Math.max(4, Math.round((n / max) * 100));
+      const day = String(d.day).slice(0, 10);
+      const title = day + ' · ' + n + ' oturum · ' +
+        (d.design_count || 0) + ' tasarım · ' + (d.quote_count || 0) + ' teklif';
+      return '<div class="trend-bar" style="--h:' + h + '%" title="' + escapeHtml(title) + '"></div>';
+    }).join('');
   }
 
   function renderDealers() {
@@ -481,20 +632,25 @@
     });
     const body = document.getElementById('dealer-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="muted">Kayıt yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="9" class="muted">Kayıt yok</td></tr>';
       return;
     }
-    body.innerHTML = rows.map(d =>
-      '<tr>' +
+    body.innerHTML = rows.map(d => {
+      const idle = !d.session_count;
+      const conv = idle ? '—' : fmtPct(d.design_to_quote_pct);
+      const badgeClass = idle ? 'warn' : (Number(d.design_to_quote_pct) >= 20 ? 'ok' : '');
+      return '<tr>' +
         '<td>' + escapeHtml(d.code) + '</td>' +
         '<td>' + escapeHtml(d.name) + '</td>' +
         '<td>' + escapeHtml(d.city || '—') + '</td>' +
         '<td class="num">' + fmtMinutes(d.active_seconds) + '</td>' +
+        '<td class="num">' + (idle ? '—' : fmtMinutes(d.avg_session_seconds)) + '</td>' +
         '<td class="num">' + d.session_count + '</td>' +
         '<td class="num">' + d.design_count + '</td>' +
         '<td class="num">' + d.quote_count + '</td>' +
-      '</tr>'
-    ).join('');
+        '<td class="num"><span class="badge ' + badgeClass + '">' + conv + '</span></td>' +
+      '</tr>';
+    }).join('');
   }
 
   function fmtMoney(n) {
@@ -529,6 +685,32 @@
         '<tr><td colspan="8" class="muted">Teklifler yüklenemedi</td></tr>';
       return;
     }
+    const sum = data.summary || {};
+    document.getElementById('leads-kpi-count').textContent = sum.lead_count || 0;
+    document.getElementById('leads-kpi-total').textContent = fmtMoney(sum.lead_total_price || 0);
+    document.getElementById('leads-kpi-avg').textContent = fmtMoney(sum.lead_avg_price || 0);
+    document.getElementById('leads-kpi-max').textContent = fmtMoney(sum.lead_max_price || 0);
+
+    const seriesBody = document.getElementById('leads-series-rows');
+    const bySeries = data.by_series || [];
+    seriesBody.innerHTML = bySeries.length
+      ? bySeries.map(s =>
+          '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
+          '</td><td class="num">' + s.lead_count +
+          '</td><td class="num">' + escapeHtml(fmtMoney(s.lead_total_price)) + '</td></tr>'
+        ).join('')
+      : '<tr><td colspan="3" class="muted">Veri yok</td></tr>';
+
+    const dealerBody = document.getElementById('leads-dealer-rows');
+    const byDealer = data.by_dealer || [];
+    dealerBody.innerHTML = byDealer.length
+      ? byDealer.map(d =>
+          '<tr><td>' + escapeHtml((d.dealer_code || '') + (d.dealer_name ? ' · ' + d.dealer_name : '')) +
+          '</td><td class="num">' + d.lead_count +
+          '</td><td class="num">' + escapeHtml(fmtMoney(d.lead_total_price)) + '</td></tr>'
+        ).join('')
+      : '<tr><td colspan="3" class="muted">Veri yok</td></tr>';
+
     leadsCache = data.leads || [];
     renderLeads();
   }
