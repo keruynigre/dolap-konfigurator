@@ -121,19 +121,41 @@
     opts = opts || {};
     const s = loadSession();
     const sb = getClient();
-    if (!s || !sb) return { ok: false, error: 'no_session' };
+    if (!s || !s.session_id) return { ok: false, error: 'no_session' };
+    if (!sb) return { ok: false, error: 'no_client' };
+    let payload = opts.payload || null;
+    if (payload != null) {
+      try {
+        payload = JSON.parse(JSON.stringify(payload));
+      } catch (e) {
+        return { ok: false, error: 'payload_not_serializable' };
+      }
+    }
+    const totalPrice = opts.totalPrice;
+    const safeTotal =
+      totalPrice == null || totalPrice === '' || Number.isNaN(Number(totalPrice))
+        ? null
+        : Number(totalPrice);
     try {
       const { data, error } = await sb.rpc('submit_quote_lead', {
         p_session_id: s.session_id,
         p_customer: opts.customer || {},
         p_series_id: opts.seriesId || lastTrackedSeries || null,
-        p_total_price: opts.totalPrice != null ? opts.totalPrice : null,
+        p_total_price: safeTotal,
         p_layout_mode: opts.layoutMode || null,
-        p_payload: opts.payload || null
+        p_payload: payload
       });
-      if (error) return { ok: false, error: error.message || 'rpc_error' };
-      return data || { ok: false, error: 'unknown' };
+      if (error) {
+        console.error('submit_quote_lead rpc error', error);
+        return { ok: false, error: error.message || 'rpc_error' };
+      }
+      if (!data || !data.ok) {
+        console.error('submit_quote_lead rejected', data);
+        return data || { ok: false, error: 'unknown' };
+      }
+      return data;
     } catch (e) {
+      console.error('submit_quote_lead exception', e);
       return { ok: false, error: String(e && e.message || e) };
     }
   }

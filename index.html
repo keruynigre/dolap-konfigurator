@@ -499,7 +499,14 @@
     outline: none; border-color: var(--brass);
   }
   .quote-field textarea { min-height: 72px; resize: vertical; }
+  .quote-error {
+    display: none; margin: 0 0 10px; padding: 10px 12px; border-radius: var(--radius);
+    border: 1px solid #8a3a32; background: rgba(138, 58, 50, 0.16); color: #f0b4ad;
+    font-size: 13px; line-height: 1.4;
+  }
+  .quote-error.visible { display: block; }
   .quote-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .quote-actions .quote-submit:disabled { opacity: 0.55; cursor: wait; }
   .quote-actions .quote-cancel {
     flex: 1; min-width: 90px; background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
     border-radius: var(--radius); padding: 11px; font-size: 13px; cursor: pointer;
@@ -1153,10 +1160,11 @@
           <label for="quote-note">Not (isteğe bağlı)</label>
           <textarea id="quote-note" name="note" placeholder="Teslimat, ölçü veya özel istekleriniz"></textarea>
         </div>
+        <div class="quote-error" id="quote-error" role="alert"></div>
         <div class="quote-actions">
           <button type="button" class="quote-cancel" id="quote-cancel">Vazgeç</button>
           <button type="button" class="quote-pdf" id="quote-pdf">PDF İndir</button>
-          <button type="submit" class="quote-submit">Teklifi Gönder</button>
+          <button type="submit" class="quote-submit" id="quote-submit">Teklifi Gönder</button>
         </div>
       </form>
     </div>
@@ -1172,8 +1180,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
-<script src="js/dealer-session.js"></script>
+<script src="js/supabase-config.js?v=2"></script>
+<script src="js/dealer-session.js?v=2"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -1946,6 +1954,7 @@
     quoteSummary.innerHTML = buildQuoteSummaryHtml();
     quoteFormWrap.classList.remove('hidden');
     quoteSuccess.classList.remove('visible');
+    setQuoteError('');
     quoteForm.reset();
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
@@ -1957,8 +1966,38 @@
     quoteModal.setAttribute('aria-hidden', 'true');
   }
 
+  function setQuoteError(msg){
+    const el = document.getElementById('quote-error');
+    if (!el) return;
+    if (!msg) {
+      el.textContent = '';
+      el.classList.remove('visible');
+      return;
+    }
+    el.textContent = msg;
+    el.classList.add('visible');
+  }
+
+  function quoteLeadErrorMessage(code){
+    const c = String(code || '');
+    if (c === 'no_session' || c === 'session_not_found') {
+      return 'Mağaza oturumu bulunamadı. Sayfayı yenileyip mağaza koduyla tekrar giriş yapın.';
+    }
+    if (c === 'missing_customer') {
+      return 'Ad, telefon ve e-posta zorunludur.';
+    }
+    if (c === 'no_client' || c === 'supabase_unavailable') {
+      return 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.';
+    }
+    if (c === 'stale_client') {
+      return 'Sayfa güncel değil. Ctrl+F5 ile yenileyip tekrar gönderin.';
+    }
+    return 'Teklif kaydedilemedi' + (c ? ' (' + c + ')' : '') + '. Lütfen tekrar deneyin.';
+  }
+
   async function submitQuote(e){
     e.preventDefault();
+    setQuoteError('');
     if (!quoteForm.reportValidity()) return;
     const payload = buildQuotePayload();
     lastQuotePayload = payload;
@@ -1967,31 +2006,43 @@
       prev.push(payload);
       localStorage.setItem('dolapQuoteRequests', JSON.stringify(prev));
     } catch (_) { /* ignore quota / private mode */ }
-    console.log('Teklif talebi', payload);
+
+    const submitBtn = document.getElementById('quote-submit');
+    if (submitBtn) submitBtn.disabled = true;
     try {
+      if (!window.DolapDealer || !window.DolapDealer.submitQuoteLead) {
+        setQuoteError(quoteLeadErrorMessage('stale_client'));
+        return;
+      }
       const series = getLockedDoorSeries() || activeDoorSeries;
       const totals = payload.totals || {};
       const pricing = totals.pricing || {};
-      if (window.DolapDealer && window.DolapDealer.submitQuoteLead) {
-        await window.DolapDealer.submitQuoteLead({
-          customer: payload.customer,
-          seriesId: series,
-          totalPrice: pricing.total != null ? pricing.total : null,
-          layoutMode: totals.mode || null,
-          payload: {
-            config: payload.config,
-            accessories: payload.accessories,
-            totals: payload.totals,
-            lineItems: payload.lineItems,
-            createdAt: payload.createdAt
-          }
-        });
-      } else if (window.DolapDealer) {
-        window.DolapDealer.trackQuote(series);
+      const res = await window.DolapDealer.submitQuoteLead({
+        customer: payload.customer,
+        seriesId: series,
+        totalPrice: pricing.total != null ? pricing.total : null,
+        layoutMode: totals.mode || null,
+        payload: {
+          config: payload.config,
+          accessories: payload.accessories,
+          totals: payload.totals,
+          lineItems: payload.lineItems,
+          createdAt: payload.createdAt
+        }
+      });
+      if (!res || !res.ok) {
+        console.error('Teklif kaydı başarısız', res);
+        setQuoteError(quoteLeadErrorMessage(res && res.error));
+        return;
       }
-    } catch (_) { /* ignore */ }
-    quoteFormWrap.classList.add('hidden');
-    quoteSuccess.classList.add('visible');
+      quoteFormWrap.classList.add('hidden');
+      quoteSuccess.classList.add('visible');
+    } catch (err) {
+      console.error('Teklif kaydı hata', err);
+      setQuoteError(quoteLeadErrorMessage(err && err.message));
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
   }
 
   async function onQuotePdfClick(){
