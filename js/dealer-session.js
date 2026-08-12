@@ -1,0 +1,132 @@
+/**
+ * Mağaza oturumu: kod ile giriş, heartbeat, tasarım/teklif eventleri.
+ */
+(function (global) {
+  const STORAGE_KEY = 'dolapDealerSession';
+  const HEARTBEAT_MS = 60000;
+
+  let client = null;
+  let heartbeatTimer = null;
+  let lastTrackedSeries = null;
+
+  function getClient() {
+    if (client) return client;
+    const cfg = global.DOLAP_SUPABASE;
+    if (!cfg || !global.supabase) return null;
+    client = global.supabase.createClient(cfg.url, cfg.anonKey);
+    return client;
+  }
+
+  function loadSession() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || !s.session_id || !s.dealer) return null;
+      return s;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveSession(data) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  }
+
+  function clearSession() {
+    localStorage.removeItem(STORAGE_KEY);
+    lastTrackedSeries = null;
+    stopHeartbeat();
+  }
+
+  function getSession() {
+    return loadSession();
+  }
+
+  async function login(code) {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const { data, error } = await sb.rpc('dealer_login', {
+      p_code: String(code || '').trim(),
+      p_user_agent: navigator.userAgent || ''
+    });
+    if (error) return { ok: false, error: error.message || 'rpc_error' };
+    if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid_code' };
+    const session = {
+      session_id: data.session_id,
+      dealer: data.dealer,
+      started_at: new Date().toISOString()
+    };
+    saveSession(session);
+    startHeartbeat();
+    return { ok: true, session };
+  }
+
+  function logout() {
+    clearSession();
+  }
+
+  async function heartbeat() {
+    const s = loadSession();
+    const sb = getClient();
+    if (!s || !sb) return;
+    try {
+      await sb.rpc('dealer_heartbeat', { p_session_id: s.session_id });
+    } catch (_) { /* ignore */ }
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeat();
+    heartbeatTimer = setInterval(heartbeat, HEARTBEAT_MS);
+    document.addEventListener('visibilitychange', onVisibility);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
+    heartbeatTimer = null;
+    document.removeEventListener('visibilitychange', onVisibility);
+  }
+
+  function onVisibility() {
+    if (document.visibilityState === 'visible') heartbeat();
+  }
+
+  async function track(event, seriesId) {
+    const s = loadSession();
+    const sb = getClient();
+    if (!s || !sb) return;
+    try {
+      await sb.rpc('dealer_track', {
+        p_session_id: s.session_id,
+        p_event: event,
+        p_series_id: seriesId || null
+      });
+    } catch (_) { /* ignore */ }
+  }
+
+  function trackDesign(seriesId) {
+    if (!seriesId) return;
+    if (seriesId === lastTrackedSeries) return;
+    lastTrackedSeries = seriesId;
+    track('design', seriesId);
+  }
+
+  function trackQuote(seriesId) {
+    track('quote', seriesId || lastTrackedSeries);
+  }
+
+  function initIfLoggedIn() {
+    if (loadSession()) startHeartbeat();
+  }
+
+  global.DolapDealer = {
+    login,
+    logout,
+    getSession,
+    trackDesign,
+    trackQuote,
+    initIfLoggedIn,
+    getClient
+  };
+})(window);

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bambi Admin — Üretici Paneli</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="../js/supabase-config.js"></script>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #161514; --panel: #201f1d; --panel-2: #292825;
+    --ink: #ede9e3; --ink-dim: #a8a49b; --line: #37352f;
+    --brass: #c9a35a; --brass-ink: #1a1712; --danger: #c98b7c;
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+    font-family: Inter, sans-serif; font-size: 14px;
+  }
+  .hidden { display: none !important; }
+  #login-view {
+    min-height: 100vh; display: grid; place-items: center; padding: 24px;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(201,163,90,.12), transparent 50%),
+      var(--bg);
+  }
+  .login-card {
+    width: min(400px, 100%); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 28px 24px;
+  }
+  .login-card h1 {
+    margin: 0 0 6px; font-family: 'Space Grotesk', sans-serif; font-size: 22px; font-weight: 600;
+  }
+  .login-card p { margin: 0 0 20px; color: var(--ink-dim); font-size: 13px; line-height: 1.45; }
+  label { display: block; font-size: 12px; color: var(--ink-dim); margin: 0 0 6px; }
+  input, select, button, textarea {
+    font: inherit; color: var(--ink);
+  }
+  input, select {
+    width: 100%; padding: 10px 12px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--bg); margin-bottom: 12px;
+  }
+  .btn {
+    border: none; border-radius: var(--radius); padding: 10px 14px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px;
+  }
+  .btn-primary { background: var(--brass); color: var(--brass-ink); width: 100%; }
+  .btn-primary:hover { filter: brightness(1.06); }
+  .btn-ghost {
+    background: transparent; color: var(--ink-dim); border: 1px solid var(--line);
+  }
+  .btn-ghost:hover { border-color: var(--brass); color: var(--brass); }
+  .err { color: var(--danger); font-size: 12px; min-height: 18px; margin: 0 0 8px; }
+
+  #app-view { display: none; min-height: 100vh; }
+  #app-view.open { display: block; }
+  .top {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+  }
+  .top h1 { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 600; }
+  .top .meta { color: var(--ink-dim); font-size: 12px; }
+  .top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 6px; padding: 12px 20px 0; }
+  .tab {
+    background: transparent; border: 1px solid transparent; color: var(--ink-dim);
+    padding: 8px 12px; border-radius: var(--radius); cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+  }
+  .tab.active { color: var(--brass); border-color: var(--line); background: var(--panel-2); }
+  .panel { padding: 16px 20px 28px; }
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 16px;
+  }
+  .filters .field { min-width: 140px; }
+  .filters .field input { margin-bottom: 0; }
+  .filters .field label { margin-bottom: 4px; }
+  .kpis {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
+  }
+  @media (max-width: 900px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px;
+  }
+  .kpi .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-dim); }
+  .kpi .val {
+    margin-top: 6px; font-family: 'Space Mono', monospace; font-size: 20px; color: var(--brass);
+  }
+  .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
+  @media (max-width: 960px) { .grid-2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .card h2 {
+    margin: 0; padding: 12px 14px; font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line);
+  }
+  .search-row { padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .search-row input { margin: 0; }
+  .table-wrap { overflow: auto; max-height: 520px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); }
+  th {
+    position: sticky; top: 0; background: var(--panel-2); color: var(--ink-dim);
+    font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+  }
+  td.num, th.num { text-align: right; font-family: 'Space Mono', monospace; }
+  tr:hover td { background: rgba(201,163,90,.04); }
+  .muted { color: var(--ink-dim); }
+  .price-box { display: grid; gap: 14px; max-width: 720px; }
+  .hint { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .ok { color: #8fbf8a; font-size: 13px; }
+</style>
+</head>
+<body>
+  <div id="login-view">
+    <form class="login-card" id="login-form">
+      <h1>Üretici paneli</h1>
+      <p>Mağaza kullanım istatistikleri ve Excel ile fiyat güncelleme.</p>
+      <label for="email">E-posta</label>
+      <input id="email" type="email" required autocomplete="username" value="sezerginyurek@gmail.com">
+      <label for="password">Şifre</label>
+      <input id="password" type="password" required autocomplete="current-password">
+      <p class="err" id="login-err"></p>
+      <button class="btn btn-primary" type="submit">Giriş yap</button>
+    </form>
+  </div>
+
+  <div id="app-view">
+    <div class="top">
+      <div>
+        <h1>Bambi Admin</h1>
+        <div class="meta" id="admin-meta">Üretici</div>
+      </div>
+      <div class="top-actions">
+        <a class="btn btn-ghost" href="../index.html">Konfigüratöre dön</a>
+        <button class="btn btn-ghost" type="button" id="logout-btn">Çıkış</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="stats">İstatistikler</button>
+      <button type="button" class="tab" data-tab="prices">Fiyatlar (Excel)</button>
+    </div>
+
+    <section class="panel" id="tab-stats">
+      <div class="filters">
+        <div class="field">
+          <label for="from">Başlangıç</label>
+          <input type="date" id="from">
+        </div>
+        <div class="field">
+          <label for="to">Bitiş</label>
+          <input type="date" id="to">
+        </div>
+        <button class="btn btn-primary" type="button" id="refresh-btn" style="width:auto">Yenile</button>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="lbl">Aktif mağaza</div><div class="val" id="kpi-dealers">0</div></div>
+        <div class="kpi"><div class="lbl">Oturum</div><div class="val" id="kpi-sessions">0</div></div>
+        <div class="kpi"><div class="lbl">Kullanım süresi</div><div class="val" id="kpi-time">0 dk</div></div>
+        <div class="kpi"><div class="lbl">Tasarım / Teklif</div><div class="val" id="kpi-dq">0 / 0</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h2>Mağazalar</h2>
+          <div class="search-row">
+            <input type="search" id="dealer-search" placeholder="Kod, ad veya şehir ara…">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Kod</th><th>Mağaza</th><th>Şehir</th>
+                  <th class="num">Süre</th><th class="num">Oturum</th>
+                  <th class="num">Tasarım</th><th class="num">Teklif</th>
+                </tr>
+              </thead>
+              <tbody id="dealer-rows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2>En çok tasarlanan modeller</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Model</th><th class="num">Tasarım</th><th class="num">Teklif</th></tr>
+              </thead>
+              <tbody id="series-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel hidden" id="tab-prices">
+      <div class="price-box">
+        <p class="hint">
+          Excel ile gövde, kapak (tekli/çiftli) ve ek ürün fiyatlarını güncelleyin.
+          Şablonu indirip doldurun; yüklediğiniz liste hemen aktif olur. Uygulama sabit fiyatların üzerine yazar.
+        </p>
+        <div class="row-actions">
+          <button class="btn btn-ghost" type="button" id="dl-template">Şablon indir (.xlsx)</button>
+          <label class="btn btn-primary" style="width:auto; display:inline-block; cursor:pointer;">
+            Excel yükle
+            <input type="file" id="price-file" accept=".xlsx,.xls,.csv" hidden>
+          </label>
+        </div>
+        <p class="err" id="price-err"></p>
+        <p class="ok hidden" id="price-ok"></p>
+        <div class="card">
+          <h2>Şablon sütunları</h2>
+          <div class="table-wrap" style="max-height:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>item_type</th><th>series_id</th><th>body_type</th><th>finish_id</th>
+                  <th>accessory_key</th><th>label</th><th>price</th><th>price_single</th><th>price_pair</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>body</td><td></td><td>1door</td><td></td><td></td><td>1 Kapaklı</td><td>9861.81</td><td></td><td></td></tr>
+                <tr><td>door</td><td>welldora</td><td></td><td>ceviz</td><td></td><td>Rubens</td><td></td><td>4528.64</td><td>8036.08</td></tr>
+                <tr><td>accessory</td><td>welldora</td><td></td><td></td><td>sifonyer</td><td>Yüksek Şifonyer</td><td>14870.94</td><td></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+<script>
+(function () {
+  const cfg = window.DOLAP_SUPABASE;
+  const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+  const SERIES_LABELS = {
+    welldora: 'Welldora',
+    monerra: 'Monerra',
+    travina: 'Travina',
+    cappadocia: 'Cappadocia'
+  };
+
+  let dealersCache = [];
+
+  const loginView = document.getElementById('login-view');
+  const appView = document.getElementById('app-view');
+  const loginForm = document.getElementById('login-form');
+  const loginErr = document.getElementById('login-err');
+
+  function fmtMinutes(sec) {
+    const m = Math.round((Number(sec) || 0) / 60);
+    if (m < 60) return m + ' dk';
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return h + ' sa ' + r + ' dk';
+  }
+
+  function todayISO() {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  function daysAgoISO(n) {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60000);
+    return local.toISOString().slice(0, 10);
+  }
+
+  async function requireAdmin() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return false;
+    const { data, error } = await sb.from('admin_profiles').select('user_id, display_name').eq('user_id', session.user.id).maybeSingle();
+    if (error || !data) {
+      await sb.auth.signOut();
+      return false;
+    }
+    document.getElementById('admin-meta').textContent =
+      (data.display_name || 'Admin') + ' · ' + session.user.email;
+    return true;
+  }
+
+  async function showApp() {
+    loginView.classList.add('hidden');
+    appView.classList.add('open');
+    document.getElementById('from').value = daysAgoISO(30);
+    document.getElementById('to').value = todayISO();
+    await loadStats();
+  }
+
+  function showLogin() {
+    appView.classList.remove('open');
+    loginView.classList.remove('hidden');
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginErr.textContent = '';
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      loginErr.textContent = 'Giriş başarısız. E-posta/şifreyi kontrol edin.';
+      return;
+    }
+    const ok = await requireAdmin();
+    if (!ok) {
+      loginErr.textContent = 'Bu hesap üretici admin değil.';
+      return;
+    }
+    await showApp();
+  });
+
+  document.getElementById('logout-btn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    showLogin();
+  });
+
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-stats').classList.toggle('hidden', tab !== 'stats');
+      document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
+    });
+  });
+
+  document.getElementById('refresh-btn').addEventListener('click', loadStats);
+  document.getElementById('dealer-search').addEventListener('input', renderDealers);
+
+  async function loadStats() {
+    const from = document.getElementById('from').value || daysAgoISO(30);
+    const to = document.getElementById('to').value || todayISO();
+    const { data, error } = await sb.rpc('admin_dashboard', { p_from: from, p_to: to });
+    if (error || !data || !data.ok) {
+      console.error(error || data);
+      alert('İstatistikler yüklenemedi.');
+      return;
+    }
+    const t = data.totals || {};
+    document.getElementById('kpi-dealers').textContent = t.dealers || 0;
+    document.getElementById('kpi-sessions').textContent = t.session_count || 0;
+    document.getElementById('kpi-time').textContent = fmtMinutes(t.active_seconds || 0);
+    document.getElementById('kpi-dq').textContent = (t.design_count || 0) + ' / ' + (t.quote_count || 0);
+
+    dealersCache = data.dealers || [];
+    renderDealers();
+
+    const seriesBody = document.getElementById('series-rows');
+    const series = data.series || [];
+    if (!series.length) {
+      seriesBody.innerHTML = '<tr><td colspan="3" class="muted">Bu aralıkta veri yok</td></tr>';
+    } else {
+      seriesBody.innerHTML = series.map(s =>
+        '<tr><td>' + (SERIES_LABELS[s.series_id] || s.series_id) +
+        '</td><td class="num">' + s.design_count +
+        '</td><td class="num">' + s.quote_count + '</td></tr>'
+      ).join('');
+    }
+  }
+
+  function renderDealers() {
+    const q = (document.getElementById('dealer-search').value || '').trim().toLowerCase();
+    const rows = dealersCache.filter(d => {
+      if (!q) return true;
+      return [d.code, d.name, d.city].join(' ').toLowerCase().includes(q);
+    });
+    const body = document.getElementById('dealer-rows');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="7" class="muted">Kayıt yok</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(d =>
+      '<tr>' +
+        '<td>' + escapeHtml(d.code) + '</td>' +
+        '<td>' + escapeHtml(d.name) + '</td>' +
+        '<td>' + escapeHtml(d.city || '—') + '</td>' +
+        '<td class="num">' + fmtMinutes(d.active_seconds) + '</td>' +
+        '<td class="num">' + d.session_count + '</td>' +
+        '<td class="num">' + d.design_count + '</td>' +
+        '<td class="num">' + d.quote_count + '</td>' +
+      '</tr>'
+    ).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  const TEMPLATE_ROWS = [
+    ['item_type','series_id','body_type','finish_id','accessory_key','label','price','price_single','price_pair'],
+    ['body','','1door','','','1 Kapaklı Gövde','9861.81','',''],
+    ['body','','2door','','','2 Kapaklı Gövde','13296.59','',''],
+    ['body','','3door','','','3 Kapaklı Gövde','21458.28','',''],
+    ['body','','corner','','','Köşe Gövde','19881.83','',''],
+    ['body','','drawerAddon','','','Çekmece Eki','8666.62','',''],
+    ['door','welldora','','ceviz','','Rubens','','4528.64','8036.08'],
+    ['door','welldora','','aytasi','','Aytaşı','','4534.84','7934.37'],
+    ['door','welldora','','ayna','','Ayna','','6226.54','12496.43'],
+    ['door','welldora','','cam','','Cam','','4898.01','9258.84'],
+    ['door','monerra','','buz_gri','','Buz Gri','','2110.15','3778.39'],
+    ['door','travina','','travent_almond','','Travent-Almond','','2475.36','4679.02'],
+    ['door','cappadocia','','aytasi','','Aytaşı','','6756.09','12872.13'],
+    ['accessory','welldora','','','sifonyer','Yüksek Şifonyer','14870.94','',''],
+    ['accessory','welldora','','','komodin','Komodin','5486.40','',''],
+    ['accessory','welldora','','','makyajMasasi','Makyaj Masası','16242.26','',''],
+    ['accessory','welldora','','','makyajAynasi','Makyaj Aynası','3881.78','',''],
+    ['accessory','welldora','','','puf','Puf','0','','']
+  ];
+
+  document.getElementById('dl-template').addEventListener('click', () => {
+    const ws = XLSX.utils.aoa_to_sheet(TEMPLATE_ROWS);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'fiyatlar');
+    XLSX.writeFile(wb, 'bambi-fiyat-sablonu.xlsx');
+  });
+
+  document.getElementById('price-file').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    const errEl = document.getElementById('price-err');
+    const okEl = document.getElementById('price-ok');
+    errEl.textContent = '';
+    okEl.classList.add('hidden');
+    if (!file) return;
+
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+      const items = [];
+      for (const r of rows) {
+        const item_type = String(r.item_type || '').trim().toLowerCase();
+        if (!item_type || !['body', 'door', 'accessory'].includes(item_type)) continue;
+        items.push({
+          item_type,
+          series_id: String(r.series_id || '').trim(),
+          body_type: String(r.body_type || '').trim(),
+          finish_id: String(r.finish_id || '').trim(),
+          accessory_key: String(r.accessory_key || '').trim(),
+          label: String(r.label || '').trim(),
+          price: r.price === '' || r.price == null ? '' : String(r.price),
+          price_single: r.price_single === '' || r.price_single == null ? '' : String(r.price_single),
+          price_pair: r.price_pair === '' || r.price_pair == null ? '' : String(r.price_pair)
+        });
+      }
+      if (!items.length) {
+        errEl.textContent = 'Geçerli satır bulunamadı. Şablon sütunlarını kontrol edin.';
+        return;
+      }
+      const { data, error } = await sb.rpc('publish_price_list', {
+        p_filename: file.name,
+        p_note: 'Excel yükleme',
+        p_items: items
+      });
+      if (error || !data || !data.ok) {
+        errEl.textContent = (error && error.message) || 'Yayınlama başarısız.';
+        return;
+      }
+      okEl.textContent = 'Yayınlandı: v' + data.version + ' · ' + data.count + ' satır aktif.';
+      okEl.classList.remove('hidden');
+    } catch (err) {
+      errEl.textContent = 'Dosya okunamadı: ' + (err.message || err);
+    }
+  });
+
+  (async function boot() {
+    const ok = await requireAdmin();
+    if (ok) await showApp();
+    else showLogin();
+  })();
+})();
+</script>
+</body>
+</html>

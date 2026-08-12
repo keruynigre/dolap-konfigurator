@@ -971,15 +971,73 @@
   @media (prefers-reduced-motion: reduce) {
     .module, .door-slot, .seam::before { animation: none !important; transition: none !important; }
   }
+
+  /* Mağaza kodu girişi */
+  .dealer-gate {
+    position: fixed; inset: 0; z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    background:
+      radial-gradient(ellipse at 30% 10%, rgba(201,163,90,.14), transparent 45%),
+      rgba(10, 9, 8, 0.88);
+    backdrop-filter: blur(6px);
+  }
+  .dealer-gate.hidden { display: none; }
+  .dealer-card {
+    width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 28px 24px; box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  }
+  .dealer-card h2 {
+    margin: 0 0 6px; font-family: 'Space Grotesk', sans-serif; font-size: 20px; font-weight: 600;
+  }
+  .dealer-card p { margin: 0 0 18px; color: var(--ink-dim); font-size: 13px; line-height: 1.45; }
+  .dealer-card label { display: block; font-size: 12px; color: var(--ink-dim); margin-bottom: 6px; }
+  .dealer-card input {
+    width: 100%; padding: 11px 12px; border-radius: var(--radius);
+    border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+    font: inherit; margin-bottom: 10px;
+  }
+  .dealer-card .dealer-err { min-height: 18px; color: var(--danger-text); font-size: 12px; margin: 0 0 8px; }
+  .dealer-card button[type="submit"] {
+    width: 100%; border: none; border-radius: var(--radius); padding: 11px 14px;
+    background: var(--brass); color: var(--brass-ink); cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px;
+  }
+  .dealer-chip {
+    display: none; align-items: center; gap: 8px; margin-top: 8px;
+    font-size: 12px; color: var(--ink-dim);
+  }
+  .dealer-chip.visible { display: flex; flex-wrap: wrap; }
+  .dealer-chip strong { color: var(--brass); font-weight: 600; }
+  .dealer-chip button {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-dim);
+    border-radius: var(--radius); padding: 4px 8px; cursor: pointer; font-size: 11px;
+  }
+  .dealer-chip button:hover { border-color: var(--brass); color: var(--brass); }
+  .app.is-locked { pointer-events: none; filter: grayscale(0.15); opacity: 0.45; }
 </style>
 </head>
 <body>
-<div class="app">
+<div id="dealer-gate" class="dealer-gate" aria-modal="true" role="dialog" aria-labelledby="dealer-gate-title">
+  <form class="dealer-card" id="dealer-login-form">
+    <h2 id="dealer-gate-title">Mağaza girişi</h2>
+    <p>Devam etmek için size verilen mağaza kodunu girin. Kullanım süresi ve tasarım istatistikleri üretici panele aktarılır.</p>
+    <label for="dealer-code">Mağaza kodu</label>
+    <input id="dealer-code" name="code" type="text" required autocomplete="off" placeholder="Örn. BAMBI-001" autofocus>
+    <p class="dealer-err" id="dealer-err"></p>
+    <button type="submit">Giriş yap</button>
+  </form>
+</div>
+<div class="app is-locked" id="app-root">
   <header>
     <div class="header-bar">
       <div class="header-lead">
         <h1>Hayalindeki dolabı kur</h1>
         <p>Gövdeleri yan yana ekleyin, kapak alanına tıklayarak malzeme seçin. Tutacaklar otomatik birbirine bakar; gövde simgesi, çekmece ve silme simgelerini gövde üzerinde kullanın.</p>
+        <div class="dealer-chip" id="dealer-chip">
+          <span>Mağaza: <strong id="dealer-chip-name">—</strong></span>
+          <button type="button" id="dealer-logout">Çıkış</button>
+        </div>
       </div>
       <img class="brand-logo" src="assets/brand/bambi-logo.png" alt="bambi — Yatak Sanatı" width="200" height="73">
       <div class="header-end">
@@ -1113,6 +1171,9 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/dealer-session.js"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -1907,6 +1968,10 @@
       localStorage.setItem('dolapQuoteRequests', JSON.stringify(prev));
     } catch (_) { /* ignore quota / private mode */ }
     console.log('Teklif talebi', payload);
+    try {
+      const series = getLockedDoorSeries() || activeDoorSeries;
+      if (window.DolapDealer) window.DolapDealer.trackQuote(series);
+    } catch (_) { /* ignore */ }
     quoteFormWrap.classList.add('hidden');
     quoteSuccess.classList.add('visible');
   }
@@ -3777,6 +3842,7 @@
     syncDoorSeriesUi();
     renderSidebar();
     updatePricingDisplay();
+    if (refSeries && window.DolapDealer) window.DolapDealer.trackDesign(refSeries);
   }
 
   function toggleDrawer(modId, on){
@@ -4506,8 +4572,95 @@
   });
   syncThemeToggle();
 
+  async function applyRemotePrices(){
+    try {
+      const sb = window.DolapDealer && window.DolapDealer.getClient && window.DolapDealer.getClient();
+      if (!sb) return;
+      const { data: list } = await sb.from('price_lists').select('id, version').eq('active', true).maybeSingle();
+      if (!list) return;
+      const { data: items } = await sb.from('price_items').select('*').eq('price_list_id', list.id);
+      if (!items || !items.length) return;
+      items.forEach(it => {
+        if (it.item_type === 'body' && it.body_type) {
+          if (it.body_type === 'drawerAddon' && it.price != null) PRICING.drawerAddon = Number(it.price);
+          else if (it.price != null) PRICING.bodies[it.body_type] = Number(it.price);
+        } else if (it.item_type === 'door' && it.series_id && it.finish_id) {
+          const series = DOOR_SERIES[it.series_id];
+          if (!series) return;
+          const price = {
+            single: it.price_single != null ? Number(it.price_single) : undefined,
+            pair: it.price_pair != null ? Number(it.price_pair) : undefined
+          };
+          if (!series.materials[it.finish_id]) series.materials[it.finish_id] = {};
+          const cur = series.materials[it.finish_id].price || {};
+          series.materials[it.finish_id].price = {
+            single: price.single != null ? price.single : cur.single,
+            pair: price.pair != null ? price.pair : cur.pair
+          };
+        } else if (it.item_type === 'accessory' && it.series_id && it.accessory_key) {
+          const acc = DOOR_SERIES[it.series_id] && DOOR_SERIES[it.series_id].accessories[it.accessory_key];
+          if (acc && it.price != null) acc.price = Number(it.price);
+        }
+      });
+      updatePricingDisplay();
+    } catch (e) {
+      console.warn('Uzaktan fiyat yüklenemedi', e);
+    }
+  }
+
+  function unlockAppForDealer(session){
+    const gate = document.getElementById('dealer-gate');
+    const app = document.getElementById('app-root');
+    const chip = document.getElementById('dealer-chip');
+    const nameEl = document.getElementById('dealer-chip-name');
+    if (gate) gate.classList.add('hidden');
+    if (app) app.classList.remove('is-locked');
+    if (chip && nameEl && session && session.dealer) {
+      nameEl.textContent = session.dealer.name + ' (' + session.dealer.code + ')';
+      chip.classList.add('visible');
+    }
+  }
+
+  function lockAppForDealer(){
+    const gate = document.getElementById('dealer-gate');
+    const app = document.getElementById('app-root');
+    const chip = document.getElementById('dealer-chip');
+    if (gate) gate.classList.remove('hidden');
+    if (app) app.classList.add('is-locked');
+    if (chip) chip.classList.remove('visible');
+    document.getElementById('dealer-code')?.focus();
+  }
+
+  document.getElementById('dealer-login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('dealer-err');
+    const code = document.getElementById('dealer-code').value;
+    if (err) err.textContent = '';
+    const res = await window.DolapDealer.login(code);
+    if (!res.ok) {
+      if (err) err.textContent = 'Geçersiz mağaza kodu.';
+      return;
+    }
+    unlockAppForDealer(res.session);
+    applyRemotePrices();
+  });
+
+  document.getElementById('dealer-logout')?.addEventListener('click', () => {
+    window.DolapDealer.logout();
+    lockAppForDealer();
+  });
+
   initMaterialPalette();
   render();
+
+  const existing = window.DolapDealer && window.DolapDealer.getSession();
+  if (existing) {
+    window.DolapDealer.initIfLoggedIn();
+    unlockAppForDealer(existing);
+    applyRemotePrices();
+  } else {
+    lockAppForDealer();
+  }
 })();
 </script>
 </body>
