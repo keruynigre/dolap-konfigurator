@@ -238,32 +238,48 @@
     margin: 0 0 16px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
     font-size: 12px; color: var(--ink-dim); line-height: 1.45; text-align: center;
   }
-  .material-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .material-palette {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px;
+  }
   .mat-tile {
     border: 1px solid var(--line); background: var(--panel-2); border-radius: var(--radius);
-    padding: 8px; color: var(--ink); font-size: 11px; cursor: grab;
-    display: flex; flex-direction: column; align-items: stretch; gap: 6px;
+    padding: 6px; color: var(--ink); font-size: 11px; cursor: grab;
+    display: flex; flex-direction: column; align-items: stretch;
     transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s; user-select: none;
   }
   .mat-tile:hover { border-color: var(--brass); }
   .mat-tile:active { cursor: grabbing; transform: scale(0.97); }
   .mat-tile.dragging { opacity: 0.45; }
   .mat-tile .swatch {
-    width: 100%; min-height: 44px; border-radius: 2px; pointer-events: none;
-    display: flex; align-items: center; justify-content: center; padding: 8px 6px; box-sizing: border-box;
+    width: 100%; aspect-ratio: 40 / 132; min-height: 168px; border-radius: 2px; pointer-events: none;
+    position: relative; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.12);
   }
-  .mat-tile .swatch .mat-name {
-    font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600;
-    letter-spacing: 0.02em; text-align: center; line-height: 1.2;
-    text-shadow: 0 1px 2px rgba(0,0,0,.35);
+  .mat-tile .swatch.is-glass {
+    background: linear-gradient(155deg, rgba(201, 163, 90, 0.28), rgba(185, 145, 95, 0.08) 55%, rgba(201, 163, 90, 0.2));
+    border: 1px solid rgba(201, 163, 90, 0.55);
   }
-  .mat-tile .swatch.on-light .mat-name { color: #2a241c; text-shadow: 0 1px 1px rgba(255,255,255,.45); }
-  .mat-tile .swatch.on-dark .mat-name { color: #f4efe6; }
-  .mat-tile .mat-price {
-    text-align: center; pointer-events: none;
-    font-family: 'Space Mono', monospace; font-size: 11px; color: var(--ink-dim); line-height: 1.4;
+  .mat-tile .swatch.is-glass.glass-gray {
+    background: linear-gradient(155deg, rgba(170, 176, 184, 0.35), rgba(120, 128, 138, 0.12) 55%, rgba(160, 168, 176, 0.28));
+    border-color: rgba(130, 138, 148, 0.7);
   }
-  .mat-tile .mat-price .pair { font-size: 9.5px; opacity: .85; }
+  .mat-tile .swatch-img {
+    position: absolute; inset: 0;
+    background-repeat: no-repeat;
+  }
+  .mat-tile .mat-name {
+    position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+    z-index: 2; pointer-events: none;
+    font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.03em; line-height: 1.2; text-align: center;
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.75);
+    background: rgba(16, 14, 12, 0.72); padding: 5px 8px; border-radius: 3px;
+    max-width: calc(100% - 10px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mat-tile .swatch.on-light .mat-name {
+    color: #1a1712; text-shadow: 0 1px 1px rgba(255,255,255,.65);
+    background: rgba(250, 248, 244, 0.88);
+  }
 
   .accessory-palette { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 0; }
   .acc-section {
@@ -3886,19 +3902,33 @@
       return;
     }
 
+    // Thumbnail ölçüleri: 2 sütun sidebar (~216px içerik) → ~100×330
+    const THUMB_W = 100, THUMB_H = 330;
     materialPalette.innerHTML = finishOrder.map(finishId => {
       const m = getDoorMaterial(doorRef(activeDoorSeries, finishId));
       if (!m) return '';
       const ref = doorRef(activeDoorSeries, finishId);
-      const tier = getDoorTier(ref);
-      const priceLine = tier
-        ? priceFmt.format(tier.single) + '<br><span class="pair">2 adet ' + priceFmt.format(tier.pair) + '</span>'
-        : '';
+      const tone = m.tone || 'on-dark';
+      const nameHtml = '<span class="mat-name">' + m.label + '</span>';
+
+      let swatchHtml;
+      if (m.kind === 'glass' || !m.img) {
+        const glassCls = 'swatch is-glass ' + tone + (m.glassTone === 'gray' ? ' glass-gray' : '');
+        swatchHtml = '<span class="' + glassCls + '">' + nameHtml + '</span>';
+      } else {
+        const crop = m.crop || [0, 0, m.canvasW || CANVAS_W, m.canvasH || CANVAS_H];
+        const bg = doorCropStyles(crop, THUMB_W, THUMB_H, m.canvasW, m.canvasH);
+        swatchHtml =
+          '<span class="swatch ' + tone + '">' +
+            '<span class="swatch-img" style="background-image:url(\'' + m.img + '\');' +
+              'background-size:' + bg.backgroundSize + ';' +
+              'background-position:' + bg.backgroundPosition + ';"></span>' +
+            nameHtml +
+          '</span>';
+      }
+
       return '<div class="mat-tile" draggable="true" data-mat="' + ref + '" title="' + series.label + ' · ' + m.label + '">' +
-        '<span class="swatch ' + (m.tone || 'on-dark') + '" style="background:' + (m.swatch || 'var(--panel)') + '">' +
-          '<span class="mat-name">' + m.label + '</span>' +
-        '</span>' +
-        '<span class="mat-price">' + priceLine + '</span>' +
+        swatchHtml +
       '</div>';
     }).join('');
 
