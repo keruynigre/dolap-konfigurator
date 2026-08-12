@@ -2016,6 +2016,195 @@
     return z2 > 0.02;
   }
 
+  // Kapak ve gövde panel kalınlığı (m) — eşit
+  const ISO_PANEL_THICK = 0.021;
+  const ISO_DOOR_THICK = ISO_PANEL_THICK;
+
+  function isoDoorEdgeFill(style){
+    if (style.kind === 'glass') {
+      return style.edge === '#6a717a'
+        ? 'rgba(110,118,128,0.72)'
+        : 'rgba(140,110,60,0.72)';
+    }
+    if (style.kind === 'mirror') return '#9aa1a8';
+    return style.edge || '#8a8276';
+  }
+
+  /** Eksen hizalı dolu kutu (görünür yüzler). */
+  function isoPushSolidBox(faces, P, x0, x1, y0, y1, z0, z1, fillSide, fillFlat, stroke, bias){
+    bias = bias || 0;
+    const opts = { depthBias: bias };
+    if (isoNormalFacesCamera(-1, 0, 0)) {
+      faces.push(isoFace([
+        P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)
+      ], fillSide, stroke, opts));
+    }
+    if (isoNormalFacesCamera(1, 0, 0)) {
+      faces.push(isoFace([
+        P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1)
+      ], fillSide, stroke, opts));
+    }
+    if (isoNormalFacesCamera(0, -1, 0)) {
+      faces.push(isoFace([
+        P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)
+      ], fillFlat, stroke, opts));
+    }
+    if (isoNormalFacesCamera(0, 1, 0)) {
+      faces.push(isoFace([
+        P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0)
+      ], fillFlat, stroke, opts));
+    }
+    if (isoNormalFacesCamera(0, 0, -1)) {
+      faces.push(isoFace([
+        P(x0, y0, z0), P(x0, y1, z0), P(x1, y1, z0), P(x1, y0, z0)
+      ], fillSide, stroke, opts));
+    }
+    if (isoNormalFacesCamera(0, 0, 1)) {
+      faces.push(isoFace([
+        P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)
+      ], fillSide, stroke, opts));
+    }
+  }
+
+  /**
+   * Kalın kapak paneli: ön yüz + yan/üst/alt kenarlar.
+   * faceAxis 'z': kalınlık +Z dışarı; 'x': kalınlık +X dışarı.
+   * faceAxis 'n': nx,nz birim normal ile dışarı (köşe).
+   */
+  function isoPushDoorSlab(faces, P, spec){
+    const style = spec.style;
+    const y0 = spec.y0, y1 = spec.y1;
+    const thick = spec.thick == null ? ISO_DOOR_THICK : spec.thick;
+    const edgeFill = isoDoorEdgeFill(style);
+    const frontBias = 0.9;
+    const edgeBias = 0.82;
+
+    function pushFace(pts, fill, opts){
+      faces.push(isoFace(pts, fill, style.edge, opts));
+    }
+
+    if (spec.faceAxis === 'z') {
+      const x0 = spec.x0, x1 = spec.x1;
+      const zIn = spec.zIn;
+      const zOut = zIn + thick;
+      // Sol / sağ kenar
+      if (isoNormalFacesCamera(-1, 0, 0)) {
+        pushFace([
+          P(x0, y0, zIn), P(x0, y0, zOut), P(x0, y1, zOut), P(x0, y1, zIn)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(1, 0, 0)) {
+        pushFace([
+          P(x1, y0, zIn), P(x1, y1, zIn), P(x1, y1, zOut), P(x1, y0, zOut)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      // Alt / üst kenar
+      if (isoNormalFacesCamera(0, -1, 0)) {
+        pushFace([
+          P(x0, y0, zIn), P(x1, y0, zIn), P(x1, y0, zOut), P(x0, y0, zOut)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(0, 1, 0)) {
+        pushFace([
+          P(x0, y1, zIn), P(x0, y1, zOut), P(x1, y1, zOut), P(x1, y1, zIn)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      // Ön yüz
+      if (isoNormalFacesCamera(0, 0, 1)) {
+        pushFace([
+          P(x0, y0, zOut), P(x1, y0, zOut), P(x1, y1, zOut), P(x0, y1, zOut)
+        ], style.fill, {
+          gloss: !!style.gloss,
+          band: style.band || null,
+          bandAt: style.bandAt,
+          empty: style.kind === 'empty',
+          depthBias: frontBias
+        });
+      }
+      return;
+    }
+
+    if (spec.faceAxis === 'x') {
+      const z0 = spec.z0, z1 = spec.z1;
+      const xIn = spec.xIn;
+      const xOut = xIn + thick;
+      if (isoNormalFacesCamera(0, 0, -1)) {
+        pushFace([
+          P(xIn, y0, z0), P(xOut, y0, z0), P(xOut, y1, z0), P(xIn, y1, z0)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(0, 0, 1)) {
+        pushFace([
+          P(xIn, y0, z1), P(xIn, y1, z1), P(xOut, y1, z1), P(xOut, y0, z1)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(0, -1, 0)) {
+        pushFace([
+          P(xIn, y0, z0), P(xIn, y0, z1), P(xOut, y0, z1), P(xOut, y0, z0)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(0, 1, 0)) {
+        pushFace([
+          P(xIn, y1, z0), P(xOut, y1, z0), P(xOut, y1, z1), P(xIn, y1, z1)
+        ], edgeFill, { depthBias: edgeBias });
+      }
+      if (isoNormalFacesCamera(1, 0, 0)) {
+        pushFace([
+          P(xOut, y0, z0), P(xOut, y0, z1), P(xOut, y1, z1), P(xOut, y1, z0)
+        ], style.fill, {
+          gloss: !!style.gloss,
+          band: style.band || null,
+          bandAt: style.bandAt,
+          empty: style.kind === 'empty',
+          depthBias: frontBias
+        });
+      }
+      return;
+    }
+
+    // Köşe: nx,nz dış normal
+    const nx = spec.nx, nz = spec.nz;
+    const ax = spec.ax0, az = spec.az0;
+    const bx = spec.ax1, bz = spec.az1;
+    const ox0 = ax + nx * thick, oz0 = az + nz * thick;
+    const ox1 = bx + nx * thick, oz1 = bz + nz * thick;
+    const tx = bx - ax, tz = bz - az;
+    const tlen = Math.hypot(tx, tz) || 1;
+    const ux = tx / tlen, uz = tz / tlen;
+    // Uç kenarlar (kapak genişliği boyunca)
+    if (isoNormalFacesCamera(-ux, 0, -uz)) {
+      pushFace([
+        P(ax, y0, az), P(ox0, y0, oz0), P(ox0, y1, oz0), P(ax, y1, az)
+      ], edgeFill, { depthBias: edgeBias });
+    }
+    if (isoNormalFacesCamera(ux, 0, uz)) {
+      pushFace([
+        P(bx, y0, bz), P(bx, y1, bz), P(ox1, y1, oz1), P(ox1, y0, oz1)
+      ], edgeFill, { depthBias: edgeBias });
+    }
+    if (isoNormalFacesCamera(0, -1, 0)) {
+      pushFace([
+        P(ax, y0, az), P(bx, y0, bz), P(ox1, y0, oz1), P(ox0, y0, oz0)
+      ], edgeFill, { depthBias: edgeBias });
+    }
+    if (isoNormalFacesCamera(0, 1, 0)) {
+      pushFace([
+        P(ax, y1, az), P(ox0, y1, oz0), P(ox1, y1, oz1), P(bx, y1, bz)
+      ], edgeFill, { depthBias: edgeBias });
+    }
+    if (isoNormalFacesCamera(nx, 0, nz)) {
+      pushFace([
+        P(ox0, y0, oz0), P(ox1, y0, oz1), P(ox1, y1, oz1), P(ox0, y1, oz0)
+      ], style.fill, {
+        gloss: !!style.gloss,
+        band: style.band || null,
+        bandAt: style.bandAt,
+        empty: style.kind === 'empty',
+        depthBias: frontBias
+      });
+    }
+  }
+
   function isoPalette(){
     const light = document.documentElement.getAttribute('data-theme') === 'light';
     if (light) {
@@ -2106,64 +2295,44 @@
   function isoCabinetBox(x, z, w, d, h, doorStyle, faceAxis, ox, oy, scale, opts){
     opts = opts || {};
     const P = (px, py, pz) => isoProject(px, py, pz, ox, oy, scale);
-    const p000 = P(x, 0, z), p100 = P(x + w, 0, z), p010 = P(x, h, z), p110 = P(x + w, h, z);
-    const p001 = P(x, 0, z + d), p101 = P(x + w, 0, z + d), p011 = P(x, h, z + d), p111 = P(x + w, h, z + d);
     const pal = isoPalette();
     const faces = [];
+    const t = ISO_PANEL_THICK;
+    const side = pal.carcassSide;
+    const flat = pal.carcassTop;
+    const face = pal.carcass;
+    const stroke = pal.edgeSoft;
 
-    // üst
-    faces.push(isoFace([p010, p110, p111, p011], pal.carcassTop, pal.edgeSoft));
-    // yanlar (ön açıklık hariç)
     if (faceAxis === 'z') {
-      faces.push(isoFace([p000, p010, p011, p001], pal.carcassSide, pal.edgeSoft));
-      faces.push(isoFace([p100, p101, p111, p110], pal.carcassSide, pal.edgeSoft));
-      faces.push(isoFace([p000, p100, p110, p010], pal.carcass, pal.edgeSoft));
+      // Sol / sağ / arka / üst / alt — kapak kalınlığı ile aynı
+      isoPushSolidBox(faces, P, x, x + t, 0, h, z, z + d, side, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x + w - t, x + w, 0, h, z, z + d, side, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x + t, x + w - t, 0, h, z, z + t, face, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x, x + w, h - t, h, z, z + d, side, flat, stroke, 0.05);
+      isoPushSolidBox(faces, P, x, x + w, 0, t, z, z + d, side, flat, stroke, 0);
       if (!opts.skipDoor) {
-        faces.push(isoFace([p001, p011, p111, p101], pal.carcass, pal.edgeSoft));
+        isoPushDoorSlab(faces, P, {
+          faceAxis: 'z', style: doorStyle,
+          x0: x + t + 0.006, x1: x + w - t - 0.006,
+          y0: t + 0.008, y1: h - t - 0.008,
+          zIn: z + d
+        });
       }
     } else {
-      faces.push(isoFace([p000, p100, p110, p010], pal.carcassSide, pal.edgeSoft));
-      faces.push(isoFace([p001, p011, p111, p101], pal.carcassSide, pal.edgeSoft));
-      faces.push(isoFace([p000, p010, p011, p001], pal.carcass, pal.edgeSoft));
+      isoPushSolidBox(faces, P, x, x + w, 0, h, z, z + t, side, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x, x + w, 0, h, z + d - t, z + d, side, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x, x + t, 0, h, z + t, z + d - t, face, flat, stroke, 0);
+      isoPushSolidBox(faces, P, x, x + w, h - t, h, z, z + d, side, flat, stroke, 0.05);
+      isoPushSolidBox(faces, P, x, x + w, 0, t, z, z + d, side, flat, stroke, 0);
       if (!opts.skipDoor) {
-        faces.push(isoFace([p100, p101, p111, p110], pal.carcass, pal.edgeSoft));
+        isoPushDoorSlab(faces, P, {
+          faceAxis: 'x', style: doorStyle,
+          z0: z + t + 0.006, z1: z + d - t - 0.006,
+          y0: t + 0.008, y1: h - t - 0.008,
+          xIn: x + w
+        });
       }
     }
-
-    if (opts.skipDoor) return faces;
-
-    // Kapak yalnızca öne bakıyorsa
-    const doorOut = faceAxis === 'z' ? [0, 0, 1] : [1, 0, 0];
-    if (!isoNormalFacesCamera(doorOut[0], doorOut[1], doorOut[2])) return faces;
-
-    const inset = 0.04;
-    let doorPts;
-    if (faceAxis === 'z') {
-      const ix = x + w * inset, iw = w * (1 - inset * 2);
-      const iy = h * 0.02, ih = h * 0.96;
-      doorPts = [
-        P(ix, iy, z + d + 0.01),
-        P(ix + iw, iy, z + d + 0.01),
-        P(ix + iw, iy + ih, z + d + 0.01),
-        P(ix, iy + ih, z + d + 0.01)
-      ];
-    } else {
-      const iz = z + d * inset, id = d * (1 - inset * 2);
-      const iy = h * 0.02, ih = h * 0.96;
-      doorPts = [
-        P(x + w + 0.01, iy, iz),
-        P(x + w + 0.01, iy, iz + id),
-        P(x + w + 0.01, iy + ih, iz + id),
-        P(x + w + 0.01, iy + ih, iz)
-      ];
-    }
-    faces.push(isoFace(doorPts, doorStyle.fill, doorStyle.edge, {
-      gloss: !!doorStyle.gloss,
-      band: doorStyle.band || null,
-      bandAt: doorStyle.bandAt,
-      empty: doorStyle.kind === 'empty',
-      depthBias: 0.35
-    }));
 
     return faces;
   }
@@ -2410,22 +2579,24 @@
     const P = (px, py, pz) => isoProject(px, py, pz, ox, oy, scale);
     const pal = isoPalette();
     const faces = [];
+    const t = ISO_PANEL_THICK;
+    const side = pal.carcassSide;
+    const flat = pal.carcassTop;
+    const face = pal.carcass;
+    const stroke = pal.edgeSoft;
 
-    const A = { x: 0, z: 0 };
-    const B = { x: cW, z: 0 };
+    // Dış duvarlar — kapak ile aynı kalınlık
+    isoPushSolidBox(faces, P, 0, cW, 0, h, 0, t, side, flat, stroke, 0);             // A–B (z=0)
+    isoPushSolidBox(faces, P, 0, t, 0, h, 0, cW, side, flat, stroke, 0);             // A–E (x=0)
+    isoPushSolidBox(faces, P, cW - t, cW, 0, h, 0, depth, side, flat, stroke, 0);     // B–C
+    isoPushSolidBox(faces, P, 0, depth, 0, h, cW - t, cW, side, flat, stroke, 0);     // E–D
+    isoPushSolidBox(faces, P, 0, cW, h - t, h, 0, Math.min(depth, cW), side, flat, stroke, 0.05);
+    isoPushSolidBox(faces, P, 0, Math.min(depth, cW), h - t, h, Math.min(depth, cW), cW, side, flat, stroke, 0.05);
+    isoPushSolidBox(faces, P, 0, cW, 0, t, 0, Math.min(depth, cW), side, flat, stroke, 0);
+    isoPushSolidBox(faces, P, 0, Math.min(depth, cW), 0, t, Math.min(depth, cW), cW, side, flat, stroke, 0);
+
     const C = { x: cW, z: depth };
     const D = { x: depth, z: cW };
-    const E = { x: 0, z: cW };
-
-    const bot = [A, B, C, D, E].map(p => P(p.x, 0, p.z));
-    const top = [A, B, C, D, E].map(p => P(p.x, h, p.z));
-
-    faces.push(isoFace([top[0], top[1], top[2], top[3], top[4]], pal.carcassTop, pal.edgeSoft));
-    faces.push(isoFace([bot[0], top[0], top[1], bot[1]], pal.carcassSide, pal.edgeSoft));
-    faces.push(isoFace([bot[0], bot[4], top[4], top[0]], pal.carcassSide, pal.edgeSoft));
-    faces.push(isoFace([bot[1], bot[2], top[2], top[1]], pal.carcass, pal.edgeSoft));
-    faces.push(isoFace([bot[4], top[4], top[3], bot[3]], pal.carcass, pal.edgeSoft));
-
     const midX = (C.x + D.x) / 2;
     const midZ = (C.z + D.z) / 2;
     const len = Math.hypot(D.x - C.x, D.z - C.z) || 1;
@@ -2440,43 +2611,68 @@
     const i1x = D.x - alongX * len * inset;
     const i1z = D.z - alongZ * len * inset;
 
+    const frontOpen = isoNormalFacesCamera(nx, 0, nz);
+
     if (doorStyle.kind === 'empty') {
-      // açık köşe: iç arka paneller + raflar
-      const inner = 0.04;
-      faces.push(isoFace([
-        P(inner, h * 0.02, inner), P(cW - inner, h * 0.02, inner),
-        P(cW - inner, h * 0.98, inner), P(inner, h * 0.98, inner)
-      ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
-      faces.push(isoFace([
-        P(inner, h * 0.02, inner), P(inner, h * 0.02, cW - inner),
-        P(inner, h * 0.98, cW - inner), P(inner, h * 0.98, inner)
-      ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
-      for (let s = 1; s <= 3; s++) {
-        const y = h * (s / 4);
+      if (frontOpen) {
+        const inner = t + 0.02;
         faces.push(isoFace([
-          P(inner + 0.02, y, inner + 0.02),
-          P(cW * 0.72, y, inner + 0.02),
-          P(cW * 0.72, y, depth * 0.72),
-          P(inner + 0.02, y, depth * 0.72)
-        ], pal.shelf, pal.shelfEdge, { depthBias: 0.25 }));
+          P(inner, h * 0.02, inner), P(cW - inner, h * 0.02, inner),
+          P(cW - inner, h * 0.98, inner), P(inner, h * 0.98, inner)
+        ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
+        faces.push(isoFace([
+          P(inner, h * 0.02, inner), P(inner, h * 0.02, cW - inner),
+          P(inner, h * 0.98, cW - inner), P(inner, h * 0.98, inner)
+        ], pal.back, pal.shelfEdge, { depthBias: 0.2 }));
+        for (let s = 1; s <= 3; s++) {
+          const y = h * (s / 4);
+          faces.push(isoFace([
+            P(inner + 0.02, y, inner + 0.02),
+            P(cW * 0.72, y, inner + 0.02),
+            P(cW * 0.72, y, depth * 0.72),
+            P(inner + 0.02, y, depth * 0.72)
+          ], pal.shelf, pal.shelfEdge, { depthBias: 0.25 }));
+        }
+      } else {
+        // Arkadan: açık diyagonalı kapalı gövde gibi kapat; raf gösterme
+        faces.push(isoFace([
+          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
+        ], face, stroke, { depthBias: 0.7 }));
       }
     } else {
-      faces.push(isoFace([bot[2], bot[3], top[3], top[2]], pal.carcass, pal.edgeSoft));
-      if (isoNormalFacesCamera(nx, 0, nz)) {
-        const push = 0.018;
+      // Diyagonal çerçeve kalınlığı
+      const fx0 = C.x - nx * t, fz0 = C.z - nz * t;
+      const fx1 = D.x - nx * t, fz1 = D.z - nz * t;
+      if (frontOpen) {
+        faces.push(isoFace([
+          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
+        ], face, stroke, { depthBias: 0.1 }));
+        faces.push(isoFace([
+          P(fx0, 0, fz0), P(fx1, 0, fz1), P(fx1, h, fz1), P(fx0, h, fz0)
+        ], side, stroke, { depthBias: 0.12 }));
+        const push = 0.004;
         const c0x = i0x + nx * push, c0z = i0z + nz * push;
         const c1x = i1x + nx * push, c1z = i1z + nz * push;
-        const iy = h * 0.025, ih = h * 0.95;
+        const iy = t + 0.01, ih = h - 2 * t - 0.02;
+        isoPushDoorSlab(faces, P, {
+          faceAxis: 'n', style: doorStyle,
+          nx, nz, ax0: c0x, az0: c0z, ax1: c1x, az1: c1z,
+          y0: iy, y1: iy + ih
+        });
+      } else {
+        // Arkadan kapak/raf sızmasın: diyagonalı opak kapat
         faces.push(isoFace([
-          P(c0x, iy, c0z), P(c1x, iy, c1z),
-          P(c1x, iy + ih, c1z), P(c0x, iy + ih, c0z)
-        ], doorStyle.fill, doorStyle.edge, {
-          gloss: !!doorStyle.gloss,
-          band: doorStyle.band || null,
-          bandAt: doorStyle.bandAt,
-          depthBias: 0.45
-        }));
+          P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
+        ], face, stroke, { depthBias: 0.75 }));
       }
+    }
+
+    // Arkaya bakan dış duvarları içten sonra yeniden çiz (raf sızıntısını kes)
+    if (isoNormalFacesCamera(0, 0, -1)) {
+      isoPushSolidBox(faces, P, 0, cW, 0, h, 0, t, side, flat, stroke, 0.65);
+    }
+    if (isoNormalFacesCamera(-1, 0, 0)) {
+      isoPushSolidBox(faces, P, 0, t, 0, h, 0, cW, side, flat, stroke, 0.65);
     }
 
     return faces;
@@ -2512,6 +2708,9 @@
       let shelfOpen = false;
       let shelfT0 = 0, shelfT1 = 0;
       const doorFaces = [];
+      const frontFacesCam = faceAxis === 'z'
+        ? isoNormalFacesCamera(0, 0, 1)
+        : isoNormalFacesCamera(1, 0, 0);
 
       for (let di = 0; di < n; di++) {
         const mat = mod.doors[di]?.material;
@@ -2522,31 +2721,28 @@
         const reveal = doorRevealsInterior(mat);
 
         if (mat) {
-          // Kapaklar yalnızca önden; arkadan bakınca çizilmez
-          const doorFacesCam = faceAxis === 'z'
-            ? isoNormalFacesCamera(0, 0, 1)
-            : isoNormalFacesCamera(1, 0, 0);
-          if (doorFacesCam) {
-            const ds = doorPreviewStyle(mat);
-            let pts;
-            if (faceAxis === 'z') {
-              pts = [
-                P(originX + t0 + pad, yDoorBot, originZ + DEPTH + 0.014),
-                P(originX + t1 - pad, yDoorBot, originZ + DEPTH + 0.014),
-                P(originX + t1 - pad, yDoorTop, originZ + DEPTH + 0.014),
-                P(originX + t0 + pad, yDoorTop, originZ + DEPTH + 0.014)
-              ];
-            } else {
-              pts = [
-                P(originX + DEPTH + 0.014, yDoorBot, originZ + t0 + pad),
-                P(originX + DEPTH + 0.014, yDoorBot, originZ + t1 - pad),
-                P(originX + DEPTH + 0.014, yDoorTop, originZ + t1 - pad),
-                P(originX + DEPTH + 0.014, yDoorTop, originZ + t0 + pad)
-              ];
-            }
-            doorFaces.push(isoFace(pts, ds.fill, ds.edge, {
-              gloss: !!ds.gloss, band: ds.band || null, bandAt: ds.bandAt, depthBias: 0.85
-            }));
+          const ds = doorPreviewStyle(mat);
+          const frame = ISO_PANEL_THICK;
+          if (faceAxis === 'z') {
+            const open0 = originX + frame;
+            const openW = Math.max(0.05, sizeAlong - 2 * frame);
+            isoPushDoorSlab(doorFaces, P, {
+              faceAxis: 'z', style: ds,
+              x0: open0 + fracs[di][0] * openW + pad,
+              x1: open0 + fracs[di][1] * openW - pad,
+              y0: frame + 0.006, y1: HEIGHT - frame - 0.006,
+              zIn: originZ + DEPTH
+            });
+          } else {
+            const open0 = originZ + frame;
+            const openW = Math.max(0.05, sizeAlong - 2 * frame);
+            isoPushDoorSlab(doorFaces, P, {
+              faceAxis: 'x', style: ds,
+              z0: open0 + fracs[di][0] * openW + pad,
+              z1: open0 + fracs[di][1] * openW - pad,
+              y0: frame + 0.006, y1: HEIGHT - frame - 0.006,
+              xIn: originX + DEPTH
+            });
           }
         }
 
@@ -2561,22 +2757,67 @@
         }
       }
 
-      // Önce iç / çekmece (camın arkası), sonra kapaklar
-      if (shelfOpen) {
-        isoBayInterior('shelf', faceAxis, originX, originZ, shelfT0, shelfT1, DEPTH, HEIGHT, P, faces, {});
-      }
+      // İç donanım yalnızca önden (cam/boş); yan duvardan sızmayı önlemek için
+      // gövde yan/arka panelleri içten sonra yeniden çizilir.
+      const showInterior = frontFacesCam && (shelfOpen || openHangSpans.length);
+      if (showInterior) {
+        if (shelfOpen) {
+          isoBayInterior('shelf', faceAxis, originX, originZ, shelfT0, shelfT1, DEPTH, HEIGHT, P, faces, {});
+        }
+        if (openHangSpans.length) {
+          const allHangOpen = hangSpan && openHangSpans.length === hangFracs.length;
+          const h0 = (allHangOpen ? hangSpan[0] : Math.min(...openHangSpans.map(s => s[0]))) * sizeAlong;
+          const h1 = (allHangOpen ? hangSpan[1] : Math.max(...openHangSpans.map(s => s[1]))) * sizeAlong;
+          const showDrawers = !!mod.drawer && !!zone && openHangSpans.some(s => {
+            const mid = (s[0] + s[1]) / 2;
+            return mid >= zone[0] - 1e-6 && mid <= zone[1] + 1e-6;
+          });
+          isoBayInterior('hang', faceAxis, originX, originZ, h0, h1, DEPTH, HEIGHT, P, faces, {
+            withDrawer: showDrawers
+          });
+        }
 
-      if (openHangSpans.length) {
-        const allHangOpen = hangSpan && openHangSpans.length === hangFracs.length;
-        const h0 = (allHangOpen ? hangSpan[0] : Math.min(...openHangSpans.map(s => s[0]))) * sizeAlong;
-        const h1 = (allHangOpen ? hangSpan[1] : Math.max(...openHangSpans.map(s => s[1]))) * sizeAlong;
-        const showDrawers = !!mod.drawer && !!zone && openHangSpans.some(s => {
-          const mid = (s[0] + s[1]) / 2;
-          return mid >= zone[0] - 1e-6 && mid <= zone[1] + 1e-6;
-        });
-        isoBayInterior('hang', faceAxis, originX, originZ, h0, h1, DEPTH, HEIGHT, P, faces, {
-          withDrawer: showDrawers
-        });
+        const pal = isoPalette();
+        const capBias = 0.55;
+        if (faceAxis === 'z') {
+          if (isoNormalFacesCamera(-1, 0, 0)) {
+            faces.push(isoFace([
+              P(originX, 0, originZ), P(originX, HEIGHT, originZ),
+              P(originX, HEIGHT, originZ + DEPTH), P(originX, 0, originZ + DEPTH)
+            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+          }
+          if (isoNormalFacesCamera(1, 0, 0)) {
+            faces.push(isoFace([
+              P(originX + sizeAlong, 0, originZ), P(originX + sizeAlong, 0, originZ + DEPTH),
+              P(originX + sizeAlong, HEIGHT, originZ + DEPTH), P(originX + sizeAlong, HEIGHT, originZ)
+            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+          }
+          if (isoNormalFacesCamera(0, 0, -1)) {
+            faces.push(isoFace([
+              P(originX, 0, originZ), P(originX + sizeAlong, 0, originZ),
+              P(originX + sizeAlong, HEIGHT, originZ), P(originX, HEIGHT, originZ)
+            ], pal.carcass, pal.edgeSoft, { depthBias: capBias }));
+          }
+        } else {
+          if (isoNormalFacesCamera(0, 0, -1)) {
+            faces.push(isoFace([
+              P(originX, 0, originZ), P(originX + DEPTH, 0, originZ),
+              P(originX + DEPTH, HEIGHT, originZ), P(originX, HEIGHT, originZ)
+            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+          }
+          if (isoNormalFacesCamera(0, 0, 1)) {
+            faces.push(isoFace([
+              P(originX, 0, originZ + sizeAlong), P(originX, HEIGHT, originZ + sizeAlong),
+              P(originX + DEPTH, HEIGHT, originZ + sizeAlong), P(originX + DEPTH, 0, originZ + sizeAlong)
+            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+          }
+          if (isoNormalFacesCamera(-1, 0, 0)) {
+            faces.push(isoFace([
+              P(originX, 0, originZ), P(originX, 0, originZ + sizeAlong),
+              P(originX, HEIGHT, originZ + sizeAlong), P(originX, HEIGHT, originZ)
+            ], pal.carcass, pal.edgeSoft, { depthBias: capBias }));
+          }
+        }
       }
 
       faces.push(...doorFaces);
