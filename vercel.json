@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "framework": null,
+  "buildCommand": "npm run obfuscate",
   "rewrites": [
     { "source": "/admin", "destination": "/admin/index.html" }
   ],
