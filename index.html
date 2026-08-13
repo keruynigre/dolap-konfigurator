@@ -1447,7 +1447,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=2"></script>
 <script src="js/dealer-session.js?v=5"></script>
 <script>
@@ -2307,46 +2308,33 @@
         ).join('')
       : '<tr><td colspan="3" class="muted">Ürün seçilmedi</td></tr>';
 
+    // html2canvas için grid/flex yerine tablo; stil ayrı eklenir (iç style yakalamayı bozar)
     return (
       '<div class="quote-pdf-root">' +
-        '<style>' +
-        '.quote-pdf-root{box-sizing:border-box;width:794px;padding:28px 32px;font-family:Segoe UI,Arial,sans-serif;color:#1a1712;font-size:12px;line-height:1.45;background:#fff;}' +
-        '.quote-pdf-root *,.quote-pdf-root *::before,.quote-pdf-root *::after{box-sizing:border-box;}' +
-        '.quote-pdf-root h1{font-size:20px;margin:0 0 4px;}' +
-        '.quote-pdf-root .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a7350;margin:0 0 16px;}' +
-        '.quote-pdf-root .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:18px;}' +
-        '.quote-pdf-root .box{border:1px solid #ddd6cb;border-radius:4px;padding:10px 12px;background:#faf8f4;}' +
-        '.quote-pdf-root .box .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;margin-bottom:3px;}' +
-        '.quote-pdf-root table{width:100%;border-collapse:collapse;margin:8px 0 16px;}' +
-        '.quote-pdf-root th,.quote-pdf-root td{border-bottom:1px solid #e6e0d6;padding:8px 6px;text-align:left;vertical-align:top;}' +
-        '.quote-pdf-root th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;}' +
-        '.quote-pdf-root td.num,.quote-pdf-root .num{text-align:right;white-space:nowrap;}' +
-        '.quote-pdf-root .muted{color:#7a746a;font-size:11px;}' +
-        '.quote-pdf-root .totals{margin-top:8px;border:1px solid #ddd6cb;border-radius:4px;overflow:hidden;}' +
-        '.quote-pdf-root .totals div{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #eee8de;}' +
-        '.quote-pdf-root .totals div:last-child{border-bottom:none;font-weight:700;background:#f3eee4;color:#6e5630;}' +
-        '.quote-pdf-root .foot{margin-top:22px;font-size:10px;color:#8a847a;}' +
-        '</style>' +
         '<p class="eyebrow">Bambi Modüler</p>' +
         '<h1>Teklif Formu</h1>' +
-        '<p class="muted" style="margin:0 0 16px">' + escapeHtml(dateStr) + ' · ' + escapeHtml(dimLine) + '</p>' +
-        '<div class="meta">' +
-          '<div class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</div>' +
-          '<div class="box"><div class="lbl">Telefon</div>' + escapeHtml(c.phone || '—') + '</div>' +
-          '<div class="box"><div class="lbl">E-posta</div>' + escapeHtml(c.email || '—') + '</div>' +
-          '<div class="box"><div class="lbl">Not</div>' + escapeHtml(c.note || '—') + '</div>' +
-        '</div>' +
-        '<h2 style="font-size:14px;margin:0 0 6px">Ürün Listesi</h2>' +
-        '<table><thead><tr><th>Ürün</th><th class="num">Adet</th><th class="num">Tutar</th></tr></thead><tbody>' +
+        '<p class="muted">' + escapeHtml(dateStr) + ' · ' + escapeHtml(dimLine) + '</p>' +
+        '<table class="meta"><tbody>' +
+          '<tr>' +
+            '<td class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</td>' +
+            '<td class="box"><div class="lbl">Telefon</div>' + escapeHtml(c.phone || '—') + '</td>' +
+          '</tr>' +
+          '<tr>' +
+            '<td class="box"><div class="lbl">E-posta</div>' + escapeHtml(c.email || '—') + '</td>' +
+            '<td class="box"><div class="lbl">Not</div>' + escapeHtml(c.note || '—') + '</td>' +
+          '</tr>' +
+        '</tbody></table>' +
+        '<h2>Ürün Listesi</h2>' +
+        '<table class="items"><thead><tr><th>Ürün</th><th class="num">Adet</th><th class="num">Tutar</th></tr></thead><tbody>' +
           rowsHtml +
         '</tbody></table>' +
-        '<div class="totals">' +
-          '<div><span>Gövde</span><span>' + escapeHtml(priceFmt.format(pricing.body || 0)) + '</span></div>' +
-          '<div><span>Kapak</span><span>' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</span></div>' +
-          '<div><span>Çekmece</span><span>' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</span></div>' +
-          '<div><span>Ek Ürün</span><span>' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</span></div>' +
-          '<div><span>Tahmini Toplam</span><span>' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</span></div>' +
-        '</div>' +
+        '<table class="totals"><tbody>' +
+          '<tr><td>Gövde</td><td class="num">' + escapeHtml(priceFmt.format(pricing.body || 0)) + '</td></tr>' +
+          '<tr><td>Kapak</td><td class="num">' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</td></tr>' +
+          '<tr><td>Çekmece</td><td class="num">' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</td></tr>' +
+          '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
+          '<tr class="grand"><td>Tahmini Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
+        '</tbody></table>' +
         '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur. Fiyatlar tahmini olup sipariş öncesi teyit edilir.</p>' +
       '</div>'
     );
@@ -2380,50 +2368,95 @@
     });
   }
 
+  async function assertPdfBlob(blob){
+    if (!blob || !blob.size) throw new Error('pdf_blob_empty');
+    const head = await blob.slice(0, 5).text();
+    if (head !== '%PDF-') throw new Error('pdf_invalid_header');
+    return blob;
+  }
+
   async function createQuotePdfBlob(payload){
     const data = payload || lastQuotePayload || buildQuotePayload();
     const filename = quotePdfFilename(data.customer);
-    if (typeof html2pdf === 'undefined') {
+    const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (typeof html2canvas !== 'function' || typeof JsPDF !== 'function') {
       throw new Error('pdf_lib_missing');
     }
-    // html2canvas off-screen (left:-9999) yakalamada boş PDF üretir; viewport içinde tut.
-    const host = document.createElement('div');
-    host.setAttribute('aria-hidden', 'true');
-    host.style.cssText =
-      'position:fixed;left:0;top:0;width:794px;background:#fff;color:#1a1712;' +
-      'opacity:1;pointer-events:none;z-index:-1;';
-    host.innerHTML = buildQuotePdfHtml(data);
-    const root = host.querySelector('.quote-pdf-root') || host;
-    document.body.appendChild(host);
+
+    const style = document.createElement('style');
+    style.setAttribute('data-quote-pdf', '1');
+    style.textContent =
+      '.quote-pdf-root{box-sizing:border-box;width:794px;padding:28px 32px;font-family:"Segoe UI",Arial,sans-serif;color:#1a1712;font-size:12px;line-height:1.45;background:#ffffff;}' +
+      '.quote-pdf-root *{box-sizing:border-box;}' +
+      '.quote-pdf-root h1{font-size:20px;margin:0 0 4px;font-weight:700;}' +
+      '.quote-pdf-root h2{font-size:14px;margin:0 0 6px;font-weight:600;}' +
+      '.quote-pdf-root .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a7350;margin:0 0 16px;}' +
+      '.quote-pdf-root .muted{color:#7a746a;font-size:11px;margin:0 0 16px;}' +
+      '.quote-pdf-root table.meta{width:100%;border-collapse:separate;border-spacing:10px 10px;margin:0 0 12px -10px;}' +
+      '.quote-pdf-root table.meta td.box{width:50%;border:1px solid #ddd6cb;padding:10px 12px;background:#faf8f4;vertical-align:top;}' +
+      '.quote-pdf-root .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;margin-bottom:3px;}' +
+      '.quote-pdf-root table.items{width:100%;border-collapse:collapse;margin:8px 0 16px;}' +
+      '.quote-pdf-root table.items th,.quote-pdf-root table.items td{border-bottom:1px solid #e6e0d6;padding:8px 6px;text-align:left;vertical-align:top;}' +
+      '.quote-pdf-root table.items th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;}' +
+      '.quote-pdf-root .num{text-align:right;white-space:nowrap;}' +
+      '.quote-pdf-root table.totals{width:100%;border-collapse:collapse;margin-top:8px;border:1px solid #ddd6cb;}' +
+      '.quote-pdf-root table.totals td{padding:7px 12px;border-bottom:1px solid #eee8de;}' +
+      '.quote-pdf-root table.totals tr.grand td{border-bottom:none;font-weight:700;background:#f3eee4;color:#6e5630;}' +
+      '.quote-pdf-root .foot{margin-top:22px;font-size:10px;color:#8a847a;}';
+
+    const root = document.createElement('div');
+    root.setAttribute('aria-hidden', 'true');
+    root.innerHTML = buildQuotePdfHtml(data);
+    const sheet = root.firstElementChild || root;
+    // Ekranda gerçek layout (z-index:-1 / off-screen boş veya bozuk PDF üretir)
+    sheet.style.cssText =
+      'position:fixed;left:0;top:0;width:794px;background:#ffffff;opacity:1;' +
+      'pointer-events:none;z-index:2147483000;';
+
+    document.head.appendChild(style);
+    document.body.appendChild(root);
     try {
-      await waitFrames(2);
-      if (!root.offsetHeight || !root.offsetWidth) {
-        throw new Error('pdf_layout_empty');
+      await waitFrames(3);
+      if (!sheet.offsetHeight || !sheet.offsetWidth) throw new Error('pdf_layout_empty');
+
+      const canvas = await html2canvas(sheet, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        foreignObjectRendering: false,
+        scrollX: 0,
+        scrollY: -window.scrollY,
+        windowWidth: sheet.scrollWidth,
+        windowHeight: sheet.scrollHeight
+      });
+      if (!canvas.width || !canvas.height) throw new Error('pdf_canvas_empty');
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new JsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const usableW = pageW - margin * 2;
+      const imgH = (canvas.height * usableW) / canvas.width;
+      let y = margin;
+      let left = imgH;
+
+      pdf.addImage(imgData, 'PNG', margin, y, usableW, imgH, undefined, 'FAST');
+      left -= (pageH - margin);
+      while (left > 2) {
+        y = margin - (imgH - left);
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, y, usableW, imgH, undefined, 'FAST');
+        left -= (pageH - margin);
       }
-      const blob = await html2pdf()
-        .set({
-          margin: [8, 8, 8, 8],
-          filename,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            scrollX: 0,
-            scrollY: 0,
-            windowWidth: root.scrollWidth,
-            windowHeight: root.scrollHeight
-          },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-        })
-        .from(root)
-        .outputPdf('blob');
-      if (!blob || !blob.size) throw new Error('pdf_blob_empty');
+
+      const blob = await assertPdfBlob(pdf.output('blob'));
       return { blob, filename };
     } finally {
-      try { document.body.removeChild(host); } catch (_) {}
+      try { root.remove(); } catch (_) {}
+      try { style.remove(); } catch (_) {}
     }
   }
 
