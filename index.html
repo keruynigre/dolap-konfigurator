@@ -1481,6 +1481,10 @@
           <label for="quote-note">Not (isteğe bağlı)</label>
           <textarea id="quote-note" name="note" placeholder="Teslimat, ölçü veya özel istekleriniz"></textarea>
         </div>
+        <div class="quote-field">
+          <label for="quote-sales-rep">Satış temsilcisi</label>
+          <input id="quote-sales-rep" name="sales_rep" type="text" required autocomplete="name" placeholder="Ad Soyad">
+        </div>
         <div class="quote-error" id="quote-error" role="alert"></div>
         <div class="quote-actions">
           <button type="button" class="quote-cancel" id="quote-cancel">Vazgeç</button>
@@ -2291,6 +2295,33 @@
     el.value = formatted;
   }
 
+  function formatQuoteDate(iso){
+    const d = new Date(iso || Date.now());
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('tr-TR');
+  }
+
+  function quoteValidUntilIso(fromIso){
+    const d = new Date(fromIso || Date.now());
+    d.setDate(d.getDate() + 7);
+    return d.toISOString();
+  }
+
+  function loadRememberedSalesRep(){
+    try { return String(localStorage.getItem('dolapSalesRepName') || '').trim(); }
+    catch (_) { return ''; }
+  }
+
+  function rememberSalesRep(name){
+    const value = String(name || '').trim();
+    if (!value) return;
+    try { localStorage.setItem('dolapSalesRepName', value); } catch (_) { /* ignore */ }
+  }
+
+  function readQuoteSalesRep(){
+    return (document.getElementById('quote-sales-rep')?.value || '').trim();
+  }
+
   function readQuoteCustomer(){
     return {
       name: document.getElementById('quote-name').value.trim(),
@@ -2301,6 +2332,7 @@
   }
 
   function buildQuotePayload(customer){
+    const createdAt = new Date().toISOString();
     return {
       customer: customer || readQuoteCustomer(),
       config: modules.map(mod => ({
@@ -2348,7 +2380,9 @@
         pricing: calculatePricing()
       },
       lineItems: buildQuoteLineItems(),
-      createdAt: new Date().toISOString()
+      salesRep: readQuoteSalesRep(),
+      createdAt: createdAt,
+      validUntil: quoteValidUntilIso(createdAt)
     };
   }
 
@@ -2368,8 +2402,10 @@
     const items = (payload.lineItems && payload.lineItems.length)
       ? payload.lineItems
       : buildQuoteLineItems();
-    const dateStr = new Date(payload.createdAt || Date.now()).toLocaleString('tr-TR');
-    const fileTitle = quotePdfFileTitle(c);
+    const dateStr = formatQuoteDate(payload.createdAt || Date.now());
+    const validUntil = payload.validUntil || quoteValidUntilIso(payload.createdAt);
+    const validStr = formatQuoteDate(validUntil);
+    const salesRep = String(payload.salesRep || '').trim();
     const dimLine = !(payload.config || []).length
       ? ((payload.accessories || []).length ? 'Yalnızca ek ürün siparişi' : '—')
       : (t.mode === 'corner'
@@ -2399,7 +2435,11 @@
           '</tr>' +
           '<tr>' +
             '<td class="box"><div class="lbl">E-posta</div>' + escapeHtml(c.email || '—') + '</td>' +
-            '<td class="box"><div class="lbl">Not</div>' + escapeHtml(c.note || '—') + '</td>' +
+            '<td class="box"><div class="lbl">Satış temsilcisi</div>' + escapeHtml(salesRep || '—') + '</td>' +
+          '</tr>' +
+          '<tr>' +
+            '<td class="box"><div class="lbl">Teklif tarihi</div>' + escapeHtml(dateStr) + '</td>' +
+            '<td class="box"><div class="lbl">Son geçerlilik tarihi</div>' + escapeHtml(validStr) + '</td>' +
           '</tr>' +
         '</tbody></table>' +
         '<h2>Ürün Listesi</h2>' +
@@ -2413,7 +2453,7 @@
           '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
           '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
         '</tbody></table>' +
-        '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
+        '<p class="foot">Bu teklif ' + escapeHtml(validStr) + ' tarihine kadar geçerlidir. Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
       '</div>'
     );
   }
@@ -2557,6 +2597,8 @@
     quoteSuccess.classList.remove('visible');
     setQuoteError('');
     quoteForm.reset();
+    const salesRepEl = document.getElementById('quote-sales-rep');
+    if (salesRepEl) salesRepEl.value = loadRememberedSalesRep();
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
@@ -2686,6 +2728,7 @@
     if (!quoteForm.reportValidity()) return;
     const payload = buildQuotePayload();
     lastQuotePayload = payload;
+    rememberSalesRep(payload.salesRep);
     try {
       const prev = JSON.parse(localStorage.getItem('dolapQuoteRequests') || '[]');
       prev.push(payload);
@@ -2745,6 +2788,7 @@
     if (!quoteForm.reportValidity()) return;
     const payload = buildQuotePayload();
     lastQuotePayload = payload;
+    rememberSalesRep(payload.salesRep);
     await downloadQuotePdf(payload);
   }
 
