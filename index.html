@@ -2409,10 +2409,10 @@
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = buildQuotePdfHtml(data);
     const sheet = root.firstElementChild || root;
-    // Ekranda gerçek layout (z-index:-1 / off-screen boş veya bozuk PDF üretir)
+    // Görünmez tut; html2canvas klonunda tekrar görünür yap (off-screen boş PDF üretiyordu)
     sheet.style.cssText =
-      'position:fixed;left:0;top:0;width:794px;background:#ffffff;opacity:1;' +
-      'pointer-events:none;z-index:2147483000;';
+      'position:fixed;left:0;top:0;width:794px;background:#ffffff;opacity:0;' +
+      'pointer-events:none;z-index:0;';
 
     document.head.appendChild(style);
     document.body.appendChild(root);
@@ -2430,7 +2430,12 @@
         scrollX: 0,
         scrollY: -window.scrollY,
         windowWidth: sheet.scrollWidth,
-        windowHeight: sheet.scrollHeight
+        windowHeight: sheet.scrollHeight,
+        onclone: function (_doc, el) {
+          el.style.opacity = '1';
+          el.style.left = '0px';
+          el.style.top = '0px';
+        }
       });
       if (!canvas.width || !canvas.height) throw new Error('pdf_canvas_empty');
 
