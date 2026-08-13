@@ -1488,7 +1488,6 @@
         <div class="quote-error" id="quote-error" role="alert"></div>
         <div class="quote-actions">
           <button type="button" class="quote-cancel" id="quote-cancel">Vazgeç</button>
-          <button type="button" class="quote-pdf" id="quote-pdf">PDF İndir</button>
           <button type="submit" class="quote-submit" id="quote-submit">Teklifi Gönder</button>
         </div>
       </form>
@@ -1991,7 +1990,6 @@
   const quoteSummary = document.getElementById('quote-summary');
   const quoteCancel = document.getElementById('quote-cancel');
   const quoteDone = document.getElementById('quote-done');
-  const quotePdfBtn = document.getElementById('quote-pdf');
   const quotePdfSuccessBtn = document.getElementById('quote-pdf-success');
   const quotePreview = document.getElementById('quote-preview');
   const quotePreviewPaper = document.getElementById('quote-preview-paper');
@@ -2782,14 +2780,6 @@
         submitBtn.disabled = false;
       }
     }
-  }
-
-  async function onQuotePdfClick(){
-    if (!quoteForm.reportValidity()) return;
-    const payload = buildQuotePayload();
-    lastQuotePayload = payload;
-    rememberSalesRep(payload.salesRep);
-    await downloadQuotePdf(payload);
   }
 
   function updatePricingDisplay(){
@@ -5512,8 +5502,7 @@
   quoteBtn.addEventListener('click', openQuoteModal);
   quoteCancel.addEventListener('click', closeQuoteModal);
   quoteDone.addEventListener('click', closeQuoteModal);
-  quotePdfBtn.addEventListener('click', onQuotePdfClick);
-  quotePdfSuccessBtn.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
+  quotePdfSuccessBtn?.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
   quoteForm.addEventListener('submit', submitQuote);
   quotePreviewPrint?.addEventListener('click', printQuotePreview);
   quotePreviewShare?.addEventListener('click', shareQuotePreview);
