@@ -112,18 +112,75 @@
   .funnel-step .step-lbl { font-size: 11px; color: var(--ink-dim); text-transform: uppercase; letter-spacing: .05em; }
   .funnel-step .step-val { margin-top: 4px; font-family: 'Space Mono', monospace; font-size: 18px; color: var(--ink); }
   .funnel-step .step-rate { margin-top: 4px; font-size: 12px; color: var(--brass); font-weight: 600; }
+  .trend-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+    padding: 12px 14px 0; flex-wrap: wrap;
+  }
+  .trend-head h2 {
+    margin: 0; padding: 0; border: none; font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+  }
+  .trend-seg {
+    display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  }
+  .trend-seg button {
+    border: none; background: transparent; color: var(--ink-dim); padding: 7px 12px;
+    cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+  }
+  .trend-seg button + button { border-left: 1px solid var(--line); }
+  .trend-seg button.active { background: var(--panel-2); color: var(--brass); }
+  .trend-seg button:hover { color: var(--brass); }
+  .trend-help {
+    margin: 0; padding: 8px 14px 0; font-size: 12px; line-height: 1.45; color: var(--ink-dim);
+  }
   .trend {
-    display: flex; align-items: flex-end; gap: 3px; height: 120px; padding: 12px 14px 8px;
+    display: flex; align-items: flex-end; gap: 4px; height: 150px; padding: 18px 14px 6px;
+    overflow-x: auto; overflow-y: hidden;
   }
+  .trend-col {
+    flex: 1 0 34px; min-width: 34px; max-width: 72px; height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    cursor: pointer; border-radius: 4px; outline: none;
+  }
+  .trend-col:hover,
+  .trend-col:focus-visible,
+  .trend-col.is-active { background: rgba(201,163,90,.08); }
   .trend-bar {
-    flex: 1; min-width: 0; background: rgba(201,163,90,.28); border-radius: 2px 2px 0 0;
-    position: relative; height: var(--h, 4%);
+    width: 70%; background: rgba(201,163,90,.32); border-radius: 3px 3px 0 0;
+    position: relative; height: var(--h, 8%);
+    min-height: 16px; display: flex; align-items: flex-end; justify-content: center;
+    transition: background 0.15s;
   }
-  .trend-bar:hover { background: rgba(201,163,90,.55); }
-  .trend-bar[title] { cursor: default; }
+  .trend-col:hover .trend-bar,
+  .trend-col:focus-visible .trend-bar,
+  .trend-col.is-active .trend-bar { background: rgba(201,163,90,.62); }
+  .trend-val {
+    font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+    color: var(--brass-ink); line-height: 1; padding: 3px 0 2px;
+  }
+  .trend-bar.is-short .trend-val {
+    position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+    color: var(--brass); padding: 0;
+  }
+  .trend-day {
+    margin-top: 6px; font-size: 9px; color: var(--ink-dim);
+    font-family: 'Space Mono', monospace; white-space: nowrap; text-align: center;
+  }
+  .trend-detail {
+    margin: 0 14px 10px; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: var(--radius); background: var(--panel-2); min-height: 52px;
+    font-size: 12px; line-height: 1.45; color: var(--ink-dim);
+  }
+  .trend-detail strong { color: var(--brass); font-weight: 600; }
+  .trend-detail .trend-detail-title { color: var(--ink); font-weight: 600; margin-bottom: 4px; }
+  .trend-detail .trend-detail-stats {
+    display: flex; flex-wrap: wrap; gap: 10px 16px;
+    font-family: 'Space Mono', monospace; font-size: 12px; color: var(--ink);
+  }
+  .trend-detail .trend-detail-stats span { color: var(--ink-dim); }
   .trend-legend {
-    display: flex; justify-content: space-between; padding: 0 14px 12px;
-    font-size: 11px; color: var(--ink-dim);
+    display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    padding: 0 14px 12px; font-size: 11px; color: var(--ink-dim);
   }
   .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; }
   .grid-3 { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 14px; margin-top: 14px; }
@@ -136,6 +193,9 @@
   .card h2 {
     margin: 0; padding: 12px 14px; font-family: 'Space Grotesk', sans-serif;
     font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--line);
+  }
+  .card .trend-head h2 {
+    padding: 0; border-bottom: none;
   }
   .badge {
     display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 11px;
@@ -152,6 +212,19 @@
     position: sticky; top: 0; background: var(--panel-2); color: var(--ink-dim);
     font-size: 11px; text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
   }
+  th.sortable {
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  th.sortable:hover { color: var(--brass); }
+  th.sortable .sort-ind {
+    display: inline-block; margin-left: 4px; opacity: 0.35; font-size: 10px;
+    font-family: 'Space Mono', monospace;
+  }
+  th.sortable.is-asc .sort-ind,
+  th.sortable.is-desc .sort-ind { opacity: 1; color: var(--brass); }
+  th.sortable.is-asc .sort-ind::after { content: '▲'; }
+  th.sortable.is-desc .sort-ind::after { content: '▼'; }
+  th.sortable:not(.is-asc):not(.is-desc) .sort-ind::after { content: '↕'; }
   td.num, th.num { text-align: right; font-family: 'Space Mono', monospace; }
   tr:hover td { background: rgba(201,163,90,.04); }
   .muted { color: var(--ink-dim); }
@@ -231,11 +304,24 @@
         </div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <h2>Günlük aktivite (oturum)</h2>
-        <div class="trend" id="daily-trend" aria-label="Günlük oturum trendi"></div>
+        <div class="trend-head">
+          <h2>Aktivite grafiği</h2>
+          <div class="trend-seg" role="group" aria-label="Zaman aralığı">
+            <button type="button" data-trend-grain="day" class="active">Günlük</button>
+            <button type="button" data-trend-grain="week">Haftalık</button>
+            <button type="button" data-trend-grain="month">Aylık</button>
+          </div>
+        </div>
+        <p class="trend-help" id="trend-help">
+          Her sütun bir günü gösterir. Yükseklik ve sayı = mağaza oturumu. Detay altta görünür.
+        </p>
+        <div class="trend" id="daily-trend" aria-label="Aktivite grafiği"></div>
+        <div class="trend-detail" id="trend-detail">
+          Detay görmek için bir sütunun üzerine gelin veya tıklayın.
+        </div>
         <div class="trend-legend">
           <span id="trend-from">—</span>
-          <span>Yüksek çubuk = daha çok oturum</span>
+          <span id="trend-legend-mid">Yüksek sütun = daha çok oturum</span>
           <span id="trend-to">—</span>
         </div>
       </div>
@@ -248,12 +334,16 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Kod</th><th>Mağaza</th><th>Şehir</th>
-                  <th class="num">Süre</th><th class="num">Ort.</th>
-                  <th class="num">Oturum</th>
-                  <th class="num">Tasarım</th><th class="num">Teklif</th>
-                  <th class="num">Dönüşüm</th>
+                <tr id="dealers-head" data-sort-table="dealers">
+                  <th class="sortable" data-sort="code" title="Sırala">Kod<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="name" title="Sırala">Mağaza<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="city" title="Sırala">Şehir<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="active_seconds" title="Sırala">Süre<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="avg_session_seconds" title="Sırala">Ort.<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="session_count" title="Sırala">Oturum<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="design_count" title="Sırala">Tasarım<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="design_to_quote_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="dealer-rows"></tbody>
@@ -265,11 +355,11 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Model</th>
-                  <th class="num">Tasarım</th>
-                  <th class="num">Teklif</th>
-                  <th class="num">Dönüşüm</th>
+                <tr id="series-head" data-sort-table="series">
+                  <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="design_count" title="Sırala">Tasarım<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="design_to_quote_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="series-rows"></tbody>
@@ -305,7 +395,12 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Model</th><th class="num">Teklif</th><th class="num">Satış</th><th class="num">Tutar</th></tr>
+                <tr id="leads-series-head" data-sort-table="leadsSeries">
+                  <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="lead_total_price" title="Sırala">Tutar<span class="sort-ind"></span></th>
+                </tr>
               </thead>
               <tbody id="leads-series-rows"></tbody>
             </table>
@@ -316,7 +411,12 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Mağaza</th><th class="num">Teklif</th><th class="num">Satış</th><th class="num">Tutar</th></tr>
+                <tr id="leads-dealer-head" data-sort-table="leadsDealer">
+                  <th class="sortable" data-sort="dealer" title="Sırala">Mağaza<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="lead_total_price" title="Sırala">Tutar<span class="sort-ind"></span></th>
+                </tr>
               </thead>
               <tbody id="leads-dealer-rows"></tbody>
             </table>
@@ -331,17 +431,17 @@
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
-                <th>Tarih</th>
-                <th>Durum</th>
-                <th>Ad Soyad</th>
-                <th>Telefon</th>
-                <th>E-posta</th>
-                <th>Mağaza</th>
-                <th>Model</th>
-                <th class="num">Tutar</th>
-                <th>Sipariş</th>
-                <th>Not</th>
+              <tr id="leads-head" data-sort-table="leads">
+                <th class="sortable is-desc" data-sort="created_at" title="Sırala">Tarih<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="outcome" title="Sırala">Durum<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="customer_name" title="Sırala">Ad Soyad<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="customer_phone" title="Sırala">Telefon<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="customer_email" title="Sırala">E-posta<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="dealer" title="Sırala">Mağaza<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
+                <th class="sortable num" data-sort="total_price" title="Sırala">Tutar<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="sale_ref" title="Sırala">Sipariş<span class="sort-ind"></span></th>
+                <th class="sortable" data-sort="customer_note" title="Sırala">Not<span class="sort-ind"></span></th>
               </tr>
             </thead>
             <tbody id="leads-rows"></tbody>
@@ -369,9 +469,14 @@
         <div class="card">
           <h2>Şablon sütunları</h2>
           <div class="table-wrap" style="max-height:none">
-            <table>
+            <table class="dom-sortable">
               <thead>
-                <tr><th>code</th><th>name</th><th>city</th><th>active</th></tr>
+                <tr data-sort-table="dom">
+                  <th class="sortable" data-sort="0" title="Sırala">code<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="1" title="Sırala">name<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="2" title="Sırala">city<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="3" title="Sırala">active<span class="sort-ind"></span></th>
+                </tr>
               </thead>
               <tbody>
                 <tr><td>BAMBI-001</td><td>Bambi Merkez Showroom</td><td>İstanbul</td><td>true</td></tr>
@@ -403,14 +508,14 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Tarih</th>
-                  <th>Yükleyen</th>
-                  <th>E-posta</th>
-                  <th>Dosya</th>
-                  <th class="num">Versiyon</th>
-                  <th class="num">Satır</th>
-                  <th>Durum</th>
+                <tr id="price-log-head" data-sort-table="priceLogs">
+                  <th class="sortable is-desc" data-sort="created_at" title="Sırala">Tarih<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="uploaded_by_name" title="Sırala">Yükleyen<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="uploaded_by_email" title="Sırala">E-posta<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="filename" title="Sırala">Dosya<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="version" title="Sırala">Versiyon<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="item_count" title="Sırala">Satır<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="active" title="Sırala">Durum<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="price-log-rows"></tbody>
@@ -420,11 +525,18 @@
         <div class="card">
           <h2>Şablon sütunları</h2>
           <div class="table-wrap" style="max-height:none">
-            <table>
+            <table class="dom-sortable">
               <thead>
-                <tr>
-                  <th>item_type</th><th>series_id</th><th>body_type</th><th>finish_id</th>
-                  <th>accessory_key</th><th>label</th><th>price</th><th>price_single</th><th>price_pair</th>
+                <tr data-sort-table="dom">
+                  <th class="sortable" data-sort="0" title="Sırala">item_type<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="1" title="Sırala">series_id<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="2" title="Sırala">body_type<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="3" title="Sırala">finish_id<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="4" title="Sırala">accessory_key<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="5" title="Sırala">label<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="6" title="Sırala">price<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="7" title="Sırala">price_single<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="8" title="Sırala">price_pair<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody>
@@ -451,7 +563,28 @@
   };
 
   let dealersCache = [];
+  let seriesCache = [];
   let leadsCache = [];
+  let leadsSeriesCache = [];
+  let leadsDealerCache = [];
+  let priceLogsCache = [];
+  let dailyTrendCache = [];
+  let trendRange = { from: '', to: '' };
+  let trendGrain = 'day';
+  let trendActiveKey = '';
+  const tableSort = {
+    dealers: { key: 'session_count', dir: 'desc' },
+    series: { key: 'design_count', dir: 'desc' },
+    leadsSeries: { key: 'lead_count', dir: 'desc' },
+    leadsDealer: { key: 'lead_count', dir: 'desc' },
+    leads: { key: 'created_at', dir: 'desc' },
+    priceLogs: { key: 'created_at', dir: 'desc' }
+  };
+  const numericSortKeys = {
+    active_seconds: 1, avg_session_seconds: 1, session_count: 1, design_count: 1,
+    quote_count: 1, design_to_quote_pct: 1, lead_count: 1, sold_count: 1,
+    lead_total_price: 1, total_price: 1, version: 1, item_count: 1, created_at: 1, active: 1
+  };
   let adminTouchTimer = null;
   const ADMIN_DEVICE_KEY = 'dolapAdminDeviceId';
   const ADMIN_TOUCH_MS = 60000;
@@ -616,6 +749,85 @@
   document.getElementById('leads-refresh').addEventListener('click', loadLeads);
   document.getElementById('leads-search').addEventListener('input', renderLeads);
 
+  document.addEventListener('click', (e) => {
+    const th = e.target.closest('th.sortable');
+    if (!th) return;
+    const head = th.closest('tr[data-sort-table]');
+    if (!head) return;
+    const tableKey = head.getAttribute('data-sort-table');
+    const sortKey = th.getAttribute('data-sort');
+    if (!tableKey || sortKey == null) return;
+
+    if (tableKey === 'dom') {
+      sortDomTable(th.closest('table'), head, Number(sortKey));
+      return;
+    }
+
+    const state = tableSort[tableKey];
+    if (!state) return;
+    if (state.key === sortKey) {
+      state.dir = state.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      state.key = sortKey;
+      state.dir = numericSortKeys[sortKey] ? 'desc' : 'asc';
+    }
+    syncSortHeaders(head, state);
+    if (tableKey === 'dealers') renderDealers();
+    else if (tableKey === 'series') renderSeries();
+    else if (tableKey === 'leadsSeries') renderLeadsSeries();
+    else if (tableKey === 'leadsDealer') renderLeadsDealer();
+    else if (tableKey === 'leads') renderLeads();
+    else if (tableKey === 'priceLogs') renderPriceLogs();
+  });
+
+  function syncSortHeaders(headEl, state) {
+    if (!headEl || !state) return;
+    headEl.querySelectorAll('th.sortable').forEach(th => {
+      const on = th.getAttribute('data-sort') === String(state.key);
+      th.classList.toggle('is-asc', on && state.dir === 'asc');
+      th.classList.toggle('is-desc', on && state.dir === 'desc');
+    });
+  }
+
+  function compareValues(av, bv, dir) {
+    let cmp = 0;
+    if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv;
+    else cmp = String(av).localeCompare(String(bv), 'tr', { numeric: true, sensitivity: 'base' });
+    return dir === 'asc' ? cmp : -cmp;
+  }
+
+  function sortRows(rows, state, getValue) {
+    return rows.slice().sort((a, b) => compareValues(getValue(a, state.key), getValue(b, state.key), state.dir));
+  }
+
+  function parseCellSortValue(text) {
+    const t = String(text || '').trim();
+    if (!t) return '';
+    const num = Number(String(t).replace(/[^\d.,-]/g, '').replace(/\./g, '').replace(',', '.'));
+    if (t.match(/[\d]/) && isFinite(num)) return num;
+    return t.toLocaleLowerCase('tr');
+  }
+
+  function sortDomTable(table, head, colIndex) {
+    if (!table || !head || !isFinite(colIndex)) return;
+    const tbody = table.tBodies[0];
+    if (!tbody) return;
+    const prev = head.getAttribute('data-dom-sort');
+    let dir = 'asc';
+    if (prev === String(colIndex) + ':asc') dir = 'desc';
+    else if (prev === String(colIndex) + ':desc') dir = 'asc';
+    else dir = head.querySelector('th[data-sort="' + colIndex + '"]')?.classList.contains('num') ? 'desc' : 'asc';
+    head.setAttribute('data-dom-sort', colIndex + ':' + dir);
+    syncSortHeaders(head, { key: String(colIndex), dir });
+    const rows = Array.from(tbody.rows);
+    rows.sort((ra, rb) => {
+      const av = parseCellSortValue(ra.cells[colIndex] && ra.cells[colIndex].textContent);
+      const bv = parseCellSortValue(rb.cells[colIndex] && rb.cells[colIndex].textContent);
+      return compareValues(av, bv, dir);
+    });
+    rows.forEach(r => tbody.appendChild(r));
+  }
+
   function fmtPct(n) {
     const v = Number(n);
     if (!isFinite(v)) return '%0';
@@ -656,50 +868,253 @@
     document.getElementById('funnel-s2d').textContent = fmtPct(t.session_to_design_pct) + ' oturum→tasarım';
     document.getElementById('funnel-d2q').textContent = 'tasarımdan ' + fmtPct(t.design_to_quote_pct);
 
-    renderDailyTrend(data.daily || [], from, to);
+    dailyTrendCache = data.daily || [];
+    trendRange = { from: from, to: to };
+    trendActiveKey = '';
+    renderTrendChart();
 
     dealersCache = data.dealers || [];
+    seriesCache = data.series || [];
     renderDealers();
+    renderSeries();
+  }
 
-    const seriesBody = document.getElementById('series-rows');
-    const series = data.series || [];
-    if (!series.length) {
-      seriesBody.innerHTML = '<tr><td colspan="4" class="muted">Bu aralıkta veri yok</td></tr>';
-    } else {
-      seriesBody.innerHTML = series.map(s =>
-        '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
-        '</td><td class="num">' + s.design_count +
-        '</td><td class="num">' + s.quote_count +
-        '</td><td class="num"><span class="badge">' + fmtPct(s.design_to_quote_pct) + '</span></td></tr>'
-      ).join('');
+  function parseIsoDay(isoDay) {
+    const s = String(isoDay || '').slice(0, 10);
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0);
+  }
+
+  function startOfWeekMonday(date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12, 0, 0);
+    const day = d.getDay(); // 0 Sun .. 6 Sat
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+
+  function toIsoDay(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return y + '-' + m + '-' + d;
+  }
+
+  function fmtTrendDay(isoDay) {
+    const s = String(isoDay || '').slice(0, 10);
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return s || '—';
+    return m[3] + '/' + m[2];
+  }
+
+  function fmtTrendDayLong(isoDay) {
+    const dt = parseIsoDay(isoDay);
+    if (!dt) return String(isoDay || '—');
+    try {
+      return dt.toLocaleDateString('tr-TR', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+      });
+    } catch (_) {
+      return String(isoDay || '—');
     }
   }
 
-  function renderDailyTrend(daily, from, to) {
-    const el = document.getElementById('daily-trend');
-    document.getElementById('trend-from').textContent = from || '—';
-    document.getElementById('trend-to').textContent = to || '—';
-    if (!daily.length) {
-      el.innerHTML = '<div class="muted" style="padding:20px">Trend verisi yok</div>';
+  function fmtTrendMonth(isoDay) {
+    const dt = parseIsoDay(isoDay);
+    if (!dt) return String(isoDay || '—');
+    try {
+      return dt.toLocaleDateString('tr-TR', { month: 'short', year: 'numeric' });
+    } catch (_) {
+      return String(isoDay || '—').slice(0, 7);
+    }
+  }
+
+  function aggregateTrendBuckets(daily, grain) {
+    if (grain === 'day') {
+      return (daily || []).map(d => {
+        const day = String(d.day).slice(0, 10);
+        return {
+          key: day,
+          label: fmtTrendDay(day),
+          title: fmtTrendDayLong(day),
+          session_count: Number(d.session_count) || 0,
+          design_count: Number(d.design_count) || 0,
+          quote_count: Number(d.quote_count) || 0,
+          active_seconds: Number(d.active_seconds) || 0
+        };
+      });
+    }
+
+    const map = new Map();
+    (daily || []).forEach(d => {
+      const dt = parseIsoDay(d.day);
+      if (!dt) return;
+      let key;
+      let label;
+      let title;
+      if (grain === 'week') {
+        const start = startOfWeekMonday(dt);
+        const end = new Date(start);
+        end.setDate(end.getDate() + 6);
+        key = toIsoDay(start);
+        label = fmtTrendDay(toIsoDay(start));
+        title = fmtTrendDay(toIsoDay(start)) + ' – ' + fmtTrendDay(toIsoDay(end)) + ' haftası';
+      } else {
+        key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-01';
+        label = fmtTrendMonth(key);
+        title = fmtTrendMonth(key);
+      }
+      if (!map.has(key)) {
+        map.set(key, {
+          key: key,
+          label: label,
+          title: title,
+          session_count: 0,
+          design_count: 0,
+          quote_count: 0,
+          active_seconds: 0
+        });
+      }
+      const bucket = map.get(key);
+      bucket.session_count += Number(d.session_count) || 0;
+      bucket.design_count += Number(d.design_count) || 0;
+      bucket.quote_count += Number(d.quote_count) || 0;
+      bucket.active_seconds += Number(d.active_seconds) || 0;
+    });
+    return Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key));
+  }
+
+  function trendHelpText(grain) {
+    if (grain === 'week') {
+      return 'Her sütun bir haftayı (Pzt–Paz) gösterir. Yükseklik ve sayı = o haftadaki toplam mağaza oturumu. Detay altta.';
+    }
+    if (grain === 'month') {
+      return 'Her sütun bir ayı gösterir. Yükseklik ve sayı = o aydaki toplam mağaza oturumu. Detay altta.';
+    }
+    return 'Her sütun bir günü gösterir. Yükseklik ve sayı = o günkü mağaza oturumu. Detay altta.';
+  }
+
+  function setTrendDetail(bucket) {
+    const el = document.getElementById('trend-detail');
+    if (!el) return;
+    if (!bucket) {
+      el.innerHTML = 'Detay görmek için bir sütunun üzerine gelin veya tıklayın.';
       return;
     }
-    const max = Math.max(1, ...daily.map(d => Number(d.session_count) || 0));
-    el.innerHTML = daily.map(d => {
-      const n = Number(d.session_count) || 0;
-      const h = Math.max(4, Math.round((n / max) * 100));
-      const day = String(d.day).slice(0, 10);
-      const title = day + ' · ' + n + ' oturum · ' +
-        (d.design_count || 0) + ' tasarım · ' + (d.quote_count || 0) + ' teklif';
-      return '<div class="trend-bar" style="--h:' + h + '%" title="' + escapeHtml(title) + '"></div>';
+    const grainWord = trendGrain === 'week' ? 'Hafta' : (trendGrain === 'month' ? 'Ay' : 'Gün');
+    el.innerHTML =
+      '<div class="trend-detail-title">' + escapeHtml(grainWord + ': ' + bucket.title) + '</div>' +
+      '<div class="trend-detail-stats">' +
+        '<div><span>Oturum</span> ' + bucket.session_count + '</div>' +
+        '<div><span>Tasarım</span> ' + bucket.design_count + '</div>' +
+        '<div><span>Teklif</span> ' + bucket.quote_count + '</div>' +
+        '<div><span>Süre</span> ' + escapeHtml(fmtMinutes(bucket.active_seconds || 0)) + '</div>' +
+      '</div>';
+  }
+
+  function renderTrendChart() {
+    const el = document.getElementById('daily-trend');
+    const help = document.getElementById('trend-help');
+    if (help) help.textContent = trendHelpText(trendGrain);
+    document.getElementById('trend-from').textContent = 'Başlangıç: ' + (trendRange.from || '—');
+    document.getElementById('trend-to').textContent = 'Bitiş: ' + (trendRange.to || '—');
+    document.getElementById('trend-legend-mid').textContent =
+      trendGrain === 'week'
+        ? 'Yüksek sütun = o hafta daha çok oturum'
+        : (trendGrain === 'month'
+          ? 'Yüksek sütun = o ay daha çok oturum'
+          : 'Yüksek sütun = o gün daha çok oturum');
+
+    document.querySelectorAll('[data-trend-grain]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-trend-grain') === trendGrain);
+    });
+
+    const buckets = aggregateTrendBuckets(dailyTrendCache, trendGrain);
+    if (!buckets.length) {
+      el.innerHTML = '<div class="muted" style="padding:20px">Trend verisi yok</div>';
+      setTrendDetail(null);
+      return;
+    }
+
+    const max = Math.max(1, ...buckets.map(b => b.session_count));
+    el.innerHTML = buckets.map(b => {
+      const h = Math.max(b.session_count > 0 ? 18 : 10, Math.round((b.session_count / max) * 100));
+      const shortBar = h < 34;
+      const active = trendActiveKey === b.key ? ' is-active' : '';
+      return (
+        '<div class="trend-col' + active + '" tabindex="0" data-trend-key="' + escapeHtml(b.key) + '"' +
+          ' aria-label="' + escapeHtml(b.title + ', ' + b.session_count + ' oturum') + '">' +
+          '<div class="trend-bar' + (shortBar ? ' is-short' : '') + '" style="--h:' + h + '%">' +
+            '<span class="trend-val">' + b.session_count + '</span>' +
+          '</div>' +
+          '<div class="trend-day">' + escapeHtml(b.label) + '</div>' +
+        '</div>'
+      );
     }).join('');
+
+    const active = buckets.find(b => b.key === trendActiveKey) || buckets[buckets.length - 1];
+    if (!trendActiveKey && active) trendActiveKey = active.key;
+    document.querySelectorAll('.trend-col').forEach(col => {
+      col.classList.toggle('is-active', col.getAttribute('data-trend-key') === trendActiveKey);
+    });
+    setTrendDetail(buckets.find(b => b.key === trendActiveKey) || active || null);
+  }
+
+  document.querySelectorAll('[data-trend-grain]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = btn.getAttribute('data-trend-grain');
+      if (!next || next === trendGrain) return;
+      trendGrain = next;
+      trendActiveKey = '';
+      renderTrendChart();
+    });
+  });
+
+  document.getElementById('daily-trend')?.addEventListener('mouseover', (e) => {
+    const col = e.target.closest('.trend-col');
+    if (!col) return;
+    const key = col.getAttribute('data-trend-key');
+    const buckets = aggregateTrendBuckets(dailyTrendCache, trendGrain);
+    setTrendDetail(buckets.find(b => b.key === key) || null);
+  });
+  document.getElementById('daily-trend')?.addEventListener('focusin', (e) => {
+    const col = e.target.closest('.trend-col');
+    if (!col) return;
+    const key = col.getAttribute('data-trend-key');
+    const buckets = aggregateTrendBuckets(dailyTrendCache, trendGrain);
+    setTrendDetail(buckets.find(b => b.key === key) || null);
+  });
+  document.getElementById('daily-trend')?.addEventListener('click', (e) => {
+    const col = e.target.closest('.trend-col');
+    if (!col) return;
+    trendActiveKey = col.getAttribute('data-trend-key') || '';
+    document.querySelectorAll('.trend-col').forEach(c => {
+      c.classList.toggle('is-active', c.getAttribute('data-trend-key') === trendActiveKey);
+    });
+    const buckets = aggregateTrendBuckets(dailyTrendCache, trendGrain);
+    setTrendDetail(buckets.find(b => b.key === trendActiveKey) || null);
+  });
+  document.getElementById('daily-trend')?.addEventListener('mouseleave', () => {
+    const buckets = aggregateTrendBuckets(dailyTrendCache, trendGrain);
+    setTrendDetail(buckets.find(b => b.key === trendActiveKey) || buckets[buckets.length - 1] || null);
+  });
+
+  function dealerSortValue(d, key) {
+    if (key === 'code' || key === 'name' || key === 'city') {
+      return String(d[key] || '').toLocaleLowerCase('tr');
+    }
+    return Number(d[key]) || 0;
   }
 
   function renderDealers() {
+    syncSortHeaders(document.getElementById('dealers-head'), tableSort.dealers);
     const q = (document.getElementById('dealer-search').value || '').trim().toLowerCase();
-    const rows = dealersCache.filter(d => {
+    const filtered = dealersCache.filter(d => {
       if (!q) return true;
       return [d.code, d.name, d.city].join(' ').toLowerCase().includes(q);
     });
+    const rows = sortRows(filtered, tableSort.dealers, dealerSortValue);
     const body = document.getElementById('dealer-rows');
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="9" class="muted">Kayıt yok</td></tr>';
@@ -721,6 +1136,29 @@
         '<td class="num"><span class="badge ' + badgeClass + '">' + conv + '</span></td>' +
       '</tr>';
     }).join('');
+  }
+
+  function seriesSortValue(s, key) {
+    if (key === 'series_id') {
+      return String(SERIES_LABELS[s.series_id] || s.series_id || '').toLocaleLowerCase('tr');
+    }
+    return Number(s[key]) || 0;
+  }
+
+  function renderSeries() {
+    syncSortHeaders(document.getElementById('series-head'), tableSort.series);
+    const rows = sortRows(seriesCache, tableSort.series, seriesSortValue);
+    const body = document.getElementById('series-rows');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="4" class="muted">Bu aralıkta veri yok</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(s =>
+      '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
+      '</td><td class="num">' + s.design_count +
+      '</td><td class="num">' + s.quote_count +
+      '</td><td class="num"><span class="badge">' + fmtPct(s.design_to_quote_pct) + '</span></td></tr>'
+    ).join('');
   }
 
   function fmtMoney(n) {
@@ -766,29 +1204,11 @@
     document.getElementById('leads-kpi-avg').textContent = fmtMoney(sum.lead_avg_price || 0);
     document.getElementById('leads-kpi-max').textContent = fmtMoney(sum.lead_max_price || 0);
 
-    const seriesBody = document.getElementById('leads-series-rows');
-    const bySeries = data.by_series || [];
-    seriesBody.innerHTML = bySeries.length
-      ? bySeries.map(s =>
-          '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
-          '</td><td class="num">' + s.lead_count +
-          '</td><td class="num">' + (s.sold_count || 0) +
-          '</td><td class="num">' + escapeHtml(fmtMoney(s.lead_total_price)) + '</td></tr>'
-        ).join('')
-      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
-
-    const dealerBody = document.getElementById('leads-dealer-rows');
-    const byDealer = data.by_dealer || [];
-    dealerBody.innerHTML = byDealer.length
-      ? byDealer.map(d =>
-          '<tr><td>' + escapeHtml((d.dealer_code || '') + (d.dealer_name ? ' · ' + d.dealer_name : '')) +
-          '</td><td class="num">' + d.lead_count +
-          '</td><td class="num">' + (d.sold_count || 0) +
-          '</td><td class="num">' + escapeHtml(fmtMoney(d.lead_total_price)) + '</td></tr>'
-        ).join('')
-      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
-
+    leadsSeriesCache = data.by_series || [];
+    leadsDealerCache = data.by_dealer || [];
     leadsCache = data.leads || [];
+    renderLeadsSeries();
+    renderLeadsDealer();
     renderLeads();
   }
 
@@ -798,9 +1218,81 @@
     return 'Teklif';
   }
 
+  function leadsSeriesSortValue(s, key) {
+    if (key === 'series_id') {
+      return String(SERIES_LABELS[s.series_id] || s.series_id || '').toLocaleLowerCase('tr');
+    }
+    return Number(s[key]) || 0;
+  }
+
+  function renderLeadsSeries() {
+    syncSortHeaders(document.getElementById('leads-series-head'), tableSort.leadsSeries);
+    const rows = sortRows(leadsSeriesCache, tableSort.leadsSeries, leadsSeriesSortValue);
+    const body = document.getElementById('leads-series-rows');
+    body.innerHTML = rows.length
+      ? rows.map(s =>
+          '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
+          '</td><td class="num">' + s.lead_count +
+          '</td><td class="num">' + (s.sold_count || 0) +
+          '</td><td class="num">' + escapeHtml(fmtMoney(s.lead_total_price)) + '</td></tr>'
+        ).join('')
+      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
+  }
+
+  function leadsDealerSortValue(d, key) {
+    if (key === 'dealer') {
+      return String((d.dealer_code || '') + ' ' + (d.dealer_name || '')).toLocaleLowerCase('tr');
+    }
+    return Number(d[key]) || 0;
+  }
+
+  function renderLeadsDealer() {
+    syncSortHeaders(document.getElementById('leads-dealer-head'), tableSort.leadsDealer);
+    const rows = sortRows(leadsDealerCache, tableSort.leadsDealer, leadsDealerSortValue);
+    const body = document.getElementById('leads-dealer-rows');
+    body.innerHTML = rows.length
+      ? rows.map(d =>
+          '<tr><td>' + escapeHtml((d.dealer_code || '') + (d.dealer_name ? ' · ' + d.dealer_name : '')) +
+          '</td><td class="num">' + d.lead_count +
+          '</td><td class="num">' + (d.sold_count || 0) +
+          '</td><td class="num">' + escapeHtml(fmtMoney(d.lead_total_price)) + '</td></tr>'
+        ).join('')
+      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
+  }
+
+  function leadSortValue(l, key) {
+    switch (key) {
+      case 'created_at':
+        return Date.parse(l.created_at || '') || 0;
+      case 'outcome': {
+        const order = { open: 0, sold: 1, lost: 2 };
+        return order[l.outcome] != null ? order[l.outcome] : 9;
+      }
+      case 'customer_name':
+        return String(l.customer_name || '').toLocaleLowerCase('tr');
+      case 'customer_phone':
+        return String(l.customer_phone || '');
+      case 'customer_email':
+        return String(l.customer_email || '').toLocaleLowerCase('tr');
+      case 'dealer':
+        return String((l.dealer_code || '') + ' ' + (l.dealer_name || '')).toLocaleLowerCase('tr');
+      case 'series_id':
+        return String(SERIES_LABELS[l.series_id] || l.series_id || '').toLocaleLowerCase('tr');
+      case 'total_price':
+        return Number(l.total_price) || 0;
+      case 'sale_ref':
+        return String(l.sale_ref || '').toLocaleLowerCase('tr');
+      case 'customer_note':
+        return String(l.customer_note || '').toLocaleLowerCase('tr');
+      default:
+        return '';
+    }
+  }
+
   function renderLeads() {
+    syncSortHeaders(document.getElementById('leads-head'), tableSort.leads);
     const q = (document.getElementById('leads-search').value || '').trim().toLowerCase();
-    const rows = leadsCache.filter(l => {
+    const filtered = leadsCache.filter(l => {
       if (!q) return true;
       return [
         l.customer_name, l.customer_phone, l.customer_email,
@@ -808,6 +1300,7 @@
         l.outcome, outcomeLabel(l.outcome), l.sale_ref
       ].join(' ').toLowerCase().includes(q);
     });
+    const rows = sortRows(filtered, tableSort.leads, leadSortValue);
     const body = document.getElementById('leads-rows');
     if (!rows.length) {
       body.innerHTML = '<tr><td colspan="10" class="muted">Bu aralıkta teklif yok</td></tr>';
@@ -979,20 +1472,23 @@
     }
   });
 
-  async function loadPriceLogs() {
+  function priceLogSortValue(l, key) {
+    if (key === 'created_at') return Date.parse(l.created_at || '') || 0;
+    if (key === 'version' || key === 'item_count') return Number(l[key]) || 0;
+    if (key === 'active') return l.active ? 1 : 0;
+    return String(l[key] || '').toLocaleLowerCase('tr');
+  }
+
+  function renderPriceLogs() {
+    syncSortHeaders(document.getElementById('price-log-head'), tableSort.priceLogs);
     const body = document.getElementById('price-log-rows');
     if (!body) return;
-    const { data, error } = await sb.rpc('admin_price_logs', { p_limit: 100 });
-    if (error || !data || !data.ok) {
-      body.innerHTML = '<tr><td colspan="7" class="muted">Log yüklenemedi</td></tr>';
-      return;
-    }
-    const logs = data.logs || [];
-    if (!logs.length) {
+    const rows = sortRows(priceLogsCache, tableSort.priceLogs, priceLogSortValue);
+    if (!rows.length) {
       body.innerHTML = '<tr><td colspan="7" class="muted">Henüz fiyat yüklemesi yok</td></tr>';
       return;
     }
-    body.innerHTML = logs.map(l =>
+    body.innerHTML = rows.map(l =>
       '<tr>' +
         '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
         '<td>' + escapeHtml(l.uploaded_by_name || '—') + '</td>' +
@@ -1003,6 +1499,19 @@
         '<td>' + (l.active ? '<strong style="color:var(--brass)">Aktif</strong>' : '<span class="muted">Eski</span>') + '</td>' +
       '</tr>'
     ).join('');
+  }
+
+  async function loadPriceLogs() {
+    const body = document.getElementById('price-log-rows');
+    if (!body) return;
+    const { data, error } = await sb.rpc('admin_price_logs', { p_limit: 100 });
+    if (error || !data || !data.ok) {
+      priceLogsCache = [];
+      body.innerHTML = '<tr><td colspan="7" class="muted">Log yüklenemedi</td></tr>';
+      return;
+    }
+    priceLogsCache = data.logs || [];
+    renderPriceLogs();
   }
 
   (async function boot() {
