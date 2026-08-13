@@ -1673,8 +1673,8 @@
       hero: MODELS_IMG + 'welldora.webp',
       order: ['ceviz', 'aytasi'],
       materials: {
-        ceviz:  { kind: 'image', img: ASSETS.ceviz,  crop: [228, 67, 419, 960], label: 'Rubens', tier: 'wood', price: { single: 4528.64, pair: 8036.08 }, swatch: 'linear-gradient(165deg, #9a6a3f, #5f3c22)', tone: 'on-dark' },
-        aytasi: { kind: 'image', img: ASSETS.aytasi, crop: [247, 74, 436, 946], label: 'Aytaşı', tier: 'wood', price: { single: 4534.84, pair: 7934.37 }, swatch: 'linear-gradient(165deg, #d8c3a3, #b3987a)', tone: 'on-light' },
+        ceviz:  { kind: 'image', img: ASSETS.ceviz,  crop: [228, 67, 419, 958], label: 'Rubens', tier: 'wood', price: { single: 4528.64, pair: 8036.08 }, swatch: 'linear-gradient(165deg, #9a6a3f, #5f3c22)', tone: 'on-dark', bottomTrim: true, bottomTrimFrac: 0.0065 },
+        aytasi: { kind: 'image', img: ASSETS.aytasi, crop: [247, 74, 436, 944], label: 'Aytaşı', tier: 'wood', price: { single: 4534.84, pair: 7934.37 }, swatch: 'linear-gradient(165deg, #d8c3a3, #b3987a)', tone: 'on-light', bottomTrim: true, bottomTrimFrac: 0.0065 },
         ayna:   { price: { single: 6226.54, pair: 12496.43 } },
         cam:    { price: { single: 4898.01, pair: 9258.84 } }
       },
@@ -1840,6 +1840,12 @@
     if (spec.tier === 'ayna') return true;
     if (spec.bottomTrim) return true;
     return false;
+  }
+
+  function doorBottomTrimAmount(spec){
+    if (!doorNeedsBottomTrim(spec)) return 0;
+    if (spec.bottomTrimFrac != null) return spec.bottomTrimFrac;
+    return DOOR_BOTTOM_TRIM;
   }
 
   function doorRef(seriesId, finishId){ return seriesId + ':' + finishId; }
@@ -4697,7 +4703,7 @@
     opts = opts || {};
     const spec = getDoorMaterial(materialRef);
     if (!spec) return document.createElement('div');
-    const trim = (!opts.fullHeight && doorNeedsBottomTrim(spec)) ? DOOR_BOTTOM_TRIM : 0;
+    const trim = (!opts.fullHeight) ? doorBottomTrimAmount(spec) : 0;
     if (spec.kind === 'glass') {
       const div = document.createElement('div');
       div.className = 'glass-effect' + (spec.glassTone === 'gray' ? ' glass-gray' : '');
