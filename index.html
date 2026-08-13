@@ -2521,12 +2521,19 @@
 
   async function sendQuotePdfToCustomer(payload, channels){
     const { blob, filename } = await createQuotePdfBlob(payload);
+    // E-posta: Windows Paylaş menüsünü atla → PDF indir + doğrudan Gmail compose
+    if (channels.email) {
+      downloadBlobFile(blob, filename);
+      const opened = openQuoteChannelApps(payload, channels);
+      return { shared: false, downloaded: true, ...opened };
+    }
+    // Yalnızca WhatsApp: mümkünse dosya paylaşımı
     const file = new File([blob], filename, { type: 'application/pdf' });
     const shareData = { files: [file], title: filename };
-    if (navigator.canShare && navigator.canShare(shareData)) {
+    if (channels.whatsapp && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
-        return { shared: true, whatsapp: !!channels.whatsapp, email: !!channels.email };
+        return { shared: true, whatsapp: true, email: false };
       } catch (err) {
         if (err && err.name === 'AbortError') {
           return { shared: false, aborted: true, whatsapp: false, email: false };
