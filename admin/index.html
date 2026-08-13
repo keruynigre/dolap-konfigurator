@@ -448,11 +448,58 @@
 
   let dealersCache = [];
   let leadsCache = [];
+  let adminTouchTimer = null;
+  const ADMIN_DEVICE_KEY = 'dolapAdminDeviceId';
+  const ADMIN_TOUCH_MS = 60000;
 
   const loginView = document.getElementById('login-view');
   const appView = document.getElementById('app-view');
   const loginForm = document.getElementById('login-form');
   const loginErr = document.getElementById('login-err');
+
+  function getAdminDeviceId() {
+    try {
+      let id = localStorage.getItem(ADMIN_DEVICE_KEY);
+      if (id && id.length >= 8) return id;
+      id = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('adev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem(ADMIN_DEVICE_KEY, id);
+      return id;
+    } catch (_) {
+      return 'adev-fallback-' + String(Date.now());
+    }
+  }
+
+  function stopAdminTouch() {
+    if (adminTouchTimer) clearInterval(adminTouchTimer);
+    adminTouchTimer = null;
+  }
+
+  async function touchAdminSession() {
+    const { data, error } = await sb.rpc('admin_touch_session', { p_device_id: getAdminDeviceId() });
+    if (error || !data || !data.ok) {
+      stopAdminTouch();
+      await sb.auth.signOut();
+      showLogin();
+      loginErr.textContent = 'Oturum başka bir bilgisayara taşındı veya sona erdi.';
+      return false;
+    }
+    return true;
+  }
+
+  function startAdminTouch() {
+    stopAdminTouch();
+    touchAdminSession();
+    adminTouchTimer = setInterval(touchAdminSession, ADMIN_TOUCH_MS);
+  }
+
+  async function claimAdminSession() {
+    const { data, error } = await sb.rpc('admin_claim_session', { p_device_id: getAdminDeviceId() });
+    if (error) return { ok: false, error: error.message || 'rpc_error' };
+    if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'claim_failed' };
+    return { ok: true };
+  }
 
   function fmtMinutes(sec) {
     const m = Math.round((Number(sec) || 0) / 60);
@@ -477,12 +524,25 @@
     return local.toISOString().slice(0, 10);
   }
 
-  async function requireAdmin() {
+  async function requireAdmin(opts) {
+    opts = opts || {};
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return false;
     const { data, error } = await sb.from('admin_profiles').select('user_id, display_name').eq('user_id', session.user.id).maybeSingle();
     if (error || !data) {
       await sb.auth.signOut();
+      return false;
+    }
+    const claim = await claimAdminSession();
+    if (!claim.ok) {
+      await sb.auth.signOut();
+      if (opts.surfaceError) {
+        if (claim.error === 'session_active') {
+          loginErr.textContent = 'Bu admin hesabı başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+        } else {
+          loginErr.textContent = 'Oturum doğrulanamadı.';
+        }
+      }
       return false;
     }
     document.getElementById('admin-meta').textContent =
@@ -497,12 +557,14 @@
     document.getElementById('to').value = todayISO();
     document.getElementById('leads-from').value = daysAgoISO(30);
     document.getElementById('leads-to').value = todayISO();
+    startAdminTouch();
     await loadStats();
     await loadLeads();
     await loadPriceLogs();
   }
 
   function showLogin() {
+    stopAdminTouch();
     appView.classList.remove('open');
     loginView.classList.remove('hidden');
   }
@@ -517,15 +579,19 @@
       loginErr.textContent = 'Giriş başarısız. E-posta/şifreyi kontrol edin.';
       return;
     }
-    const ok = await requireAdmin();
+    const ok = await requireAdmin({ surfaceError: true });
     if (!ok) {
-      loginErr.textContent = 'Bu hesap üretici admin değil.';
+      if (!loginErr.textContent) loginErr.textContent = 'Bu hesap üretici admin değil.';
       return;
     }
     await showApp();
   });
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
+    try {
+      await sb.rpc('admin_release_session', { p_device_id: getAdminDeviceId() });
+    } catch (_) { /* ignore */ }
+    stopAdminTouch();
     await sb.auth.signOut();
     showLogin();
   });
@@ -920,7 +986,7 @@
   }
 
   (async function boot() {
-    const ok = await requireAdmin();
+    const ok = await requireAdmin({ surfaceError: true });
     if (ok) await showApp();
     else showLogin();
   })();

@@ -1,13 +1,15 @@
 /**
- * Mağaza oturumu: kod ile giriş, heartbeat, tasarım/teklif eventleri.
+ * Mağaza oturumu: kod ile giriş, tek cihaz kilidi, heartbeat, tasarım/teklif eventleri.
  */
 (function (global) {
   const STORAGE_KEY = 'dolapDealerSession';
+  const DEVICE_KEY = 'dolapDealerDeviceId';
   const HEARTBEAT_MS = 60000;
 
   let client = null;
   let heartbeatTimer = null;
   let lastTrackedSeries = null;
+  let onSessionInvalid = null;
 
   function getClient() {
     if (client) return client;
@@ -15,6 +17,20 @@
     if (!cfg || !global.supabase) return null;
     client = global.supabase.createClient(cfg.url, cfg.anonKey);
     return client;
+  }
+
+  function getDeviceId() {
+    try {
+      let id = localStorage.getItem(DEVICE_KEY);
+      if (id && id.length >= 8) return id;
+      id = (global.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('dev-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+      localStorage.setItem(DEVICE_KEY, id);
+      return id;
+    } catch (_) {
+      return 'dev-fallback-' + String(Date.now());
+    }
   }
 
   function loadSession() {
@@ -43,12 +59,24 @@
     return loadSession();
   }
 
+  function setOnSessionInvalid(fn) {
+    onSessionInvalid = typeof fn === 'function' ? fn : null;
+  }
+
+  function invalidateLocalSession() {
+    clearSession();
+    if (onSessionInvalid) {
+      try { onSessionInvalid(); } catch (_) { /* ignore */ }
+    }
+  }
+
   async function login(code) {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
     const { data, error } = await sb.rpc('dealer_login', {
       p_code: String(code || '').trim(),
-      p_user_agent: navigator.userAgent || ''
+      p_user_agent: navigator.userAgent || '',
+      p_device_id: getDeviceId()
     });
     if (error) return { ok: false, error: error.message || 'rpc_error' };
     if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid_code' };
@@ -62,7 +90,14 @@
     return { ok: true, session };
   }
 
-  function logout() {
+  async function logout() {
+    const s = loadSession();
+    const sb = getClient();
+    if (s && sb) {
+      try {
+        await sb.rpc('dealer_logout', { p_session_id: s.session_id });
+      } catch (_) { /* ignore */ }
+    }
     clearSession();
   }
 
@@ -71,7 +106,10 @@
     const sb = getClient();
     if (!s || !sb) return;
     try {
-      await sb.rpc('dealer_heartbeat', { p_session_id: s.session_id });
+      const { data } = await sb.rpc('dealer_heartbeat', { p_session_id: s.session_id });
+      if (data && data.ok === false && (data.error === 'session_not_found')) {
+        invalidateLocalSession();
+      }
     } catch (_) { /* ignore */ }
   }
 
@@ -172,6 +210,8 @@
     trackQuote,
     submitQuoteLead,
     initIfLoggedIn,
-    getClient
+    getClient,
+    getDeviceId,
+    setOnSessionInvalid
   };
 })(window);

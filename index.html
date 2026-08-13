@@ -1151,7 +1151,7 @@
     <h2 id="dealer-gate-title">Mağaza girişi</h2>
     <p>Devam etmek için size verilen mağaza kodunu girin. Kullanım süresi ve tasarım istatistikleri üretici panele aktarılır.</p>
     <label for="dealer-code">Mağaza kodu</label>
-    <input id="dealer-code" name="code" type="text" required autocomplete="off" placeholder="Örn. BAMBI-001" autofocus>
+    <input id="dealer-code" name="code" type="password" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Mağaza kodu" autofocus>
     <p class="dealer-err" id="dealer-err"></p>
     <button type="submit">Giriş yap</button>
   </form>
@@ -1332,7 +1332,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/supabase-config.js?v=2"></script>
-<script src="js/dealer-session.js?v=2"></script>
+<script src="js/dealer-session.js?v=3"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -5223,17 +5223,34 @@
     if (err) err.textContent = '';
     const res = await window.DolapDealer.login(code);
     if (!res.ok) {
-      if (err) err.textContent = 'Geçersiz mağaza kodu.';
+      if (err) {
+        if (res.error === 'session_active') {
+          err.textContent = 'Bu mağaza kodu başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+        } else if (res.error === 'device_required') {
+          err.textContent = 'Cihaz doğrulanamadı. Tarayıcıda localStorage açık olmalı.';
+        } else {
+          err.textContent = 'Geçersiz mağaza kodu.';
+        }
+      }
       return;
     }
+    document.getElementById('dealer-code').value = '';
     unlockAppForDealer(res.session);
     applyRemotePrices();
   });
 
-  document.getElementById('dealer-logout')?.addEventListener('click', () => {
-    window.DolapDealer.logout();
+  document.getElementById('dealer-logout')?.addEventListener('click', async () => {
+    await window.DolapDealer.logout();
     lockAppForDealer();
   });
+
+  if (window.DolapDealer && window.DolapDealer.setOnSessionInvalid) {
+    window.DolapDealer.setOnSessionInvalid(() => {
+      lockAppForDealer();
+      const err = document.getElementById('dealer-err');
+      if (err) err.textContent = 'Oturum sona erdi. Tekrar giriş yapın.';
+    });
+  }
 
   initMaterialPalette();
   render();
