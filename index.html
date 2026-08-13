@@ -519,7 +519,7 @@
   }
   .quote-error.visible { display: block; }
   .quote-actions { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-  .quote-actions .quote-submit:disabled { opacity: 0.55; cursor: wait; }
+  .quote-actions .quote-submit:disabled { opacity: 0.55; cursor: not-allowed; }
   .quote-actions .quote-cancel {
     flex: 1; min-width: 90px; background: transparent; border: 1px solid var(--line); color: var(--ink-dim);
     border-radius: var(--radius); padding: 11px; font-size: 13px; cursor: pointer;
@@ -1417,7 +1417,7 @@
           <label>Gönderim kanalı <span style="color:var(--ink-dim); font-weight:400">(en az biri)</span></label>
           <div class="quote-channels" role="group" aria-label="Gönderim kanalı">
             <label class="quote-channel">
-              <input type="checkbox" id="quote-channel-whatsapp" name="channel_whatsapp" checked>
+              <input type="checkbox" id="quote-channel-whatsapp" name="channel_whatsapp">
               WhatsApp
             </label>
             <label class="quote-channel">
@@ -1430,7 +1430,7 @@
         <div class="quote-actions">
           <button type="button" class="quote-cancel" id="quote-cancel">Vazgeç</button>
           <button type="button" class="quote-pdf" id="quote-pdf">PDF İndir</button>
-          <button type="submit" class="quote-submit" id="quote-submit">Teklifi Gönder</button>
+          <button type="submit" class="quote-submit" id="quote-submit" disabled>Teklifi Gönder</button>
         </div>
       </form>
     </div>
@@ -2480,7 +2480,10 @@
     setQuoteError('');
     quoteForm.reset();
     const wa = document.getElementById('quote-channel-whatsapp');
-    if (wa) wa.checked = true;
+    const em = document.getElementById('quote-channel-email');
+    if (wa) wa.checked = false;
+    if (em) em.checked = false;
+    syncQuoteSubmitEnabled();
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
@@ -2525,6 +2528,13 @@
       whatsapp: !!document.getElementById('quote-channel-whatsapp')?.checked,
       email: !!document.getElementById('quote-channel-email')?.checked
     };
+  }
+
+  function syncQuoteSubmitEnabled(){
+    const submitBtn = document.getElementById('quote-submit');
+    if (!submitBtn || submitBtn.dataset.sending === '1') return;
+    const channels = readQuoteChannels();
+    submitBtn.disabled = !(channels.whatsapp || channels.email);
   }
 
   function phoneToWhatsAppNumber(phone){
@@ -2685,7 +2695,10 @@
     } catch (_) { /* ignore quota / private mode */ }
 
     const submitBtn = document.getElementById('quote-submit');
-    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) {
+      submitBtn.dataset.sending = '1';
+      submitBtn.disabled = true;
+    }
     try {
       if (!window.DolapDealer || !window.DolapDealer.submitQuoteLead) {
         setQuoteError(quoteLeadErrorMessage('stale_client'));
@@ -2732,7 +2745,10 @@
       console.error('Teklif kaydı hata', err);
       setQuoteError(quoteLeadErrorMessage(err && err.message));
     } finally {
-      if (submitBtn) submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.dataset.sending = '';
+        syncQuoteSubmitEnabled();
+      }
     }
   }
 
@@ -5466,6 +5482,9 @@
   quotePdfBtn.addEventListener('click', onQuotePdfClick);
   quotePdfSuccessBtn.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
   quoteForm.addEventListener('submit', submitQuote);
+  document.getElementById('quote-channel-whatsapp')?.addEventListener('change', syncQuoteSubmitEnabled);
+  document.getElementById('quote-channel-email')?.addEventListener('change', syncQuoteSubmitEnabled);
+  syncQuoteSubmitEnabled();
   document.getElementById('quote-phone').addEventListener('input', onQuotePhoneInput);
   document.getElementById('quote-phone').addEventListener('blur', onQuotePhoneInput);
   quoteModal.addEventListener('click', (e) => {
