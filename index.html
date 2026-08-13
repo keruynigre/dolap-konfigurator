@@ -19,9 +19,11 @@
     document.documentElement.setAttribute('data-theme', 'dark');
   }
   try {
-    var dealer = JSON.parse(localStorage.getItem('dolapDealerSession') || 'null');
-    if (dealer && dealer.session_id && dealer.dealer) {
-      document.documentElement.classList.add('has-dealer-session');
+    var raw = localStorage.getItem('sb-flhffroxhewrmyeufcsk-auth-token');
+    if (raw) {
+      var parsed = JSON.parse(raw);
+      var token = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
+      if (token) document.documentElement.classList.add('has-dealer-session');
     }
   } catch (e) { /* ignore */ }
 })();
@@ -1189,7 +1191,7 @@
     .module, .door-slot, .seam::before { animation: none !important; transition: none !important; }
   }
 
-  /* Mağaza kodu girişi */
+  /* Mağaza girişi */
   .dealer-gate {
     position: fixed; inset: 0; z-index: 2000;
     display: flex; align-items: center; justify-content: center;
@@ -1312,9 +1314,11 @@
 <div id="dealer-gate" class="dealer-gate" aria-modal="true" role="dialog" aria-labelledby="dealer-gate-title">
   <form class="dealer-card" id="dealer-login-form">
     <h2 id="dealer-gate-title">Mağaza girişi</h2>
-    <p>Devam etmek için size verilen mağaza kodunu girin. Kullanım süresi ve tasarım istatistikleri üretici panele aktarılır.</p>
-    <label for="dealer-code">Mağaza kodu</label>
-    <input id="dealer-code" name="code" type="password" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Mağaza kodu" autofocus>
+    <p>Size verilen e-posta ve şifre ile giriş yapın. Yeni üyelik alınmaz; hesaplar yalnızca üretici tarafından tanımlanır.</p>
+    <label for="dealer-email">E-posta</label>
+    <input id="dealer-email" name="email" type="email" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="ornek@bambi.com" autofocus>
+    <label for="dealer-password">Şifre</label>
+    <input id="dealer-password" name="password" type="password" required autocomplete="current-password" placeholder="Şifre">
     <p class="dealer-err" id="dealer-err"></p>
     <button type="submit">Giriş yap</button>
   </form>
@@ -1537,7 +1541,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=10"></script>
+<script src="js/dealer-session.js?v=11"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -5508,7 +5512,7 @@
     if (app) app.classList.remove('is-locked');
     document.documentElement.classList.add('has-dealer-session');
     if (chip && nameEl && session && session.dealer) {
-      nameEl.textContent = session.dealer.name + ' (' + session.dealer.code + ')';
+      nameEl.textContent = session.dealer.name || session.dealer.email || session.dealer.code || '—';
       chip.classList.add('visible');
     }
     syncOpenLeadsBadge();
@@ -5523,30 +5527,38 @@
     document.documentElement.classList.remove('has-dealer-session');
     if (chip) chip.classList.remove('visible');
     updateOpenLeadsBadge(0);
-    document.getElementById('dealer-code')?.focus();
+    document.getElementById('dealer-email')?.focus();
+  }
+
+  function dealerLoginErrorText(code){
+    if (code === 'session_active') return 'Bu hesap başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+    if (code === 'device_required') return 'Cihaz doğrulanamadı. Tarayıcıda localStorage açık olmalı.';
+    if (code === 'email_not_confirmed') return 'E-posta henüz onaylanmamış. Panelden kullanıcıyı onaylayın.';
+    if (code === 'inactive') return 'Bu hesap pasif. Üretici ile görüşün.';
+    if (code === 'invalid_credentials') return 'E-posta veya şifre hatalı.';
+    return 'Giriş başarısız. E-posta ve şifreyi kontrol edin.';
   }
 
   document.getElementById('dealer-login-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = document.getElementById('dealer-err');
-    const code = document.getElementById('dealer-code').value;
+    const emailEl = document.getElementById('dealer-email');
+    const passEl = document.getElementById('dealer-password');
+    const btn = e.currentTarget.querySelector('button[type="submit"]');
     if (err) err.textContent = '';
-    const res = await window.DolapDealer.login(code);
-    if (!res.ok) {
-      if (err) {
-        if (res.error === 'session_active') {
-          err.textContent = 'Bu mağaza kodu başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
-        } else if (res.error === 'device_required') {
-          err.textContent = 'Cihaz doğrulanamadı. Tarayıcıda localStorage açık olmalı.';
-        } else {
-          err.textContent = 'Geçersiz mağaza kodu.';
-        }
+    if (btn) btn.disabled = true;
+    try {
+      const res = await window.DolapDealer.loginWithPassword(emailEl && emailEl.value, passEl && passEl.value);
+      if (!res.ok) {
+        if (err) err.textContent = dealerLoginErrorText(res.error);
+        return;
       }
-      return;
+      if (passEl) passEl.value = '';
+      unlockAppForDealer(res.session);
+      applyRemotePrices();
+    } finally {
+      if (btn) btn.disabled = false;
     }
-    document.getElementById('dealer-code').value = '';
-    unlockAppForDealer(res.session);
-    applyRemotePrices();
   });
 
   const leadsModal = document.getElementById('leads-modal');
@@ -5734,14 +5746,25 @@
   initMaterialPalette();
   render();
 
-  const existing = window.DolapDealer && window.DolapDealer.getSession();
-  if (existing) {
-    window.DolapDealer.initIfLoggedIn();
-    unlockAppForDealer(existing);
-    applyRemotePrices();
-  } else {
+  async function bootDealerGate(){
+    if (!window.DolapDealer || !window.DolapDealer.resumeAuthSession) {
+      lockAppForDealer();
+      return;
+    }
+    const res = await window.DolapDealer.resumeAuthSession();
+    if (res && res.ok) {
+      unlockAppForDealer(res.session);
+      applyRemotePrices();
+      return;
+    }
     lockAppForDealer();
+    if (res && res.error === 'session_active') {
+      const err = document.getElementById('dealer-err');
+      if (err) err.textContent = dealerLoginErrorText('session_active');
+    }
   }
+
+  bootDealerGate();
 })();
 </script>
 </body>

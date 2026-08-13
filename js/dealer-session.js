@@ -1,5 +1,6 @@
 /**
- * Mağaza oturumu: kod ile giriş, tek cihaz kilidi, heartbeat, tasarım/teklif eventleri.
+ * Mağaza oturumu: e-posta/şifre (Supabase Auth), tek cihaz kilidi, heartbeat, tasarım/teklif eventleri.
+ * Üye olma yok; yalnızca panelden eklenen hesaplar giriş yapabilir.
  */
 (function (global) {
   const STORAGE_KEY = 'dolapDealerSession';
@@ -70,16 +71,7 @@
     }
   }
 
-  async function login(code) {
-    const sb = getClient();
-    if (!sb) return { ok: false, error: 'supabase_unavailable' };
-    const { data, error } = await sb.rpc('dealer_login', {
-      p_code: String(code || '').trim(),
-      p_user_agent: navigator.userAgent || '',
-      p_device_id: getDeviceId()
-    });
-    if (error) return { ok: false, error: error.message || 'rpc_error' };
-    if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'invalid_code' };
+  function applyDealerRpc(data) {
     const session = {
       session_id: data.session_id,
       dealer: data.dealer,
@@ -88,6 +80,44 @@
     saveSession(session);
     startHeartbeat();
     return { ok: true, session };
+  }
+
+  async function startDealerSessionFromAuth() {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const { data, error } = await sb.rpc('dealer_login_auth', {
+      p_user_agent: navigator.userAgent || '',
+      p_device_id: getDeviceId()
+    });
+    if (error) return { ok: false, error: error.message || 'rpc_error' };
+    if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'auth_session_failed' };
+    return applyDealerRpc(data);
+  }
+
+  async function loginWithPassword(email, password) {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const { error } = await sb.auth.signInWithPassword({
+      email: String(email || '').trim(),
+      password: String(password || '')
+    });
+    if (error) {
+      const msg = String(error.message || '').toLowerCase();
+      if (msg.indexOf('email not confirmed') !== -1) return { ok: false, error: 'email_not_confirmed' };
+      return { ok: false, error: 'invalid_credentials' };
+    }
+    return startDealerSessionFromAuth();
+  }
+
+  async function resumeAuthSession() {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const { data } = await sb.auth.getSession();
+    if (!data || !data.session) {
+      clearSession();
+      return { ok: false, error: 'no_auth' };
+    }
+    return startDealerSessionFromAuth();
   }
 
   async function logout() {
@@ -99,6 +129,9 @@
       } catch (_) { /* ignore */ }
     }
     clearSession();
+    if (sb) {
+      try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+    }
   }
 
   async function heartbeat() {
@@ -346,7 +379,8 @@
 
   global.DolapDealer = {
     calculateQuote,
-    login,
+    loginWithPassword,
+    resumeAuthSession,
     logout,
     getSession,
     trackDesign,
