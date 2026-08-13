@@ -291,9 +291,11 @@
         </div>
         <button class="btn btn-primary" type="button" id="leads-refresh" style="width:auto">Yenile</button>
       </div>
-      <div class="kpis">
+      <div class="kpis kpis-6">
         <div class="kpi"><div class="lbl">Teklif formu</div><div class="val" id="leads-kpi-count">0</div></div>
-        <div class="kpi"><div class="lbl">Toplam tutar</div><div class="val" id="leads-kpi-total">₺0</div></div>
+        <div class="kpi"><div class="lbl">Satış</div><div class="val" id="leads-kpi-sold">0</div><div class="sub" id="leads-kpi-conv">dönüşüm %0</div></div>
+        <div class="kpi"><div class="lbl">Satış tutarı</div><div class="val" id="leads-kpi-sold-total">₺0</div><div class="sub" id="leads-kpi-open">açık 0</div></div>
+        <div class="kpi"><div class="lbl">Teklif tutarı</div><div class="val" id="leads-kpi-total">₺0</div></div>
         <div class="kpi"><div class="lbl">Ortalama tutar</div><div class="val" id="leads-kpi-avg">₺0</div></div>
         <div class="kpi"><div class="lbl">En yüksek</div><div class="val" id="leads-kpi-max">₺0</div></div>
       </div>
@@ -303,7 +305,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Model</th><th class="num">Adet</th><th class="num">Tutar</th></tr>
+                <tr><th>Model</th><th class="num">Teklif</th><th class="num">Satış</th><th class="num">Tutar</th></tr>
               </thead>
               <tbody id="leads-series-rows"></tbody>
             </table>
@@ -314,7 +316,7 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr><th>Mağaza</th><th class="num">Adet</th><th class="num">Tutar</th></tr>
+                <tr><th>Mağaza</th><th class="num">Teklif</th><th class="num">Satış</th><th class="num">Tutar</th></tr>
               </thead>
               <tbody id="leads-dealer-rows"></tbody>
             </table>
@@ -324,19 +326,21 @@
       <div class="card">
         <h2>Gönderilen teklif formları</h2>
         <div class="search-row">
-          <input type="search" id="leads-search" placeholder="Ad, telefon, e-posta veya mağaza ara…">
+          <input type="search" id="leads-search" placeholder="Ad, telefon, e-posta, mağaza veya durum ara…">
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>Tarih</th>
+                <th>Durum</th>
                 <th>Ad Soyad</th>
                 <th>Telefon</th>
                 <th>E-posta</th>
                 <th>Mağaza</th>
                 <th>Model</th>
                 <th class="num">Tutar</th>
+                <th>Sipariş</th>
                 <th>Not</th>
               </tr>
             </thead>
@@ -748,11 +752,16 @@
     if (error || !data || !data.ok) {
       console.error(error || data);
       document.getElementById('leads-rows').innerHTML =
-        '<tr><td colspan="8" class="muted">Teklifler yüklenemedi</td></tr>';
+        '<tr><td colspan="10" class="muted">Teklifler yüklenemedi</td></tr>';
       return;
     }
     const sum = data.summary || {};
     document.getElementById('leads-kpi-count').textContent = sum.lead_count || 0;
+    document.getElementById('leads-kpi-sold').textContent = sum.sold_count || 0;
+    document.getElementById('leads-kpi-conv').textContent = 'dönüşüm %' + (sum.conversion_pct != null ? sum.conversion_pct : 0);
+    document.getElementById('leads-kpi-sold-total').textContent = fmtMoney(sum.sold_total_price || 0);
+    document.getElementById('leads-kpi-open').textContent =
+      'açık ' + (sum.open_count || 0) + ' · satılmadı ' + (sum.lost_count || 0);
     document.getElementById('leads-kpi-total').textContent = fmtMoney(sum.lead_total_price || 0);
     document.getElementById('leads-kpi-avg').textContent = fmtMoney(sum.lead_avg_price || 0);
     document.getElementById('leads-kpi-max').textContent = fmtMoney(sum.lead_max_price || 0);
@@ -763,9 +772,10 @@
       ? bySeries.map(s =>
           '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
           '</td><td class="num">' + s.lead_count +
+          '</td><td class="num">' + (s.sold_count || 0) +
           '</td><td class="num">' + escapeHtml(fmtMoney(s.lead_total_price)) + '</td></tr>'
         ).join('')
-      : '<tr><td colspan="3" class="muted">Veri yok</td></tr>';
+      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
 
     const dealerBody = document.getElementById('leads-dealer-rows');
     const byDealer = data.by_dealer || [];
@@ -773,12 +783,19 @@
       ? byDealer.map(d =>
           '<tr><td>' + escapeHtml((d.dealer_code || '') + (d.dealer_name ? ' · ' + d.dealer_name : '')) +
           '</td><td class="num">' + d.lead_count +
+          '</td><td class="num">' + (d.sold_count || 0) +
           '</td><td class="num">' + escapeHtml(fmtMoney(d.lead_total_price)) + '</td></tr>'
         ).join('')
-      : '<tr><td colspan="3" class="muted">Veri yok</td></tr>';
+      : '<tr><td colspan="4" class="muted">Veri yok</td></tr>';
 
     leadsCache = data.leads || [];
     renderLeads();
+  }
+
+  function outcomeLabel(outcome) {
+    if (outcome === 'sold') return 'Satış';
+    if (outcome === 'lost') return 'Satılmadı';
+    return 'Teklif';
   }
 
   function renderLeads() {
@@ -787,23 +804,26 @@
       if (!q) return true;
       return [
         l.customer_name, l.customer_phone, l.customer_email,
-        l.dealer_code, l.dealer_name, l.series_id, l.customer_note
+        l.dealer_code, l.dealer_name, l.series_id, l.customer_note,
+        l.outcome, outcomeLabel(l.outcome), l.sale_ref
       ].join(' ').toLowerCase().includes(q);
     });
     const body = document.getElementById('leads-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="8" class="muted">Bu aralıkta teklif yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="10" class="muted">Bu aralıkta teklif yok</td></tr>';
       return;
     }
     body.innerHTML = rows.map(l =>
       '<tr>' +
         '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
+        '<td>' + escapeHtml(outcomeLabel(l.outcome)) + '</td>' +
         '<td>' + escapeHtml(l.customer_name) + '</td>' +
         '<td>' + escapeHtml(l.customer_phone) + '</td>' +
         '<td>' + escapeHtml(l.customer_email) + '</td>' +
         '<td>' + escapeHtml((l.dealer_code || '') + (l.dealer_name ? ' · ' + l.dealer_name : '')) + '</td>' +
         '<td>' + escapeHtml(SERIES_LABELS[l.series_id] || l.series_id || '—') + '</td>' +
         '<td class="num">' + escapeHtml(fmtMoney(l.total_price)) + '</td>' +
+        '<td>' + escapeHtml(l.sale_ref || '—') + '</td>' +
         '<td>' + escapeHtml(l.customer_note || '—') + '</td>' +
       '</tr>'
     ).join('');
