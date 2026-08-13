@@ -16,7 +16,13 @@
     if (client) return client;
     const cfg = global.DOLAP_SUPABASE;
     if (!cfg || !global.supabase) return null;
-    client = global.supabase.createClient(cfg.url, cfg.anonKey);
+    client = global.supabase.createClient(cfg.url, cfg.anonKey, {
+      auth: {
+        persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit'
+      }
+    });
     return client;
   }
 
@@ -82,16 +88,100 @@
     return { ok: true, session };
   }
 
+  async function requireConfirmedAuthUser(sb) {
+    const { data } = await sb.auth.getUser();
+    const user = data && data.user;
+    if (user && user.email_confirmed_at) return { ok: true, user };
+    try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+    clearSession();
+    return { ok: false, error: 'email_not_confirmed' };
+  }
+
   async function startDealerSessionFromAuth() {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const confirmed = await requireConfirmedAuthUser(sb);
+    if (!confirmed.ok) return confirmed;
     const { data, error } = await sb.rpc('dealer_login_auth', {
       p_user_agent: navigator.userAgent || '',
       p_device_id: getDeviceId()
     });
     if (error) return { ok: false, error: error.message || 'rpc_error' };
-    if (!data || !data.ok) return { ok: false, error: (data && data.error) || 'auth_session_failed' };
+    if (!data || !data.ok) {
+      if (data && data.error === 'email_not_confirmed') {
+        try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+        clearSession();
+      }
+      return { ok: false, error: (data && data.error) || 'auth_session_failed' };
+    }
     return applyDealerRpc(data);
+  }
+
+  function readAuthLinkType() {
+    try {
+      const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+      const query = new URLSearchParams(String(location.search || '').replace(/^\?/, ''));
+      return String(hash.get('type') || query.get('type') || '').toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function readAuthLinkError() {
+    try {
+      const hash = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+      const query = new URLSearchParams(String(location.search || '').replace(/^\?/, ''));
+      return String(
+        hash.get('error_description') ||
+        query.get('error_description') ||
+        hash.get('error') ||
+        query.get('error') ||
+        ''
+      ).replace(/\+/g, ' ');
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function clearAuthLinkFromUrl() {
+    try {
+      if (location.hash || /[?&](code|type|error)=/.test(location.search)) {
+        history.replaceState({}, document.title, location.pathname);
+      }
+    } catch (_) { /* ignore */ }
+  }
+
+  async function consumeAuthLink() {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const type = readAuthLinkType();
+    const linkError = readAuthLinkError();
+    if (linkError) {
+      clearAuthLinkFromUrl();
+      return { ok: false, error: 'auth_link_invalid', message: linkError };
+    }
+    const { data } = await sb.auth.getSession();
+    const session = data && data.session;
+    const needsPassword = type === 'invite' || type === 'recovery' || type === 'signup';
+    if (needsPassword) {
+      if (!session) {
+        clearAuthLinkFromUrl();
+        return { ok: false, error: 'auth_link_invalid' };
+      }
+      return { ok: true, needsPassword: true, type, session };
+    }
+    return { ok: true, needsPassword: false, type, session: session || null };
+  }
+
+  async function setPassword(password) {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'supabase_unavailable' };
+    const pwd = String(password || '');
+    if (pwd.length < 6) return { ok: false, error: 'password_too_short' };
+    const { error } = await sb.auth.updateUser({ password: pwd });
+    if (error) return { ok: false, error: error.message || 'password_update_failed' };
+    clearAuthLinkFromUrl();
+    return startDealerSessionFromAuth();
   }
 
   async function loginWithPassword(email, password) {
@@ -380,6 +470,8 @@
   global.DolapDealer = {
     calculateQuote,
     loginWithPassword,
+    consumeAuthLink,
+    setPassword,
     resumeAuthSession,
     logout,
     getSession,

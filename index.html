@@ -19,8 +19,11 @@
     document.documentElement.setAttribute('data-theme', 'dark');
   }
   try {
+    var hash = String(location.hash || '');
+    var search = String(location.search || '');
+    var isPassLink = /(?:^|[?&#])type=(invite|recovery|signup)\b/i.test(hash + search);
     var raw = localStorage.getItem('sb-flhffroxhewrmyeufcsk-auth-token');
-    if (raw) {
+    if (raw && !isPassLink) {
       var parsed = JSON.parse(raw);
       var token = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
       if (token) document.documentElement.classList.add('has-dealer-session');
@@ -1201,7 +1204,9 @@
       rgba(10, 9, 8, 0.88);
     backdrop-filter: blur(6px);
   }
-  .dealer-gate.hidden { display: none; }
+  .dealer-card form[hidden],
+  #dealer-set-password-form[hidden],
+  #dealer-login-form[hidden] { display: none !important; }
   .dealer-card {
     width: min(420px, 100%); background: var(--panel); border: 1px solid var(--line);
     border-radius: 8px; padding: 28px 24px; box-shadow: 0 20px 50px rgba(0,0,0,.35);
@@ -1321,6 +1326,16 @@
     <input id="dealer-password" name="password" type="password" required autocomplete="current-password" placeholder="Şifre">
     <p class="dealer-err" id="dealer-err"></p>
     <button type="submit">Giriş yap</button>
+  </form>
+  <form class="dealer-card" id="dealer-set-password-form" hidden>
+    <h2 id="dealer-set-password-title">Şifre belirle</h2>
+    <p>E-posta doğrulandı. Giriş için bir şifre oluşturun.</p>
+    <label for="dealer-new-password">Yeni şifre</label>
+    <input id="dealer-new-password" name="new-password" type="password" required minlength="6" autocomplete="new-password" placeholder="En az 6 karakter">
+    <label for="dealer-new-password-2">Şifre tekrar</label>
+    <input id="dealer-new-password-2" name="new-password-2" type="password" required minlength="6" autocomplete="new-password" placeholder="Şifreyi tekrar yazın">
+    <p class="dealer-err" id="dealer-set-pass-err"></p>
+    <button type="submit">Şifreyi kaydet</button>
   </form>
 </div>
 <div class="app is-locked" id="app-root">
@@ -1541,7 +1556,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=11"></script>
+<script src="js/dealer-session.js?v=13"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -5518,6 +5533,26 @@
     syncOpenLeadsBadge();
   }
 
+  function showSetPasswordForm(){
+    const loginForm = document.getElementById('dealer-login-form');
+    const setForm = document.getElementById('dealer-set-password-form');
+    const gate = document.getElementById('dealer-gate');
+    const app = document.getElementById('app-root');
+    if (loginForm) loginForm.hidden = true;
+    if (setForm) setForm.hidden = false;
+    if (gate) gate.classList.remove('hidden');
+    if (app) app.classList.add('is-locked');
+    document.documentElement.classList.remove('has-dealer-session');
+    document.getElementById('dealer-new-password')?.focus();
+  }
+
+  function showLoginForm(){
+    const loginForm = document.getElementById('dealer-login-form');
+    const setForm = document.getElementById('dealer-set-password-form');
+    if (loginForm) loginForm.hidden = false;
+    if (setForm) setForm.hidden = true;
+  }
+
   function lockAppForDealer(){
     const gate = document.getElementById('dealer-gate');
     const app = document.getElementById('app-root');
@@ -5527,13 +5562,17 @@
     document.documentElement.classList.remove('has-dealer-session');
     if (chip) chip.classList.remove('visible');
     updateOpenLeadsBadge(0);
+    showLoginForm();
     document.getElementById('dealer-email')?.focus();
   }
 
   function dealerLoginErrorText(code){
     if (code === 'session_active') return 'Bu hesap başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
     if (code === 'device_required') return 'Cihaz doğrulanamadı. Tarayıcıda localStorage açık olmalı.';
-    if (code === 'email_not_confirmed') return 'E-posta henüz onaylanmamış. Panelden kullanıcıyı onaylayın.';
+    if (code === 'email_not_confirmed') return 'E-posta henüz doğrulanmadı. Gelen kutunuzdaki onay linkine tıklayın. Mail yoksa bu hesap kullanılamaz.';
+    if (code === 'auth_link_invalid') return 'Davet / onay linki geçersiz veya süresi dolmuş. Panelden yeni bir davet gönderin.';
+    if (code === 'password_too_short') return 'Şifre en az 6 karakter olmalı.';
+    if (code === 'password_mismatch') return 'Şifreler eşleşmiyor.';
     if (code === 'inactive') return 'Bu hesap pasif. Üretici ile görüşün.';
     if (code === 'invalid_credentials') return 'E-posta veya şifre hatalı.';
     return 'Giriş başarısız. E-posta ve şifreyi kontrol edin.';
@@ -5554,6 +5593,36 @@
         return;
       }
       if (passEl) passEl.value = '';
+      unlockAppForDealer(res.session);
+      applyRemotePrices();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  document.getElementById('dealer-set-password-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = document.getElementById('dealer-set-pass-err');
+    const a = document.getElementById('dealer-new-password');
+    const b = document.getElementById('dealer-new-password-2');
+    const btn = e.currentTarget.querySelector('button[type="submit"]');
+    if (err) err.textContent = '';
+    const pwd = a && a.value;
+    const pwd2 = b && b.value;
+    if (pwd !== pwd2) {
+      if (err) err.textContent = dealerLoginErrorText('password_mismatch');
+      return;
+    }
+    if (btn) btn.disabled = true;
+    try {
+      const res = await window.DolapDealer.setPassword(pwd);
+      if (!res.ok) {
+        if (err) err.textContent = dealerLoginErrorText(res.error);
+        return;
+      }
+      if (a) a.value = '';
+      if (b) b.value = '';
+      showLoginForm();
       unlockAppForDealer(res.session);
       applyRemotePrices();
     } finally {
@@ -5747,7 +5816,24 @@
   render();
 
   async function bootDealerGate(){
-    if (!window.DolapDealer || !window.DolapDealer.resumeAuthSession) {
+    if (!window.DolapDealer) {
+      lockAppForDealer();
+      return;
+    }
+    if (window.DolapDealer.consumeAuthLink) {
+      const link = await window.DolapDealer.consumeAuthLink();
+      if (link && link.needsPassword) {
+        showSetPasswordForm();
+        return;
+      }
+      if (link && !link.ok && link.error === 'auth_link_invalid') {
+        lockAppForDealer();
+        const err = document.getElementById('dealer-err');
+        if (err) err.textContent = dealerLoginErrorText('auth_link_invalid');
+        return;
+      }
+    }
+    if (!window.DolapDealer.resumeAuthSession) {
       lockAppForDealer();
       return;
     }
