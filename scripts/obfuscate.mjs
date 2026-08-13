@@ -43,6 +43,7 @@ const OPTIONS = {
     'DOLAP_SUPABASE',
     'DOLAP_ASSETS',
     'DolapDealer',
+    'calculateQuote',
     'supabase',
     'jspdf',
     'jsPDF',

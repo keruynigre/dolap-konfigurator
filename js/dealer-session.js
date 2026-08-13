@@ -320,7 +320,32 @@
     }
   }
 
+  async function calculateQuote(config) {
+    config = config || {};
+    const s = loadSession();
+    const sb = getClient();
+    if (!s || !s.session_id) return { ok: false, error: 'no_session' };
+    if (!sb) return { ok: false, error: 'no_client' };
+    try {
+      const { data, error } = await sb.functions.invoke('calculate-quote', {
+        body: {
+          session_id: s.session_id,
+          modules: config.modules || [],
+          accessories: config.accessories || [],
+          sets: config.sets || [],
+          includeCatalog: !!config.includeCatalog
+        }
+      });
+      if (error) return { ok: false, error: error.message || 'fn_error' };
+      if (!data || !data.ok) return data || { ok: false, error: 'unknown' };
+      return data;
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  }
+
   global.DolapDealer = {
+    calculateQuote,
     login,
     logout,
     getSession,

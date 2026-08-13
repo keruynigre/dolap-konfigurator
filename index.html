@@ -1537,7 +1537,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=9"></script>
+<script src="js/dealer-session.js?v=10"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -1647,7 +1647,7 @@
   const MONERRA_FURNITURE = 'assets/furniture/monerra/';
   const TRAVINA_FURNITURE = 'assets/furniture/travina/';
   const CAPPADOCIA_FURNITURE = 'assets/furniture/cappadocia/';
-  const CARIO_PUF = { label: 'Cario Puf', price: 4555.79, img: WELLDORA_FURNITURE + 'puf.png' };
+  const CARIO_PUF = { label: 'Cario Puf', img: WELLDORA_FURNITURE + 'puf.png' };
   const WELLDORA_SETS = 'assets/sets/welldora/';
   const MONERRA_SETS = 'assets/sets/monerra/';
   const TRAVINA_SETS = 'assets/sets/travina/';
@@ -1659,11 +1659,6 @@
     travina: ['bohemella', 'borjen'],
     cappadocia: ['cappadocia_natura']
   };
-  function bedPrices(){
-    const o = {};
-    BED_SET_SIZES.forEach(s => { o[s] = null; });
-    return o;
-  }
 
   const MODELS_IMG = 'assets/models/';
 
@@ -1673,28 +1668,28 @@
       hero: MODELS_IMG + 'welldora.webp',
       order: ['ceviz', 'aytasi'],
       materials: {
-        ceviz:  { kind: 'image', img: ASSETS.ceviz,  crop: [228, 67, 419, 939], label: 'Rubens', tier: 'wood', price: { single: 4528.64, pair: 8036.08 }, swatch: 'linear-gradient(165deg, #9a6a3f, #5f3c22)', tone: 'on-dark', bottomTrim: true },
-        aytasi: { kind: 'image', img: ASSETS.aytasi, crop: [247, 74, 436, 925], label: 'Aytaşı', tier: 'wood', price: { single: 4534.84, pair: 7934.37 }, swatch: 'linear-gradient(165deg, #d8c3a3, #b3987a)', tone: 'on-light', bottomTrim: true },
-        ayna:   { price: { single: 6226.54, pair: 12496.43 } },
-        cam:    { price: { single: 4898.01, pair: 9258.84 } }
+        ceviz:  { kind: 'image', img: ASSETS.ceviz,  crop: [228, 67, 419, 939], label: 'Rubens', tier: 'wood', swatch: 'linear-gradient(165deg, #9a6a3f, #5f3c22)', tone: 'on-dark', bottomTrim: true },
+        aytasi: { kind: 'image', img: ASSETS.aytasi, crop: [247, 74, 436, 925], label: 'Aytaşı', tier: 'wood', swatch: 'linear-gradient(165deg, #d8c3a3, #b3987a)', tone: 'on-light', bottomTrim: true },
+        ayna:   {},
+        cam:    {}
       },
       accessories: {
-        sifonyer:     { label: 'Yüksek Şifonyer', price: 14870.94, img: WELLDORA_FURNITURE + 'sifonyer.png' },
-        komodin:      { label: 'Komodin',         price: 6894.50,  img: WELLDORA_FURNITURE + 'komodin.png' },
-        makyajMasasi: { label: 'Makyaj Masası',   price: 18728.25, img: WELLDORA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   price: 3497.11,  img: WELLDORA_FURNITURE + 'makyaj-aynasi.png' },
+        sifonyer:     { label: 'Yüksek Şifonyer', img: WELLDORA_FURNITURE + 'sifonyer.png' },
+        komodin:      { label: 'Komodin',         img: WELLDORA_FURNITURE + 'komodin.png' },
+        makyajMasasi: { label: 'Makyaj Masası',   img: WELLDORA_FURNITURE + 'makyaj-masasi.png' },
+        makyajAynasi: { label: 'Makyaj Aynası',   img: WELLDORA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
       },
       sets: {
         magnasand: {
           label: 'Magnasand Therapy',
           img: WELLDORA_SETS + 'magnasand.png',
-          prices: { '140x200': 49428.42, '150x200': 50456.69, '160x200': 52676.83, '180x200': 58270.83, '200x200': 65381.06 }
+
         },
         biosalt: {
           label: 'Biosalt',
           img: WELLDORA_SETS + 'biosalt.png',
-          prices: { '140x200': 54881.20, '150x200': 56586.46, '160x200': 59098.47, '180x200': 65135.79, '200x200': 72897.25 }
+
         }
       }
     },
@@ -1705,8 +1700,7 @@
       materials: {
         buz_gri: {
           kind: 'image', img: 'assets/doors/monerra/buz-gri.webp', crop: [247, 74, 436, 946],
-          label: 'Buz Gri', tier: 'wood', price: { single: 2110.15, pair: 3778.39 },
-          // Kaynak görselde kulp koyu gri tarafta (sağ); diğer ahşap kapaklarda kulp solda
+          label: 'Buz Gri', tier: 'wood', // Kaynak görselde kulp koyu gri tarafta (sağ); diğer ahşap kapaklarda kulp solda
           handleSide: 'right',
           swatch: 'linear-gradient(165deg, #d8d6d2, #b8b5b0)', tone: 'on-light'
         },
@@ -1714,33 +1708,31 @@
           kind: 'image', img: 'assets/doors/monerra/ayna-buzgri.webp',
           // Sol koyu bevel + sağ şeffaf kenar kırpılsın; yan yana ayna birleşsin
           crop: [256, 74, 434, 946],
-          label: 'Ayna', tier: 'ayna', price: { single: 4314.71, pair: 8023.14 },
-          swatch: 'linear-gradient(165deg, #e8e8e8, #9a9a9a)', tone: 'on-light',
+          label: 'Ayna', tier: 'ayna', swatch: 'linear-gradient(165deg, #e8e8e8, #9a9a9a)', tone: 'on-light',
           joinBleed: 1.5
         },
         cam:  {
           kind: 'glass', label: 'Cam', tier: 'cam', glassTone: 'gray',
-          price: { single: 5729.37, pair: 10807.72 },
           swatch: 'linear-gradient(150deg, rgba(170,176,184,.55), rgba(120,128,138,.25))', tone: 'on-dark'
         }
       },
       accessories: {
-        sifonyer:     { label: 'Yüksek Şifonyer', price: 11516.75, img: MONERRA_FURNITURE + 'sifonyer.png' },
-        komodin:      { label: 'Komodin',         price: 5486.40,  img: MONERRA_FURNITURE + 'komodin.png' },
-        makyajMasasi: { label: 'Makyaj Masası',   price: 16242.26, img: MONERRA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   price: 3881.78,  img: MONERRA_FURNITURE + 'makyaj-aynasi.png' },
+        sifonyer:     { label: 'Yüksek Şifonyer', img: MONERRA_FURNITURE + 'sifonyer.png' },
+        komodin:      { label: 'Komodin',         img: MONERRA_FURNITURE + 'komodin.png' },
+        makyajMasasi: { label: 'Makyaj Masası',   img: MONERRA_FURNITURE + 'makyaj-masasi.png' },
+        makyajAynasi: { label: 'Makyaj Aynası',   img: MONERRA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
       },
       sets: {
         climextra: {
           label: 'Climextra',
           img: MONERRA_SETS + 'climextra.png',
-          prices: { '140x200': 43765.03, '150x200': 44448.75, '160x200': 46501.75, '180x200': 52324.54, '200x200': 58584.89 }
+
         },
         blacksand: {
           label: 'Blacksand',
           img: MONERRA_SETS + 'blacksand.png',
-          prices: { '140x200': 51787.51, '150x200': 52392.48, '160x200': 54730.45, '180x200': 60885.98, '200x200': 68072.64 }
+
         }
       }
     },
@@ -1751,36 +1743,34 @@
       materials: {
         travent_almond: {
           kind: 'image', img: 'assets/doors/travina/travent-almond.webp', crop: [247, 74, 436, 931],
-          label: 'Travent-Almond', tier: 'wood', price: { single: 2475.36, pair: 4679.02 },
-          // Alt traverten bandı ~%33; crop altı boş şeffaf kesilmesin diye 931
+          label: 'Travent-Almond', tier: 'wood', // Alt traverten bandı ~%33; crop altı boş şeffaf kesilmesin diye 931
           // Plint görünümü için cam/ayna ile aynı alt trim
           bottomTrim: true,
           swatch: 'linear-gradient(180deg, #ebe6dc 0%, #ebe6dc 66%, #b8956e 66%, #8f6d4a 100%)', tone: 'on-light'
         },
         ayna: {
           kind: 'image', img: 'assets/doors/travina/ayna-aytasi.webp', crop: [247, 74, 436, 946],
-          label: 'Ayna', tier: 'ayna', price: { single: 4680.60, pair: 8309.09 },
-          swatch: 'linear-gradient(165deg, #c4b0a0, #8a7368)', tone: 'on-light'
+          label: 'Ayna', tier: 'ayna', swatch: 'linear-gradient(165deg, #c4b0a0, #8a7368)', tone: 'on-light'
         },
-        cam:  { price: { single: 4953.39, pair: 9258.84 } }
+        cam:  {}
       },
       accessories: {
-        sifonyer:     { label: 'Yüksek Şifonyer', price: 11872.47, img: TRAVINA_FURNITURE + 'sifonyer.png' },
-        komodin:      { label: 'Komodin',         price: 5486.40,  img: TRAVINA_FURNITURE + 'komodin.png' },
-        makyajMasasi: { label: 'Makyaj Masası',   price: 15758.30, img: TRAVINA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   price: 3228.23,  img: TRAVINA_FURNITURE + 'makyaj-aynasi.png' },
+        sifonyer:     { label: 'Yüksek Şifonyer', img: TRAVINA_FURNITURE + 'sifonyer.png' },
+        komodin:      { label: 'Komodin',         img: TRAVINA_FURNITURE + 'komodin.png' },
+        makyajMasasi: { label: 'Makyaj Masası',   img: TRAVINA_FURNITURE + 'makyaj-masasi.png' },
+        makyajAynasi: { label: 'Makyaj Aynası',   img: TRAVINA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
       },
       sets: {
         bohemella: {
           label: 'Bohemella',
           img: TRAVINA_SETS + 'bohemella.png',
-          prices: { '140x200': 44667.18, '150x200': 45179.27, '160x200': 46570.24, '180x200': 51035.73, '200x200': 57966.25 }
+
         },
         borjen: {
           label: 'Borjen',
           img: TRAVINA_SETS + 'borjen.png',
-          prices: { '140x200': 51583.69, '150x200': 52172.76, '160x200': 54484.18, '180x200': 60698.38, '200x200': 68057.52 }
+
         }
       }
     },
@@ -1791,45 +1781,33 @@
       materials: {
         aytasi: {
           kind: 'image', img: 'assets/doors/cappadocia/aytasi.webp', crop: [247, 74, 436, 946],
-          label: 'Aytaşı', tier: 'wood', price: { single: 6756.09, pair: 12872.13 },
-          swatch: 'linear-gradient(165deg, #f2efe8, #d9d4cb)', tone: 'on-light'
+          label: 'Aytaşı', tier: 'wood', swatch: 'linear-gradient(165deg, #f2efe8, #d9d4cb)', tone: 'on-light'
         },
         ayna: {
           kind: 'image', img: 'assets/doors/cappadocia/ayna-aytasi.webp', crop: [247, 74, 436, 946],
-          label: 'Ayna', tier: 'ayna', price: { single: 4680.60, pair: 8309.09 },
-          swatch: 'linear-gradient(165deg, #c4b0a0, #8a7368)', tone: 'on-light'
+          label: 'Ayna', tier: 'ayna', swatch: 'linear-gradient(165deg, #c4b0a0, #8a7368)', tone: 'on-light'
         },
-        cam:  { price: { single: 4898.01, pair: 9258.84 } }
+        cam:  {}
       },
       accessories: {
-        sifonyer3:    { label: '3\'lü Şifonyer',  price: 13268.87, img: CAPPADOCIA_FURNITURE + 'sifonyer-3.png' },
-        sifonyer4:    { label: '4\'lü Şifonyer',  price: 13268.87, img: CAPPADOCIA_FURNITURE + 'sifonyer-4.png' },
-        komodin:      { label: 'Komodin',         price: 5486.40,  img: CAPPADOCIA_FURNITURE + 'komodin.png' },
-        makyajMasasi: { label: 'Makyaj Masası',   price: 7409.45,  img: CAPPADOCIA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Ayna',            price: 4569.27,  img: CAPPADOCIA_FURNITURE + 'makyaj-aynasi.png' },
+        sifonyer3:    { label: '3\'lü Şifonyer',  img: CAPPADOCIA_FURNITURE + 'sifonyer-3.png' },
+        sifonyer4:    { label: '4\'lü Şifonyer',  img: CAPPADOCIA_FURNITURE + 'sifonyer-4.png' },
+        komodin:      { label: 'Komodin',         img: CAPPADOCIA_FURNITURE + 'komodin.png' },
+        makyajMasasi: { label: 'Makyaj Masası',   img: CAPPADOCIA_FURNITURE + 'makyaj-masasi.png' },
+        makyajAynasi: { label: 'Ayna',            img: CAPPADOCIA_FURNITURE + 'makyaj-aynasi.png' },
         puf:          { ...CARIO_PUF }
       },
       sets: {
         cappadocia_natura: {
           label: 'Cappadocia Natura',
           img: CAPPADOCIA_SETS + 'cappadocia-natura.png',
-          prices: { '140x200': 54030.82, '150x200': 54658.44, '160x200': 57148.65, '180x200': 63608.63, '200x200': 71203.49 }
+
         }
       }
     }
   };
   const DOOR_SERIES_ORDER = ['welldora', 'monerra', 'travina', 'cappadocia'];
 
-  // Ortak gövde / çekmece / varsayılan kapak tier fiyatları (03.04.2026)
-  const PRICING = {
-    bodies: { '1door': 9861.81, '2door': 13296.59, '3door': 21458.28, 'corner': 19881.83 },
-    drawerAddon: 8666.62,
-    doors: {
-      wood: { single: 4534.84, pair: 7934.37 },
-      ayna: { single: 6226.54, pair: 12496.43 },
-      cam:  { single: 4898.01, pair: 9258.84 }
-    }
-  };
   const priceFmt = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 2, maximumFractionDigits: 2 });
   /** Kapak altı: gövde plintinin görünmesi (cam / ayna / traverten). */
   const DOOR_BOTTOM_TRIM = 0.0182;
@@ -1854,9 +1832,11 @@
   function getBedSet(seriesId, key){
     return DOOR_SERIES[seriesId]?.sets?.[key] || null;
   }
-  function getBedSetUnitPrice(set, size){
-    if (!set?.prices) return null;
-    const v = set.prices[size];
+  function getBedSetUnitPrice(seriesId, key, size){
+    const cat = remoteQuote.catalog && remoteQuote.catalog.sets;
+    const row = cat && cat[seriesId + ':' + key];
+    if (!row) return null;
+    const v = row[size];
     return (v == null || Number.isNaN(Number(v))) ? null : Number(v);
   }
   function parseDoorRef(ref){
@@ -1913,6 +1893,14 @@
   /** Yatak seti seçimleri: ref -> { size, qty } */
   let selectedSets = new Map();
   const SET_QTY_MAX = 10;
+  let remoteQuote = {
+    pricing: { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 },
+    lineItems: [],
+    catalog: { accessories: {}, sets: {} },
+    catalogLoaded: false
+  };
+  let remoteQuoteSeq = 0;
+  let remoteQuoteTimer = null;
   const els = new Map();
 
   function getSelectedSet(ref){
@@ -1957,7 +1945,7 @@
       out.push({
         ref, seriesId: p.seriesId, seriesLabel: series.label, key: p.finishId,
         label: set.label, size: entry.size, qty: entry.qty,
-        price: getBedSetUnitPrice(set, entry.size), img: set.img
+        price: getBedSetUnitPrice(p.seriesId, p.finishId, entry.size), img: set.img
       });
     });
     return out;
@@ -2062,87 +2050,7 @@
   }
 
   function buildQuoteLineItems(){
-    const lines = [];
-    const bodyCounts = {};
-    let drawerQty = 0;
-
-    modules.forEach(mod => {
-      bodyCounts[mod.type] = (bodyCounts[mod.type] || 0) + 1;
-      if (mod.drawer) drawerQty += 1;
-    });
-
-    ['1door', '2door', '3door', 'corner'].forEach(type => {
-      const qty = bodyCounts[type] || 0;
-      if (!qty) return;
-      const unit = PRICING.bodies[type] || 0;
-      lines.push({
-        label: BODIES[type].label,
-        qty,
-        unitPrice: unit,
-        lineTotal: unit * qty
-      });
-    });
-
-    if (drawerQty) {
-      const unit = PRICING.drawerAddon || 0;
-      lines.push({
-        label: 'Çekmece Modülü',
-        qty: drawerQty,
-        unitPrice: unit,
-        lineTotal: unit * drawerQty
-      });
-    }
-
-    const doorGroups = {};
-    modules.forEach(mod => {
-      mod.doors.forEach(d => {
-        if (!d.material) return;
-        const key = getDoorPriceGroupKey(d.material);
-        const tier = getDoorTier(d.material);
-        if (!key || !tier) return;
-        if (!doorGroups[key]) {
-          const p = parseDoorRef(d.material);
-          const seriesLabel = p ? (getDoorSeriesMeta(p.seriesId)?.label || '') : '';
-          const matLabel = doorLabel(d.material) || 'Kapak';
-          doorGroups[key] = {
-            label: (seriesLabel ? seriesLabel + ' · ' : '') + matLabel,
-            qty: 0,
-            tier
-          };
-        }
-        doorGroups[key].qty += 1;
-      });
-    });
-    Object.keys(doorGroups).forEach(k => {
-      const g = doorGroups[k];
-      lines.push({
-        label: g.label + ' Kapak',
-        qty: g.qty,
-        unitPrice: g.tier.single,
-        lineTotal: priceByPairRule(g.qty, g.tier.single, g.tier.pair)
-      });
-    });
-
-    listSelectedAccessories().forEach(a => {
-      lines.push({
-        label: a.seriesLabel + ' · ' + a.label,
-        qty: a.qty,
-        unitPrice: a.price,
-        lineTotal: a.price * a.qty
-      });
-    });
-
-    listSelectedSets().forEach(s => {
-      const unit = s.price == null ? 0 : s.price;
-      lines.push({
-        label: s.seriesLabel + ' · ' + s.label + ' Set · ' + s.size,
-        qty: s.qty,
-        unitPrice: unit,
-        lineTotal: unit * s.qty
-      });
-    });
-
-    return lines;
+    return (remoteQuote.lineItems || []).slice();
   }
 
   function buildQuoteSummaryHtml(){
@@ -2185,7 +2093,9 @@
         seriesLabel: series.label,
         key: p.finishId,
         label: acc.label,
-        price: acc.price,
+        price: (remoteQuote.catalog.accessories && remoteQuote.catalog.accessories[ref] != null)
+          ? Number(remoteQuote.catalog.accessories[ref])
+          : (acc.price || 0),
         qty,
         img: acc.img
       });
@@ -2597,9 +2507,10 @@
     downloadBlobFile(blob, filename);
   }
 
-  function openQuoteModal(){
+  async function openQuoteModal(){
     if (!isQuoteReady()) return;
     closeQuotePreview();
+    await refreshRemotePricing();
     lastQuotePayload = buildQuotePayload();
     quoteSummary.innerHTML = buildQuoteSummaryHtml();
     quoteFormWrap.classList.remove('hidden');
@@ -2735,6 +2646,7 @@
     e.preventDefault();
     setQuoteError('');
     if (!quoteForm.reportValidity()) return;
+    await refreshRemotePricing({ includeCatalog: true });
     const payload = buildQuotePayload();
     lastQuotePayload = payload;
     rememberSalesRep(payload.salesRep);
@@ -2794,8 +2706,7 @@
   }
 
   function updatePricingDisplay(){
-    const p = calculatePricing();
-    priceTotalEl.textContent = priceFmt.format(p.total);
+    scheduleRemotePricing();
     updateQuoteButton();
     updateIsoButton();
   }
@@ -4387,66 +4298,60 @@
     }
   }
 
-  function priceByPairRule(count, single, pair){
-    const pairs = Math.floor(count / 2);
-    const odd = count % 2;
-    return pairs * pair + odd * single;
-  }
-
-  function calculateDoorPricing(){
-    const counts = {};
-    const tiers = {};
-    modules.forEach(mod => {
-      mod.doors.forEach(d => {
-        if (!d.material) return;
-        const key = getDoorPriceGroupKey(d.material);
-        const tier = getDoorTier(d.material);
-        if (!key || !tier) return;
-        counts[key] = (counts[key] || 0) + 1;
-        tiers[key] = tier;
-      });
-    });
-    let total = 0;
-    Object.keys(counts).forEach(k => {
-      total += priceByPairRule(counts[k], tiers[k].single, tiers[k].pair);
-    });
-    return total;
-  }
-
-  /** Finish'e özel fiyat varsa onu, yoksa tier (wood/ayna/cam) fiyatını kullan. */
-  function getDoorTier(ref){
-    const mat = getDoorMaterial(ref);
-    if (!mat) return null;
-    if (mat.price) return mat.price;
-    return mat.tier ? PRICING.doors[mat.tier] : null;
-  }
-
-  function getDoorPriceGroupKey(ref){
-    const mat = getDoorMaterial(ref);
-    if (!mat) return null;
-    // Özel fiyatlı kapaklar yalnızca kendi cinsleriyle çiftlenir
-    if (mat.price) return 'finish:' + ref;
-    return mat.tier ? 'tier:' + mat.tier : null;
-  }
-
-  function calculateAccessoryPricing(){
-    return listSelectedAccessories().reduce((sum, a) => sum + (a.price || 0) * (a.qty || 0), 0);
-  }
-
-  function calculateSetPricing(){
-    return listSelectedSets().reduce((sum, s) => sum + ((s.price == null ? 0 : s.price) * (s.qty || 0)), 0);
-  }
-
   function calculatePricing(){
-    let body = 0, drawer = 0;
-    modules.forEach(mod => {
-      body += PRICING.bodies[mod.type] || 0;
-      if (mod.drawer) drawer += PRICING.drawerAddon;
-    });
-    const doors = calculateDoorPricing();
-    const accessories = calculateAccessoryPricing();
-    const sets = calculateSetPricing();
-    return { body, doors, drawer, accessories, sets, total: body + doors + drawer + accessories + sets };
+    return remoteQuote.pricing || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 };
+  }
+
+  function getQuoteConfig(){
+    return {
+      modules: modules.map(mod => ({
+        type: mod.type,
+        drawer: !!mod.drawer,
+        doors: (mod.doors || []).map(d => d.material || null)
+      })),
+      accessories: listSelectedAccessories().map(a => ({ ref: a.ref, qty: a.qty })),
+      sets: listSelectedSets().map(s => ({
+        seriesId: s.seriesId,
+        key: s.key,
+        size: s.size,
+        qty: s.qty
+      }))
+    };
+  }
+
+  async function refreshRemotePricing(opts){
+    opts = opts || {};
+    if (!window.DolapDealer || !window.DolapDealer.calculateQuote) return null;
+    const seq = ++remoteQuoteSeq;
+    try {
+      const res = await window.DolapDealer.calculateQuote({
+        ...getQuoteConfig(),
+        includeCatalog: opts.includeCatalog || !remoteQuote.catalogLoaded
+      });
+      if (seq !== remoteQuoteSeq) return remoteQuote;
+      if (!res || !res.ok) return null;
+      remoteQuote.pricing = res.pricing || remoteQuote.pricing;
+      remoteQuote.lineItems = res.lineItems || [];
+      if (res.catalog) {
+        remoteQuote.catalog = res.catalog;
+        remoteQuote.catalogLoaded = true;
+        const setsEl = document.getElementById('sets-modal');
+        const accEl = document.getElementById('acc-modal');
+        if (setsEl && setsEl.classList.contains('open')) renderSetPalette();
+        if (accEl && accEl.classList.contains('open')) renderAccessoryPalette();
+      }
+      if (priceTotalEl) priceTotalEl.textContent = priceFmt.format(remoteQuote.pricing.total || 0);
+      updateQuoteButton();
+      return remoteQuote;
+    } catch (e) {
+      console.warn('Fiyat hesabı alınamadı', e);
+      return null;
+    }
+  }
+
+  function scheduleRemotePricing(){
+    clearTimeout(remoteQuoteTimer);
+    remoteQuoteTimer = setTimeout(() => { refreshRemotePricing(); }, 220);
   }
 
   function bindDoorSlot(slot, modId, doorIdx){
@@ -5361,7 +5266,7 @@
       const selected = !!(sel && sel.qty > 0);
       const size = selected ? sel.size : (setPickerSize[ref] || BED_SET_SIZES[2] || BED_SET_SIZES[0]);
       setPickerSize[ref] = size;
-      const unit = getBedSetUnitPrice(set, size);
+      const unit = getBedSetUnitPrice(activeDoorSeries, key, size);
       const priceLine = unit == null ? '<span class="set-price-pending">Fiyat yakında</span>' : priceFmt.format(unit);
       const sizesHtml = BED_SET_SIZES.map(sz =>
         '<button type="button" class="set-size-btn' + (size === sz ? ' active' : '') + '" data-size="' + sz + '">' + sz + '</button>'
@@ -5447,9 +5352,12 @@
       const qty = getAccessoryQty(ref);
       const selected = qty > 0;
       const mediaStyle = acc.img ? 'background-image:url(\'' + assetUrl(acc.img) + '\')' : '';
-      const priceLine = selected && qty > 1
-        ? priceFmt.format(acc.price) + ' · ' + qty + ' adet'
-        : priceFmt.format(acc.price);
+      const accPrice = remoteQuote.catalog.accessories && remoteQuote.catalog.accessories[ref];
+      const priceLine = accPrice == null
+        ? '<span class="set-price-pending">Fiyat yükleniyor</span>'
+        : (selected && qty > 1
+          ? priceFmt.format(accPrice) + ' · ' + qty + ' adet'
+          : priceFmt.format(accPrice));
       return '<article class="set-card' + (selected ? ' selected' : '') + '" data-acc="' + ref + '">' +
         '<span class="set-card-check" aria-hidden="true">✓</span>' +
         '<div class="set-card-media contain" style="' + mediaStyle + '">' +
@@ -5588,39 +5496,7 @@
   syncThemeToggle();
 
   async function applyRemotePrices(){
-    try {
-      const sb = window.DolapDealer && window.DolapDealer.getClient && window.DolapDealer.getClient();
-      if (!sb) return;
-      const { data: list } = await sb.from('price_lists').select('id, version').eq('active', true).maybeSingle();
-      if (!list) return;
-      const { data: items } = await sb.from('price_items').select('*').eq('price_list_id', list.id);
-      if (!items || !items.length) return;
-      items.forEach(it => {
-        if (it.item_type === 'body' && it.body_type) {
-          if (it.body_type === 'drawerAddon' && it.price != null) PRICING.drawerAddon = Number(it.price);
-          else if (it.price != null) PRICING.bodies[it.body_type] = Number(it.price);
-        } else if (it.item_type === 'door' && it.series_id && it.finish_id) {
-          const series = DOOR_SERIES[it.series_id];
-          if (!series) return;
-          const price = {
-            single: it.price_single != null ? Number(it.price_single) : undefined,
-            pair: it.price_pair != null ? Number(it.price_pair) : undefined
-          };
-          if (!series.materials[it.finish_id]) series.materials[it.finish_id] = {};
-          const cur = series.materials[it.finish_id].price || {};
-          series.materials[it.finish_id].price = {
-            single: price.single != null ? price.single : cur.single,
-            pair: price.pair != null ? price.pair : cur.pair
-          };
-        } else if (it.item_type === 'accessory' && it.series_id && it.accessory_key) {
-          const acc = DOOR_SERIES[it.series_id] && DOOR_SERIES[it.series_id].accessories[it.accessory_key];
-          if (acc && it.price != null) acc.price = Number(it.price);
-        }
-      });
-      updatePricingDisplay();
-    } catch (e) {
-      console.warn('Uzaktan fiyat yüklenemedi', e);
-    }
+    await refreshRemotePricing({ includeCatalog: true });
   }
 
   function unlockAppForDealer(session){

@@ -1,0 +1,5 @@
+[functions.send-quote-email]
+verify_jwt = false
+
+[functions.calculate-quote]
+verify_jwt = false
