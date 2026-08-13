@@ -1414,15 +1414,11 @@
           <textarea id="quote-note" name="note" placeholder="Teslimat, ölçü veya özel istekleriniz"></textarea>
         </div>
         <div class="quote-field">
-          <label>Gönderim kanalı <span style="color:var(--ink-dim); font-weight:400">(en az biri)</span></label>
+          <label>Gönderim kanalı</label>
           <div class="quote-channels" role="group" aria-label="Gönderim kanalı">
             <label class="quote-channel">
               <input type="checkbox" id="quote-channel-whatsapp" name="channel_whatsapp">
               WhatsApp
-            </label>
-            <label class="quote-channel">
-              <input type="checkbox" id="quote-channel-email" name="channel_email">
-              E-posta
             </label>
           </div>
         </div>
@@ -1449,7 +1445,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="js/supabase-config.js?v=3"></script>
 <script src="js/dealer-session.js?v=8"></script>
 <script>
@@ -2069,7 +2064,7 @@
         : 'Toplam ölçü: ' + t.total + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm');
 
     return listHtml +
-      '<div class="q-total">' + dimLine + '<br>Tahmini tutar: ' +
+      '<div class="q-total">' + dimLine + '<br>Toplam: ' +
       priceFmt.format(p.total) + '</div>';
   }
 
@@ -2334,9 +2329,9 @@
           '<tr><td>Kapak</td><td class="num">' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</td></tr>' +
           '<tr><td>Çekmece</td><td class="num">' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</td></tr>' +
           '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
-          '<tr class="grand"><td>Tahmini Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
+          '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
         '</tbody></table>' +
-        '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur. Fiyatlar tahmini olup sipariş öncesi teyit edilir.</p>' +
+        '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
       '</div>'
     );
   }
@@ -2480,9 +2475,7 @@
     setQuoteError('');
     quoteForm.reset();
     const wa = document.getElementById('quote-channel-whatsapp');
-    const em = document.getElementById('quote-channel-email');
     if (wa) wa.checked = false;
-    if (em) em.checked = false;
     syncQuoteSubmitEnabled();
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
@@ -2526,15 +2519,14 @@
   function readQuoteChannels(){
     return {
       whatsapp: !!document.getElementById('quote-channel-whatsapp')?.checked,
-      email: !!document.getElementById('quote-channel-email')?.checked
+      email: false
     };
   }
 
   function syncQuoteSubmitEnabled(){
     const submitBtn = document.getElementById('quote-submit');
     if (!submitBtn || submitBtn.dataset.sending === '1') return;
-    const channels = readQuoteChannels();
-    submitBtn.disabled = !(channels.whatsapp || channels.email);
+    submitBtn.disabled = !readQuoteChannels().whatsapp;
   }
 
   function phoneToWhatsAppNumber(phone){
@@ -2543,36 +2535,6 @@
     if (digits.startsWith('0') && digits.length === 11) digits = '90' + digits.slice(1);
     if (digits.length === 10 && digits.startsWith('5')) digits = '90' + digits;
     return digits;
-  }
-
-  function buildQuoteEmailSubject(payload){
-    const name = String((payload && payload.customer && payload.customer.name) || '').trim();
-    return name ? ('Bambi dolap teklifi — ' + name) : 'Bambi dolap teklifi';
-  }
-
-  function requestGmailAccessToken(){
-    const clientId = window.DOLAP_SUPABASE && window.DOLAP_SUPABASE.googleClientId;
-    const gis = window.google && window.google.accounts && window.google.accounts.oauth2;
-    if (!clientId || !gis || typeof gis.initTokenClient !== 'function') return Promise.resolve(null);
-    return new Promise((resolve) => {
-      let done = false;
-      const finish = (token) => {
-        if (done) return;
-        done = true;
-        resolve(token || null);
-      };
-      try {
-        const client = gis.initTokenClient({
-          client_id: clientId,
-          scope: 'https://www.googleapis.com/auth/gmail.send',
-          callback: (resp) => finish(resp && resp.access_token),
-          error_callback: () => finish(null)
-        });
-        client.requestAccessToken({ prompt: '' });
-      } catch (_) {
-        finish(null);
-      }
-    });
   }
 
   function openQuoteChannelApps(payload, channels, pdfUrl){
@@ -2598,81 +2560,38 @@
     return window.DolapDealer.uploadQuotePdf(blob, filename);
   }
 
-  function blobToBase64(blob){
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const s = String(reader.result || '');
-        const i = s.indexOf(',');
-        resolve(i >= 0 ? s.slice(i + 1) : s);
-      };
-      reader.onerror = () => reject(reader.error || new Error('pdf_read_failed'));
-      reader.readAsDataURL(blob);
-    });
-  }
-
   async function sendQuotePdfToCustomer(payload, channels){
     const { blob, filename } = await createQuotePdfBlob(payload);
+    if (!channels.whatsapp) return { shared: false, whatsapp: false, email: false };
 
-    if (channels.email) {
-      const to = String((payload.customer && payload.customer.email) || '').trim();
-      const subject = buildQuoteEmailSubject(payload);
-      const pdfBase64 = await blobToBase64(blob);
-      const mailed = window.DolapDealer && window.DolapDealer.sendQuoteEmail
-        ? await window.DolapDealer.sendQuoteEmail({
-            to,
-            subject,
-            filename,
-            pdfBase64
-          })
-        : { ok: false, error: 'stale_client' };
-      if (!mailed || !mailed.ok) {
-        throw new Error((mailed && mailed.error) || 'mail_send_failed');
-      }
-    }
-
-    if (channels.whatsapp && !channels.email) {
-      const file = new File([blob], filename, { type: 'application/pdf' });
-      const shareData = { files: [file], title: filename };
-      if (navigator.canShare && navigator.canShare(shareData)) {
-        try {
-          await navigator.share(shareData);
-          return { shared: true, whatsapp: true, email: false };
-        } catch (err) {
-          if (err && err.name === 'AbortError') {
-            return { shared: false, aborted: true, whatsapp: false, email: false };
-          }
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    const shareData = { files: [file], title: filename };
+    if (navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return { shared: true, whatsapp: true, email: false };
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          return { shared: false, aborted: true, whatsapp: false, email: false };
         }
       }
     }
 
-    if (channels.whatsapp) {
-      const up = await uploadQuotePdfForShare(blob, filename);
-      const pdfUrl = up && up.ok ? up.url : '';
-      const opened = openQuoteChannelApps(payload, { whatsapp: true, email: false }, pdfUrl);
-      return { shared: false, uploaded: !!pdfUrl, emailed: !!channels.email, url: pdfUrl || null, ...opened };
-    }
-
-    return { shared: false, uploaded: false, emailed: !!channels.email, url: null, whatsapp: false, email: !!channels.email };
+    const up = await uploadQuotePdfForShare(blob, filename);
+    const pdfUrl = up && up.ok ? up.url : '';
+    const opened = openQuoteChannelApps(payload, { whatsapp: true, email: false }, pdfUrl);
+    return { shared: false, uploaded: !!pdfUrl, emailed: false, url: pdfUrl || null, ...opened };
   }
 
   function renderQuoteSuccessShare(channels){
     const share = document.getElementById('quote-success-share');
     if (!share) return;
     const payload = lastQuotePayload;
-    let html = '';
-    if (channels.whatsapp) {
-      html += '<button type="button" class="quote-pdf" id="quote-share-wa" style="flex:1">WhatsApp</button>';
-    }
-    if (channels.email) {
-      html += '<button type="button" class="quote-pdf" id="quote-share-mail" style="flex:1">E-posta</button>';
-    }
-    share.innerHTML = html;
+    share.innerHTML = channels.whatsapp
+      ? '<button type="button" class="quote-pdf" id="quote-share-wa" style="flex:1">WhatsApp</button>'
+      : '';
     document.getElementById('quote-share-wa')?.addEventListener('click', () => {
       sendQuotePdfToCustomer(payload, { whatsapp: true, email: false });
-    });
-    document.getElementById('quote-share-mail')?.addEventListener('click', () => {
-      sendQuotePdfToCustomer(payload, { whatsapp: false, email: true });
     });
   }
 
@@ -2681,8 +2600,8 @@
     setQuoteError('');
     if (!quoteForm.reportValidity()) return;
     const channels = readQuoteChannels();
-    if (!channels.whatsapp && !channels.email) {
-      setQuoteError('WhatsApp veya e-posta kanallarından en az birini seçin.');
+    if (!channels.whatsapp) {
+      setQuoteError('WhatsApp kanalını seçin.');
       return;
     }
     const payload = buildQuotePayload();
@@ -2730,11 +2649,7 @@
         await sendQuotePdfToCustomer(payload, channels);
       } catch (pdfErr) {
         console.error('PDF gönderimi hata', pdfErr);
-        setQuoteError(
-          String(pdfErr && pdfErr.message || '').indexOf('pdf_') === 0
-            ? 'PDF oluşturulamadı. Tekrar deneyin.'
-            : 'E-posta gönderilemedi. Tekrar deneyin.'
-        );
+        setQuoteError('PDF oluşturulamadı. Tekrar deneyin.');
         return;
       }
       quoteFormWrap.classList.add('hidden');
@@ -5483,7 +5398,6 @@
   quotePdfSuccessBtn.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
   quoteForm.addEventListener('submit', submitQuote);
   document.getElementById('quote-channel-whatsapp')?.addEventListener('change', syncQuoteSubmitEnabled);
-  document.getElementById('quote-channel-email')?.addEventListener('change', syncQuoteSubmitEnabled);
   syncQuoteSubmitEnabled();
   document.getElementById('quote-phone').addEventListener('input', onQuotePhoneInput);
   document.getElementById('quote-phone').addEventListener('blur', onQuotePhoneInput);
