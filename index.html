@@ -497,6 +497,7 @@
     display: block; margin-bottom: 5px; font-size: 11px; letter-spacing: 0.06em;
     text-transform: uppercase; color: var(--ink-dim); font-family: 'Space Grotesk', sans-serif;
   }
+  .quote-field .req { color: #c98b7c; margin-left: 2px; font-weight: 700; }
   .quote-field input, .quote-field textarea {
     width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius);
     color: var(--ink); padding: 10px 12px; font-size: 13.5px; font-family: inherit;
@@ -1474,11 +1475,11 @@
       <div class="quote-summary-box" id="quote-summary"></div>
       <form id="quote-form">
         <div class="quote-field">
-          <label for="quote-name">Ad Soyad</label>
+          <label for="quote-name">Ad Soyad <span class="req" aria-hidden="true">*</span></label>
           <input id="quote-name" name="name" type="text" required autocomplete="name" placeholder="Adınız Soyadınız">
         </div>
         <div class="quote-field">
-          <label for="quote-phone">Telefon</label>
+          <label for="quote-phone">Telefon <span class="req" aria-hidden="true">*</span></label>
           <input id="quote-phone" name="phone" type="tel" required autocomplete="tel"
             inputmode="numeric" maxlength="14" placeholder="05xx xxx xx xx"
             pattern="05\d{2} \d{3} \d{2} \d{2}"
@@ -1486,15 +1487,15 @@
         </div>
         <div class="quote-field">
           <label for="quote-email">E-posta</label>
-          <input id="quote-email" name="email" type="email" required autocomplete="email" placeholder="ornek@mail.com">
+          <input id="quote-email" name="email" type="email" autocomplete="email" placeholder="ornek@mail.com">
         </div>
         <div class="quote-field">
-          <label for="quote-note">Not (isteğe bağlı)</label>
+          <label for="quote-note">Not</label>
           <textarea id="quote-note" name="note" placeholder="Teslimat, ölçü veya özel istekleriniz"></textarea>
         </div>
         <div class="quote-field">
           <label for="quote-sales-rep">Satış temsilcisi</label>
-          <input id="quote-sales-rep" name="sales_rep" type="text" required autocomplete="name" placeholder="Ad Soyad">
+          <input id="quote-sales-rep" name="sales_rep" type="text" autocomplete="name" placeholder="Ad Soyad">
         </div>
         <div class="quote-error" id="quote-error" role="alert"></div>
         <div class="quote-actions">
@@ -2662,7 +2663,7 @@
       return 'Mağaza oturumu bulunamadı. Sayfayı yenileyip mağaza koduyla tekrar giriş yapın.';
     }
     if (c === 'missing_customer') {
-      return 'Ad, telefon ve e-posta zorunludur.';
+      return 'Ad ve telefon zorunludur.';
     }
     if (c === 'no_client' || c === 'supabase_unavailable') {
       return 'Bağlantı kurulamadı. İnternetinizi kontrol edip tekrar deneyin.';
