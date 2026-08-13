@@ -277,8 +277,27 @@
   async function sendQuoteEmail(opts) {
     opts = opts || {};
     const s = loadSession();
-    const sb = getClient();
     if (!s || !s.session_id) return { ok: false, error: 'no_session' };
+    const payload = {
+      session_id: s.session_id,
+      to: opts.to,
+      subject: opts.subject,
+      filename: opts.filename,
+      path: opts.path
+    };
+    try {
+      const res = await fetch('/api/send-quote-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => null);
+      if (data && data.ok) return data;
+      if (data && data.error) return { ok: false, error: data.error };
+    } catch (e) {
+      console.error('send-quote-email api', e);
+    }
+    const sb = getClient();
     if (!sb) return { ok: false, error: 'no_client' };
     try {
       const { data, error } = await sb.functions.invoke('send-quote-email', {
@@ -291,12 +310,9 @@
           gmail_access_token: opts.gmailAccessToken || null
         }
       });
-      if (error) {
-        console.error('send-quote-email', error);
-        return { ok: false, error: error.message || 'rpc_error' };
-      }
-      if (!data || !data.ok) return data || { ok: false, error: 'unknown' };
-      return data;
+      if (data && data.ok) return data;
+      const errCode = (data && data.error) || (error && error.message) || 'rpc_error';
+      return { ok: false, error: errCode };
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
     }
