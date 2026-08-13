@@ -56,6 +56,12 @@
     background: transparent; color: var(--ink-dim); border: 1px solid var(--line);
   }
   .btn-ghost:hover { border-color: var(--brass); color: var(--brass); }
+  .btn-danger {
+    background: transparent; color: var(--danger); border: 1px solid rgba(201,139,124,.45);
+    padding: 6px 10px; width: auto; font-size: 11px;
+  }
+  .btn-danger:hover { border-color: var(--danger); background: rgba(201,139,124,.12); }
+  .btn-danger:disabled { opacity: 0.55; cursor: wait; }
   .err { color: var(--danger); font-size: 12px; min-height: 18px; margin: 0 0 8px; }
 
   #app-view { display: none; min-height: 100vh; }
@@ -442,6 +448,7 @@
                 <th class="sortable num" data-sort="total_price" title="Sırala">Tutar<span class="sort-ind"></span></th>
                 <th class="sortable" data-sort="sale_ref" title="Sırala">Sipariş<span class="sort-ind"></span></th>
                 <th class="sortable" data-sort="customer_note" title="Sırala">Not<span class="sort-ind"></span></th>
+                <th></th>
               </tr>
             </thead>
             <tbody id="leads-rows"></tbody>
@@ -1190,7 +1197,7 @@
     if (error || !data || !data.ok) {
       console.error(error || data);
       document.getElementById('leads-rows').innerHTML =
-        '<tr><td colspan="10" class="muted">Teklifler yüklenemedi</td></tr>';
+        '<tr><td colspan="11" class="muted">Teklifler yüklenemedi</td></tr>';
       return;
     }
     const sum = data.summary || {};
@@ -1303,11 +1310,11 @@
     const rows = sortRows(filtered, tableSort.leads, leadSortValue);
     const body = document.getElementById('leads-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="10" class="muted">Bu aralıkta teklif yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="11" class="muted">Bu aralıkta teklif yok</td></tr>';
       return;
     }
     body.innerHTML = rows.map(l =>
-      '<tr>' +
+      '<tr data-lead-id="' + escapeHtml(l.id) + '">' +
         '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
         '<td>' + escapeHtml(outcomeLabel(l.outcome)) + '</td>' +
         '<td>' + escapeHtml(l.customer_name) + '</td>' +
@@ -1318,9 +1325,38 @@
         '<td class="num">' + escapeHtml(fmtMoney(l.total_price)) + '</td>' +
         '<td>' + escapeHtml(l.sale_ref || '—') + '</td>' +
         '<td>' + escapeHtml(l.customer_note || '—') + '</td>' +
+        '<td><button type="button" class="btn btn-danger" data-lead-delete="' + escapeHtml(l.id) +
+          '" title="Teklifi sil">Sil</button></td>' +
       '</tr>'
     ).join('');
   }
+
+  async function deleteLead(leadId) {
+    const lead = leadsCache.find(l => l.id === leadId);
+    const label = lead
+      ? ((lead.customer_name || 'Teklif') + ' · ' + (lead.customer_phone || ''))
+      : 'bu teklifi';
+    if (!window.confirm('Kalıcı olarak silinsin mi?\n\n' + label)) return;
+
+    const btn = document.querySelector('[data-lead-delete="' + leadId + '"]');
+    if (btn) btn.disabled = true;
+    try {
+      const { data, error } = await sb.rpc('admin_delete_quote_lead', { p_lead_id: leadId });
+      if (error || !data || !data.ok) {
+        alert('Silinemedi' + (error || data?.error ? ': ' + (error?.message || data.error) : ''));
+        return;
+      }
+      await loadLeads();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.getElementById('leads-rows')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-lead-delete]');
+    if (!btn) return;
+    deleteLead(btn.getAttribute('data-lead-delete'));
+  });
 
   function escapeHtml(s) {
     return String(s == null ? '' : s)
