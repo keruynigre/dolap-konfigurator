@@ -2411,6 +2411,7 @@
     const items = (payload.lineItems && payload.lineItems.length)
       ? payload.lineItems
       : buildQuoteLineItems();
+    const dateStr = formatQuoteDate(payload.createdAt || Date.now());
     const validUntil = payload.validUntil || quoteValidUntilIso(payload.createdAt);
     const validStr = formatQuoteDate(validUntil);
     const salesRep = String(payload.salesRep || '').trim();
@@ -2430,6 +2431,7 @@
       '<div class="quote-pdf-root">' +
         '<p class="eyebrow">Bambi Modüler</p>' +
         '<h1>Teklif Formu</h1>' +
+        '<p class="muted">' + escapeHtml(dateStr) + '</p>' +
         '<table class="meta"><tbody>' +
           '<tr>' +
             '<td class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</td>' +
