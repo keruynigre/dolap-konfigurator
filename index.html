@@ -606,6 +606,7 @@
     border-bottom: none; font-weight: 700; background: #f3eee4; color: #6e5630;
   }
   .quote-pdf-root .foot { margin-top: 22px; font-size: 10px; color: #8a847a; }
+  .quote-pdf-root .legal { margin: 8px 0 0; font-size: 8px; line-height: 1.4; color: #9a948a; }
 
   @media print {
     body { background: #fff !important; }
@@ -2456,6 +2457,7 @@
           '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
         '</tbody></table>' +
         '<p class="foot">Bu teklif ' + escapeHtml(validStr) + ' tarihine kadar geçerlidir. Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
+        '<p class="legal">Bambi Yatak teklifte yer alan ürün, fiyat ve ödeme koşullarında değişiklik yapma hakkını teklif onaylanana kadar saklı tutar.</p>' +
       '</div>'
     );
   }
@@ -2522,7 +2524,8 @@
       '.quote-pdf-root table.totals{width:100%;border-collapse:collapse;margin-top:8px;border:1px solid #ddd6cb;}' +
       '.quote-pdf-root table.totals td{padding:7px 12px;border-bottom:1px solid #eee8de;}' +
       '.quote-pdf-root table.totals tr.grand td{border-bottom:none;font-weight:700;background:#f3eee4;color:#6e5630;}' +
-      '.quote-pdf-root .foot{margin-top:22px;font-size:10px;color:#8a847a;}';
+      '.quote-pdf-root .foot{margin-top:22px;font-size:10px;color:#8a847a;}' +
+      '.quote-pdf-root .legal{margin:8px 0 0;font-size:8px;line-height:1.4;color:#9a948a;}';
 
     const root = document.createElement('div');
     root.setAttribute('aria-hidden', 'true');
