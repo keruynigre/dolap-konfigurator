@@ -499,6 +499,19 @@
     outline: none; border-color: var(--brass);
   }
   .quote-field textarea { min-height: 72px; resize: vertical; }
+  .quote-channels { display: flex; flex-wrap: wrap; gap: 8px; }
+  .quote-channel {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+    border-radius: 999px; padding: 8px 12px; cursor: pointer; font-size: 12px;
+    font-family: 'Space Grotesk', sans-serif; user-select: none;
+  }
+  .quote-channel:hover { border-color: rgba(201,163,90,.55); }
+  .quote-channel:has(input:checked) {
+    border-color: var(--brass); color: var(--brass);
+    box-shadow: 0 0 0 1px rgba(201,163,90,.28);
+  }
+  .quote-channel input { accent-color: var(--brass); margin: 0; }
   .quote-error {
     display: none; margin: 0 0 10px; padding: 10px 12px; border-radius: var(--radius);
     border: 1px solid #8a3a32; background: rgba(138, 58, 50, 0.16); color: #f0b4ad;
@@ -1176,6 +1189,23 @@
   }
   .lead-row-name { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
   .lead-row-meta { margin: 0; color: var(--ink-dim); font-size: 12px; line-height: 1.45; }
+  .lead-row-note {
+    margin: 6px 0 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--ink);
+    background: rgba(110, 86, 48, 0.06);
+    border-left: 3px solid var(--brass);
+  }
+  .lead-row-note .lbl {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    margin-bottom: 2px;
+  }
   .lead-badge {
     display: inline-block; border-radius: 999px; padding: 3px 8px; font-size: 10px;
     font-family: 'Space Mono', monospace; border: 1px solid var(--line); color: var(--ink-dim);
@@ -1383,6 +1413,19 @@
           <label for="quote-note">Not (isteğe bağlı)</label>
           <textarea id="quote-note" name="note" placeholder="Teslimat, ölçü veya özel istekleriniz"></textarea>
         </div>
+        <div class="quote-field">
+          <label>Gönderim kanalı <span style="color:var(--ink-dim); font-weight:400">(en az biri)</span></label>
+          <div class="quote-channels" role="group" aria-label="Gönderim kanalı">
+            <label class="quote-channel">
+              <input type="checkbox" id="quote-channel-whatsapp" name="channel_whatsapp" checked>
+              WhatsApp
+            </label>
+            <label class="quote-channel">
+              <input type="checkbox" id="quote-channel-email" name="channel_email">
+              E-posta
+            </label>
+          </div>
+        </div>
         <div class="quote-error" id="quote-error" role="alert"></div>
         <div class="quote-actions">
           <button type="button" class="quote-cancel" id="quote-cancel">Vazgeç</button>
@@ -1392,8 +1435,9 @@
       </form>
     </div>
     <div class="quote-success" id="quote-success">
-      <h3>Talebiniz alındı</h3>
-      <p>Teklif formunuz kaydedildi. En kısa sürede sizinle iletişime geçeceğiz.</p>
+      <h3>Teklif gönderildi</h3>
+      <p id="quote-success-msg" hidden></p>
+      <div class="quote-actions" id="quote-success-share" style="margin-bottom:8px"></div>
       <div class="quote-actions">
         <button type="button" class="quote-pdf" id="quote-pdf-success" style="flex:1">PDF İndir</button>
         <button type="button" class="quote-submit" id="quote-done" style="flex:1">Tamam</button>
@@ -1403,6 +1447,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
 <script src="js/supabase-config.js?v=2"></script>
 <script src="js/dealer-session.js?v=4"></script>
 <script>
@@ -2307,32 +2352,61 @@
       '</body></html>';
   }
 
-  async function downloadQuotePdf(payload){
+  function quotePdfFilename(customer){
+    return quotePdfFileTitle(customer) + '.pdf';
+  }
+
+  function downloadBlobFile(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2500);
+  }
+
+  async function createQuotePdfBlob(payload){
     const data = payload || lastQuotePayload || buildQuotePayload();
+    const filename = quotePdfFilename(data.customer);
+    if (typeof html2pdf === 'undefined') {
+      throw new Error('pdf_lib_missing');
+    }
     const html = buildQuotePdfHtml(data);
-    const fileTitle = quotePdfFileTitle(data.customer);
-    const iframe = document.createElement('iframe');
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none';
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    try { doc.title = fileTitle; } catch (_) {}
-    const win = iframe.contentWindow;
-    const cleanup = () => { try { document.body.removeChild(iframe); } catch (_) {} };
-    const trigger = () => {
-      try {
-        win.focus();
-        win.print();
-      } finally {
-        setTimeout(cleanup, 1000);
-      }
-    };
-    // Yazdır diyaloğundan “PDF olarak kaydet” — varsayılan ad müşteri ismi
-    if (doc.readyState === 'complete') setTimeout(trigger, 80);
-    else iframe.onload = () => setTimeout(trigger, 80);
+    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    const host = document.createElement('div');
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#1a1712;';
+    const styleEl = document.createElement('style');
+    styleEl.textContent = Array.from(parsed.querySelectorAll('style'))
+      .map(s => s.textContent || '')
+      .join('\n');
+    host.appendChild(styleEl);
+    while (parsed.body.firstChild) host.appendChild(parsed.body.firstChild);
+    document.body.appendChild(host);
+    try {
+      const blob = await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] }
+        })
+        .from(host)
+        .outputPdf('blob');
+      return { blob, filename };
+    } finally {
+      try { document.body.removeChild(host); } catch (_) {}
+    }
+  }
+
+  async function downloadQuotePdf(payload){
+    const { blob, filename } = await createQuotePdfBlob(payload);
+    downloadBlobFile(blob, filename);
   }
 
   function openQuoteModal(){
@@ -2343,6 +2417,8 @@
     quoteSuccess.classList.remove('visible');
     setQuoteError('');
     quoteForm.reset();
+    const wa = document.getElementById('quote-channel-whatsapp');
+    if (wa) wa.checked = true;
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
@@ -2382,11 +2458,94 @@
     return 'Teklif kaydedilemedi' + (c ? ' (' + c + ')' : '') + '. Lütfen tekrar deneyin.';
   }
 
+  function readQuoteChannels(){
+    return {
+      whatsapp: !!document.getElementById('quote-channel-whatsapp')?.checked,
+      email: !!document.getElementById('quote-channel-email')?.checked
+    };
+  }
+
+  function phoneToWhatsAppNumber(phone){
+    let digits = String(phone || '').replace(/\D/g, '');
+    if (digits.startsWith('00')) digits = digits.slice(2);
+    if (digits.startsWith('0') && digits.length === 11) digits = '90' + digits.slice(1);
+    if (digits.length === 10 && digits.startsWith('5')) digits = '90' + digits;
+    return digits;
+  }
+
+  function openQuoteChannelApps(payload, channels){
+    const c = (payload && payload.customer) || {};
+    const opened = { whatsapp: false, email: false };
+    if (channels.whatsapp) {
+      const wa = phoneToWhatsAppNumber(c.phone);
+      if (wa && wa.length >= 11) {
+        window.open('https://wa.me/' + encodeURIComponent(wa), '_blank', 'noopener,noreferrer');
+        opened.whatsapp = true;
+      }
+    }
+    if (channels.email) {
+      const to = String(c.email || '').trim();
+      if (to) {
+        const url = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to);
+        setTimeout(() => {
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }, channels.whatsapp && opened.whatsapp ? 450 : 0);
+        opened.email = true;
+      }
+    }
+    return opened;
+  }
+
+  async function sendQuotePdfToCustomer(payload, channels){
+    const { blob, filename } = await createQuotePdfBlob(payload);
+    const file = new File([blob], filename, { type: 'application/pdf' });
+    const shareData = { files: [file], title: filename };
+    if (navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return { shared: true, whatsapp: !!channels.whatsapp, email: !!channels.email };
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          return { shared: false, aborted: true, whatsapp: false, email: false };
+        }
+      }
+    }
+    downloadBlobFile(blob, filename);
+    const opened = openQuoteChannelApps(payload, channels);
+    return { shared: false, downloaded: true, ...opened };
+  }
+
+  function renderQuoteSuccessShare(channels){
+    const share = document.getElementById('quote-success-share');
+    if (!share) return;
+    const payload = lastQuotePayload;
+    let html = '';
+    if (channels.whatsapp) {
+      html += '<button type="button" class="quote-pdf" id="quote-share-wa" style="flex:1">WhatsApp</button>';
+    }
+    if (channels.email) {
+      html += '<button type="button" class="quote-pdf" id="quote-share-mail" style="flex:1">E-posta</button>';
+    }
+    share.innerHTML = html;
+    document.getElementById('quote-share-wa')?.addEventListener('click', () => {
+      sendQuotePdfToCustomer(payload, { whatsapp: true, email: false });
+    });
+    document.getElementById('quote-share-mail')?.addEventListener('click', () => {
+      sendQuotePdfToCustomer(payload, { whatsapp: false, email: true });
+    });
+  }
+
   async function submitQuote(e){
     e.preventDefault();
     setQuoteError('');
     if (!quoteForm.reportValidity()) return;
+    const channels = readQuoteChannels();
+    if (!channels.whatsapp && !channels.email) {
+      setQuoteError('WhatsApp veya e-posta kanallarından en az birini seçin.');
+      return;
+    }
     const payload = buildQuotePayload();
+    payload.channels = channels;
     lastQuotePayload = payload;
     try {
       const prev = JSON.parse(localStorage.getItem('dolapQuoteRequests') || '[]');
@@ -2414,6 +2573,7 @@
           accessories: payload.accessories,
           totals: payload.totals,
           lineItems: payload.lineItems,
+          channels: channels,
           createdAt: payload.createdAt
         }
       });
@@ -2422,8 +2582,16 @@
         setQuoteError(quoteLeadErrorMessage(res && res.error));
         return;
       }
+      try {
+        await sendQuotePdfToCustomer(payload, channels);
+      } catch (pdfErr) {
+        console.error('PDF gönderimi hata', pdfErr);
+        setQuoteError('PDF oluşturulamadı. Tekrar deneyin.');
+        return;
+      }
       quoteFormWrap.classList.add('hidden');
       quoteSuccess.classList.add('visible');
+      renderQuoteSuccessShare(channels);
       if (typeof syncOpenLeadsBadge === 'function') syncOpenLeadsBadge();
     } catch (err) {
       console.error('Teklif kaydı hata', err);
@@ -5417,6 +5585,10 @@
       const series = (DOOR_SERIES[l.series_id] && DOOR_SERIES[l.series_id].label) || l.series_id || '—';
       const price = l.total_price != null ? priceFmt.format(l.total_price) : '—';
       const saleBit = l.sale_ref ? (' · Sipariş: ' + escapeHtml(l.sale_ref)) : '';
+      const note = String(l.customer_note || '').trim();
+      const noteBit = note
+        ? ('<p class="lead-row-note"><span class="lbl">Not</span>' + escapeHtml(note) + '</p>')
+        : '';
       let actions = '';
       if (outcome === 'open') {
         actions =
@@ -5438,6 +5610,7 @@
             (l.customer_email ? ' · ' + escapeHtml(l.customer_email) : '') +
             saleBit +
           '</p>' +
+          noteBit +
           '<div class="lead-row-actions">' + actions + '</div>' +
         '</article>'
       );
