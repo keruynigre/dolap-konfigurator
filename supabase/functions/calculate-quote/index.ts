@@ -228,6 +228,15 @@ function overlayDbItems(catalog: Catalog, items: Record<string, unknown>[]) {
       const price = num(it.price);
       if (!seriesId || !key || price == null) continue;
       catalog.accessories[seriesId + ":" + key] = price;
+    } else if (type === "set") {
+      const seriesId = String(it.series_id || "");
+      const key = String(it.accessory_key || "");
+      const size = String(it.size || "").trim();
+      const price = num(it.price);
+      if (!seriesId || !key || !size || price == null) continue;
+      const setKey = seriesId + ":" + key;
+      if (!catalog.sets[setKey]) catalog.sets[setKey] = {};
+      catalog.sets[setKey][size] = price;
     }
   }
 }
@@ -268,7 +277,7 @@ Deno.serve(async (req) => {
       const { data: items } = await sb
         .from("price_items")
         .select(
-          "item_type, series_id, body_type, finish_id, accessory_key, price, price_single, price_pair",
+          "item_type, series_id, body_type, finish_id, accessory_key, size, price, price_single, price_pair",
         )
         .eq("price_list_id", list.id);
       if (items?.length) overlayDbItems(catalog, items as Record<string, unknown>[]);

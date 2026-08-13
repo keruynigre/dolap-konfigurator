@@ -511,8 +511,9 @@
     <section class="panel hidden" id="tab-prices">
       <div class="price-box">
         <p class="hint">
-          Excel ile gövde, kapak (tekli/çiftli) ve ek ürün fiyatlarını güncelleyin.
+          Excel ile gövde, kapak (tekli/çiftli), ek ürün ve yatak seti fiyatlarını güncelleyin.
           Şablonu indirip doldurun; yüklediğiniz liste hemen aktif olur. Uygulama sabit fiyatların üzerine yazar.
+          Yatak seti satırında item_type=set, accessory_key=set kodu, size=ölçü (140x200 … 200x200), price=tutar.
         </p>
         <div class="row-actions">
           <button class="btn btn-ghost" type="button" id="dl-template">Şablon indir (.xlsx)</button>
@@ -553,16 +554,18 @@
                   <th class="sortable" data-sort="2" title="Sırala">body_type<span class="sort-ind"></span></th>
                   <th class="sortable" data-sort="3" title="Sırala">finish_id<span class="sort-ind"></span></th>
                   <th class="sortable" data-sort="4" title="Sırala">accessory_key<span class="sort-ind"></span></th>
-                  <th class="sortable" data-sort="5" title="Sırala">label<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="6" title="Sırala">price<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="7" title="Sırala">price_single<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="8" title="Sırala">price_pair<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="5" title="Sırala">size<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="6" title="Sırala">label<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="7" title="Sırala">price<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="8" title="Sırala">price_single<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="9" title="Sırala">price_pair<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td>body</td><td></td><td>1door</td><td></td><td></td><td>1 Kapaklı</td><td>9861.81</td><td></td><td></td></tr>
-                <tr><td>door</td><td>welldora</td><td></td><td>ceviz</td><td></td><td>Rubens</td><td></td><td>4528.64</td><td>8036.08</td></tr>
-                <tr><td>accessory</td><td>welldora</td><td></td><td></td><td>sifonyer</td><td>Yüksek Şifonyer</td><td>14870.94</td><td></td><td></td></tr>
+                <tr><td>body</td><td></td><td>1door</td><td></td><td></td><td></td><td>1 Kapaklı</td><td>9861.81</td><td></td><td></td></tr>
+                <tr><td>door</td><td>welldora</td><td></td><td>ceviz</td><td></td><td></td><td>Rubens</td><td></td><td>4528.64</td><td>8036.08</td></tr>
+                <tr><td>accessory</td><td>welldora</td><td></td><td></td><td>sifonyer</td><td></td><td>Yüksek Şifonyer</td><td>14870.94</td><td></td><td></td></tr>
+                <tr><td>set</td><td>welldora</td><td></td><td></td><td>magnasand</td><td>160x200</td><td>Magnasand Therapy</td><td>52676.83</td><td></td><td></td></tr>
               </tbody>
             </table>
           </div>
@@ -1443,26 +1446,41 @@
     }
   });
 
-  const TEMPLATE_ROWS = [
-    ['item_type','series_id','body_type','finish_id','accessory_key','label','price','price_single','price_pair'],
-    ['body','','1door','','','1 Kapaklı Gövde','9861.81','',''],
-    ['body','','2door','','','2 Kapaklı Gövde','13296.59','',''],
-    ['body','','3door','','','3 Kapaklı Gövde','21458.28','',''],
-    ['body','','corner','','','Köşe Gövde','19881.83','',''],
-    ['body','','drawerAddon','','','Çekmece Eki','8666.62','',''],
-    ['door','welldora','','ceviz','','Rubens','','4528.64','8036.08'],
-    ['door','welldora','','aytasi','','Aytaşı','','4534.84','7934.37'],
-    ['door','welldora','','ayna','','Ayna','','6226.54','12496.43'],
-    ['door','welldora','','cam','','Cam','','4898.01','9258.84'],
-    ['door','monerra','','buz_gri','','Buz Gri','','2110.15','3778.39'],
-    ['door','travina','','travent_almond','','Travent-Almond','','2475.36','4679.02'],
-    ['door','cappadocia','','aytasi','','Aytaşı','','6756.09','12872.13'],
-    ['accessory','welldora','','','sifonyer','Yüksek Şifonyer','14870.94','',''],
-    ['accessory','welldora','','','komodin','Komodin','5486.40','',''],
-    ['accessory','welldora','','','makyajMasasi','Makyaj Masası','16242.26','',''],
-    ['accessory','welldora','','','makyajAynasi','Makyaj Aynası','3881.78','',''],
-    ['accessory','welldora','','','puf','Puf','0','','']
+  const SET_SIZE_ORDER = ['140x200', '150x200', '160x200', '180x200', '200x200'];
+  const SET_TEMPLATE_PRICES = [
+    ['welldora', 'magnasand', 'Magnasand Therapy', { '140x200': 49428.42, '150x200': 50456.69, '160x200': 52676.83, '180x200': 58270.83, '200x200': 65381.06 }],
+    ['welldora', 'biosalt', 'Biosalt', { '140x200': 54881.20, '150x200': 56586.46, '160x200': 59098.47, '180x200': 65135.79, '200x200': 72897.25 }],
+    ['monerra', 'climextra', 'Climextra', { '140x200': 43765.03, '150x200': 44448.75, '160x200': 46501.75, '180x200': 52324.54, '200x200': 58584.89 }],
+    ['monerra', 'blacksand', 'Blacksand', { '140x200': 51787.51, '150x200': 52392.48, '160x200': 54730.45, '180x200': 60885.98, '200x200': 68072.64 }],
+    ['travina', 'bohemella', 'Bohemella', { '140x200': 44667.18, '150x200': 45179.27, '160x200': 46570.24, '180x200': 51035.73, '200x200': 57966.25 }],
+    ['travina', 'borjen', 'Borjen', { '140x200': 51583.69, '150x200': 52172.76, '160x200': 54484.18, '180x200': 60698.38, '200x200': 68057.52 }],
+    ['cappadocia', 'cappadocia_natura', 'Cappadocia Natura', { '140x200': 54030.82, '150x200': 54658.44, '160x200': 57148.65, '180x200': 63608.63, '200x200': 71203.49 }]
   ];
+
+  const TEMPLATE_ROWS = [
+    ['item_type','series_id','body_type','finish_id','accessory_key','size','label','price','price_single','price_pair'],
+    ['body','','1door','','','','1 Kapaklı Gövde','9861.81','',''],
+    ['body','','2door','','','','2 Kapaklı Gövde','13296.59','',''],
+    ['body','','3door','','','','3 Kapaklı Gövde','21458.28','',''],
+    ['body','','corner','','','','Köşe Gövde','19881.83','',''],
+    ['body','','drawerAddon','','','','Çekmece Eki','8666.62','',''],
+    ['door','welldora','','ceviz','','','Rubens','','4528.64','8036.08'],
+    ['door','welldora','','aytasi','','','Aytaşı','','4534.84','7934.37'],
+    ['door','welldora','','ayna','','','Ayna','','6226.54','12496.43'],
+    ['door','welldora','','cam','','','Cam','','4898.01','9258.84'],
+    ['door','monerra','','buz_gri','','','Buz Gri','','2110.15','3778.39'],
+    ['door','travina','','travent_almond','','','Travent-Almond','','2475.36','4679.02'],
+    ['door','cappadocia','','aytasi','','','Aytaşı','','6756.09','12872.13'],
+    ['accessory','welldora','','','sifonyer','','Yüksek Şifonyer','14870.94','',''],
+    ['accessory','welldora','','','komodin','','Komodin','5486.40','',''],
+    ['accessory','welldora','','','makyajMasasi','','Makyaj Masası','16242.26','',''],
+    ['accessory','welldora','','','makyajAynasi','','Makyaj Aynası','3881.78','',''],
+    ['accessory','welldora','','','puf','','Puf','0','','']
+  ].concat(SET_TEMPLATE_PRICES.flatMap(row =>
+    SET_SIZE_ORDER.map(size =>
+      ['set', row[0], '', '', row[1], size, row[2], String(row[3][size]), '', '']
+    )
+  ));
 
   document.getElementById('dl-template').addEventListener('click', () => {
     const ws = XLSX.utils.aoa_to_sheet(TEMPLATE_ROWS);
@@ -1488,13 +1506,14 @@
       const items = [];
       for (const r of rows) {
         const item_type = String(r.item_type || '').trim().toLowerCase();
-        if (!item_type || !['body', 'door', 'accessory'].includes(item_type)) continue;
+        if (!item_type || !['body', 'door', 'accessory', 'set'].includes(item_type)) continue;
         items.push({
           item_type,
           series_id: String(r.series_id || '').trim(),
           body_type: String(r.body_type || '').trim(),
           finish_id: String(r.finish_id || '').trim(),
           accessory_key: String(r.accessory_key || '').trim(),
+          size: String(r.size || '').trim(),
           label: String(r.label || '').trim(),
           price: r.price === '' || r.price == null ? '' : String(r.price),
           price_single: r.price_single === '' || r.price_single == null ? '' : String(r.price_single),
