@@ -2307,49 +2307,49 @@
         ).join('')
       : '<tr><td colspan="3" class="muted">Ürün seçilmedi</td></tr>';
 
-    return '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8">' +
-      '<title>' + escapeHtml(fileTitle) + '</title>' +
-      '<style>' +
-      '@page { size: A4; margin: 14mm; }' +
-      'body{font-family:Segoe UI,Arial,sans-serif;color:#1a1712;font-size:12px;line-height:1.45;margin:0;}' +
-      'h1{font-size:20px;margin:0 0 4px;}' +
-      '.eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a7350;margin:0 0 16px;}' +
-      '.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:18px;}' +
-      '.box{border:1px solid #ddd6cb;border-radius:4px;padding:10px 12px;background:#faf8f4;}' +
-      '.box .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;margin-bottom:3px;}' +
-      'table{width:100%;border-collapse:collapse;margin:8px 0 16px;}' +
-      'th,td{border-bottom:1px solid #e6e0d6;padding:8px 6px;text-align:left;vertical-align:top;}' +
-      'th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;}' +
-      'td.num,.num{text-align:right;white-space:nowrap;}' +
-      '.muted{color:#7a746a;font-size:11px;}' +
-      '.totals{margin-top:8px;border:1px solid #ddd6cb;border-radius:4px;overflow:hidden;}' +
-      '.totals div{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #eee8de;}' +
-      '.totals div:last-child{border-bottom:none;font-weight:700;background:#f3eee4;color:#6e5630;}' +
-      '.foot{margin-top:22px;font-size:10px;color:#8a847a;}' +
-      '@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}' +
-      '</style></head><body>' +
-      '<p class="eyebrow">Bambi Modüler</p>' +
-      '<h1>Teklif Formu</h1>' +
-      '<p class="muted" style="margin:0 0 16px">' + escapeHtml(dateStr) + ' · ' + escapeHtml(dimLine) + '</p>' +
-      '<div class="meta">' +
-        '<div class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</div>' +
-        '<div class="box"><div class="lbl">Telefon</div>' + escapeHtml(c.phone || '—') + '</div>' +
-        '<div class="box"><div class="lbl">E-posta</div>' + escapeHtml(c.email || '—') + '</div>' +
-        '<div class="box"><div class="lbl">Not</div>' + escapeHtml(c.note || '—') + '</div>' +
-      '</div>' +
-      '<h2 style="font-size:14px;margin:0 0 6px">Ürün Listesi</h2>' +
-      '<table><thead><tr><th>Ürün</th><th class="num">Adet</th><th class="num">Tutar</th></tr></thead><tbody>' +
-        rowsHtml +
-      '</tbody></table>' +
-      '<div class="totals">' +
-        '<div><span>Gövde</span><span>' + escapeHtml(priceFmt.format(pricing.body || 0)) + '</span></div>' +
-        '<div><span>Kapak</span><span>' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</span></div>' +
-        '<div><span>Çekmece</span><span>' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</span></div>' +
-        '<div><span>Ek Ürün</span><span>' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</span></div>' +
-        '<div><span>Tahmini Toplam</span><span>' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</span></div>' +
-      '</div>' +
-      '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur. Fiyatlar tahmini olup sipariş öncesi teyit edilir.</p>' +
-      '</body></html>';
+    return (
+      '<div class="quote-pdf-root">' +
+        '<style>' +
+        '.quote-pdf-root{box-sizing:border-box;width:794px;padding:28px 32px;font-family:Segoe UI,Arial,sans-serif;color:#1a1712;font-size:12px;line-height:1.45;background:#fff;}' +
+        '.quote-pdf-root *,.quote-pdf-root *::before,.quote-pdf-root *::after{box-sizing:border-box;}' +
+        '.quote-pdf-root h1{font-size:20px;margin:0 0 4px;}' +
+        '.quote-pdf-root .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a7350;margin:0 0 16px;}' +
+        '.quote-pdf-root .meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin-bottom:18px;}' +
+        '.quote-pdf-root .box{border:1px solid #ddd6cb;border-radius:4px;padding:10px 12px;background:#faf8f4;}' +
+        '.quote-pdf-root .box .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;margin-bottom:3px;}' +
+        '.quote-pdf-root table{width:100%;border-collapse:collapse;margin:8px 0 16px;}' +
+        '.quote-pdf-root th,.quote-pdf-root td{border-bottom:1px solid #e6e0d6;padding:8px 6px;text-align:left;vertical-align:top;}' +
+        '.quote-pdf-root th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#7a746a;}' +
+        '.quote-pdf-root td.num,.quote-pdf-root .num{text-align:right;white-space:nowrap;}' +
+        '.quote-pdf-root .muted{color:#7a746a;font-size:11px;}' +
+        '.quote-pdf-root .totals{margin-top:8px;border:1px solid #ddd6cb;border-radius:4px;overflow:hidden;}' +
+        '.quote-pdf-root .totals div{display:flex;justify-content:space-between;padding:7px 12px;border-bottom:1px solid #eee8de;}' +
+        '.quote-pdf-root .totals div:last-child{border-bottom:none;font-weight:700;background:#f3eee4;color:#6e5630;}' +
+        '.quote-pdf-root .foot{margin-top:22px;font-size:10px;color:#8a847a;}' +
+        '</style>' +
+        '<p class="eyebrow">Bambi Modüler</p>' +
+        '<h1>Teklif Formu</h1>' +
+        '<p class="muted" style="margin:0 0 16px">' + escapeHtml(dateStr) + ' · ' + escapeHtml(dimLine) + '</p>' +
+        '<div class="meta">' +
+          '<div class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</div>' +
+          '<div class="box"><div class="lbl">Telefon</div>' + escapeHtml(c.phone || '—') + '</div>' +
+          '<div class="box"><div class="lbl">E-posta</div>' + escapeHtml(c.email || '—') + '</div>' +
+          '<div class="box"><div class="lbl">Not</div>' + escapeHtml(c.note || '—') + '</div>' +
+        '</div>' +
+        '<h2 style="font-size:14px;margin:0 0 6px">Ürün Listesi</h2>' +
+        '<table><thead><tr><th>Ürün</th><th class="num">Adet</th><th class="num">Tutar</th></tr></thead><tbody>' +
+          rowsHtml +
+        '</tbody></table>' +
+        '<div class="totals">' +
+          '<div><span>Gövde</span><span>' + escapeHtml(priceFmt.format(pricing.body || 0)) + '</span></div>' +
+          '<div><span>Kapak</span><span>' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</span></div>' +
+          '<div><span>Çekmece</span><span>' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</span></div>' +
+          '<div><span>Ek Ürün</span><span>' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</span></div>' +
+          '<div><span>Tahmini Toplam</span><span>' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</span></div>' +
+        '</div>' +
+        '<p class="foot">Bu belge Bambi dolap konfigüratöründen oluşturulmuştur. Fiyatlar tahmini olup sipariş öncesi teyit edilir.</p>' +
+      '</div>'
+    );
   }
 
   function quotePdfFilename(customer){
@@ -2368,36 +2368,59 @@
     setTimeout(() => URL.revokeObjectURL(url), 2500);
   }
 
+  function waitFrames(n){
+    return new Promise(resolve => {
+      let left = Math.max(1, n | 0);
+      const tick = () => {
+        left -= 1;
+        if (left <= 0) resolve();
+        else requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
   async function createQuotePdfBlob(payload){
     const data = payload || lastQuotePayload || buildQuotePayload();
     const filename = quotePdfFilename(data.customer);
     if (typeof html2pdf === 'undefined') {
       throw new Error('pdf_lib_missing');
     }
-    const html = buildQuotePdfHtml(data);
-    const parsed = new DOMParser().parseFromString(html, 'text/html');
+    // html2canvas off-screen (left:-9999) yakalamada boş PDF üretir; viewport içinde tut.
     const host = document.createElement('div');
     host.setAttribute('aria-hidden', 'true');
-    host.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;background:#fff;color:#1a1712;';
-    const styleEl = document.createElement('style');
-    styleEl.textContent = Array.from(parsed.querySelectorAll('style'))
-      .map(s => s.textContent || '')
-      .join('\n');
-    host.appendChild(styleEl);
-    while (parsed.body.firstChild) host.appendChild(parsed.body.firstChild);
+    host.style.cssText =
+      'position:fixed;left:0;top:0;width:794px;background:#fff;color:#1a1712;' +
+      'opacity:1;pointer-events:none;z-index:-1;';
+    host.innerHTML = buildQuotePdfHtml(data);
+    const root = host.querySelector('.quote-pdf-root') || host;
     document.body.appendChild(host);
     try {
+      await waitFrames(2);
+      if (!root.offsetHeight || !root.offsetWidth) {
+        throw new Error('pdf_layout_empty');
+      }
       const blob = await html2pdf()
         .set({
-          margin: [10, 10, 10, 10],
+          margin: [8, 8, 8, 8],
           filename,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true, logging: false },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            windowWidth: root.scrollWidth,
+            windowHeight: root.scrollHeight
+          },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] }
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         })
-        .from(host)
+        .from(root)
         .outputPdf('blob');
+      if (!blob || !blob.size) throw new Error('pdf_blob_empty');
       return { blob, filename };
     } finally {
       try { document.body.removeChild(host); } catch (_) {}
