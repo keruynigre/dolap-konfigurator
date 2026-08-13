@@ -145,6 +145,7 @@ module.exports = async (req, res) => {
     const subject = String(body.subject || 'Bambi dolap teklifi').trim();
     const filename = safeFilename(body.filename);
     const path = String(body.path || '').trim();
+    const pdfBase64 = String(body.pdf_base64 || '').replace(/\s+/g, '');
 
     if (!sessionId) {
       json(res, 401, { ok: false, error: 'no_session' });
@@ -152,10 +153,6 @@ module.exports = async (req, res) => {
     }
     if (!to || !to.includes('@')) {
       json(res, 400, { ok: false, error: 'missing_email' });
-      return;
-    }
-    if (!path || path.includes('..') || path.startsWith('/')) {
-      json(res, 400, { ok: false, error: 'missing_pdf' });
       return;
     }
 
@@ -174,15 +171,20 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const pdfUrl =
-      SUPABASE_URL + '/storage/v1/object/public/quote-pdfs/' + path.split('/').map(encodeURIComponent).join('/');
-    const pdfRes = await fetch(pdfUrl);
-    if (!pdfRes.ok) {
-      json(res, 400, { ok: false, error: 'pdf_missing' });
-      return;
+    let pdfBuf = null;
+    if (pdfBase64) {
+      pdfBuf = Buffer.from(pdfBase64, 'base64');
+    } else if (path && !path.includes('..') && !path.startsWith('/')) {
+      const pdfUrl =
+        SUPABASE_URL + '/storage/v1/object/public/quote-pdfs/' + path.split('/').map(encodeURIComponent).join('/');
+      const pdfRes = await fetch(pdfUrl);
+      if (!pdfRes.ok) {
+        json(res, 400, { ok: false, error: 'pdf_missing' });
+        return;
+      }
+      pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
     }
-    const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
-    if (!pdfBuf.length) {
+    if (!pdfBuf || !pdfBuf.length) {
       json(res, 400, { ok: false, error: 'pdf_empty' });
       return;
     }

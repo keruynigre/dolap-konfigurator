@@ -1451,7 +1451,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="js/supabase-config.js?v=3"></script>
-<script src="js/dealer-session.js?v=7"></script>
+<script src="js/dealer-session.js?v=8"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -2588,43 +2588,36 @@
     return window.DolapDealer.uploadQuotePdf(blob, filename);
   }
 
+  function blobToBase64(blob){
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const s = String(reader.result || '');
+        const i = s.indexOf(',');
+        resolve(i >= 0 ? s.slice(i + 1) : s);
+      };
+      reader.onerror = () => reject(reader.error || new Error('pdf_read_failed'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
   async function sendQuotePdfToCustomer(payload, channels){
     const { blob, filename } = await createQuotePdfBlob(payload);
-    const up = await uploadQuotePdfForShare(blob, filename);
-    const pdfUrl = up && up.ok ? up.url : '';
-    const pdfPath = up && up.ok ? up.path : '';
 
     if (channels.email) {
       const to = String((payload.customer && payload.customer.email) || '').trim();
       const subject = buildQuoteEmailSubject(payload);
-      const gmailAccessToken = await requestGmailAccessToken();
-      let mailed = { ok: false };
-      if (pdfPath && window.DolapDealer && window.DolapDealer.sendQuoteEmail) {
-        mailed = await window.DolapDealer.sendQuoteEmail({
-          to,
-          subject,
-          filename,
-          path: pdfPath,
-          gmailAccessToken
-        });
-      }
+      const pdfBase64 = await blobToBase64(blob);
+      const mailed = window.DolapDealer && window.DolapDealer.sendQuoteEmail
+        ? await window.DolapDealer.sendQuoteEmail({
+            to,
+            subject,
+            filename,
+            pdfBase64
+          })
+        : { ok: false, error: 'stale_client' };
       if (!mailed || !mailed.ok) {
-        if (mailed && mailed.error === 'mail_not_configured') {
-          const mailTo = String((payload.customer && payload.customer.email) || '').trim();
-          if (mailTo) {
-            window.open(
-              'https://mail.google.com/mail/?view=cm&fs=1&tf=1' +
-                '&to=' + encodeURIComponent(mailTo) +
-                '&su=' + encodeURIComponent(subject) +
-                (pdfUrl ? ('&body=' + encodeURIComponent(pdfUrl)) : ''),
-              '_blank',
-              'noopener,noreferrer'
-            );
-          }
-        } else {
-          if (!pdfUrl) downloadBlobFile(blob, filename);
-          throw new Error((mailed && mailed.error) || 'mail_send_failed');
-        }
+        throw new Error((mailed && mailed.error) || 'mail_send_failed');
       }
     }
 
@@ -2644,12 +2637,13 @@
     }
 
     if (channels.whatsapp) {
-      if (!pdfUrl) downloadBlobFile(blob, filename);
+      const up = await uploadQuotePdfForShare(blob, filename);
+      const pdfUrl = up && up.ok ? up.url : '';
       const opened = openQuoteChannelApps(payload, { whatsapp: true, email: false }, pdfUrl);
       return { shared: false, uploaded: !!pdfUrl, emailed: !!channels.email, url: pdfUrl || null, ...opened };
     }
 
-    return { shared: false, uploaded: !!pdfUrl, emailed: !!channels.email, url: pdfUrl || null, whatsapp: false, email: !!channels.email };
+    return { shared: false, uploaded: false, emailed: !!channels.email, url: null, whatsapp: false, email: !!channels.email };
   }
 
   function renderQuoteSuccessShare(channels){

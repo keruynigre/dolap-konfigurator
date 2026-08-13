@@ -248,9 +248,9 @@
     if (!sb) return { ok: false, error: 'no_client' };
     if (!blob) return { ok: false, error: 'no_blob' };
     const safeName = String(filename || 'teklif.pdf')
-      .replace(/[\\/:*?"<>|]+/g, '-')
-      .replace(/\s+/g, ' ')
-      .trim() || 'teklif.pdf';
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 80) || 'teklif.pdf';
     const path =
       (global.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) +
       '/' +
@@ -283,7 +283,8 @@
       to: opts.to,
       subject: opts.subject,
       filename: opts.filename,
-      path: opts.path
+      path: opts.path || null,
+      pdf_base64: opts.pdfBase64 || null
     };
     try {
       const res = await fetch('/api/send-quote-email', {
@@ -306,7 +307,8 @@
           to: opts.to,
           subject: opts.subject,
           filename: opts.filename,
-          path: opts.path,
+          path: opts.path || null,
+          pdf_base64: opts.pdfBase64 || null,
           gmail_access_token: opts.gmailAccessToken || null
         }
       });
