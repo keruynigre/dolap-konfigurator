@@ -2411,7 +2411,6 @@
     const items = (payload.lineItems && payload.lineItems.length)
       ? payload.lineItems
       : buildQuoteLineItems();
-    const dateStr = formatQuoteDate(payload.createdAt || Date.now());
     const validUntil = payload.validUntil || quoteValidUntilIso(payload.createdAt);
     const validStr = formatQuoteDate(validUntil);
     const salesRep = String(payload.salesRep || '').trim();
@@ -2441,8 +2440,7 @@
             '<td class="box"><div class="lbl">Satış temsilcisi</div>' + escapeHtml(salesRep || '—') + '</td>' +
           '</tr>' +
           '<tr>' +
-            '<td class="box"><div class="lbl">Teklif tarihi</div>' + escapeHtml(dateStr) + '</td>' +
-            '<td class="box"><div class="lbl">Son geçerlilik tarihi</div>' + escapeHtml(validStr) + '</td>' +
+            '<td class="box" colspan="2"><div class="lbl">Son geçerlilik tarihi</div>' + escapeHtml(validStr) + '</td>' +
           '</tr>' +
         '</tbody></table>' +
         '<h2>Ürün Listesi</h2>' +
