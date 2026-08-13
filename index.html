@@ -1449,7 +1449,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.2/dist/html2pdf.bundle.min.js"></script>
 <script src="js/supabase-config.js?v=2"></script>
-<script src="js/dealer-session.js?v=4"></script>
+<script src="js/dealer-session.js?v=5"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -2496,20 +2496,33 @@
     return digits;
   }
 
-  function openQuoteChannelApps(payload, channels){
+  function buildQuoteEmailSubject(payload){
+    const name = String((payload && payload.customer && payload.customer.name) || '').trim();
+    return name ? ('Bambi dolap teklifi — ' + name) : 'Bambi dolap teklifi';
+  }
+
+  function openQuoteChannelApps(payload, channels, pdfUrl){
     const c = (payload && payload.customer) || {};
     const opened = { whatsapp: false, email: false };
+    const link = String(pdfUrl || '').trim();
     if (channels.whatsapp) {
       const wa = phoneToWhatsAppNumber(c.phone);
       if (wa && wa.length >= 11) {
-        window.open('https://wa.me/' + encodeURIComponent(wa), '_blank', 'noopener,noreferrer');
+        let url = 'https://wa.me/' + encodeURIComponent(wa);
+        if (link) url += '?text=' + encodeURIComponent(link);
+        window.open(url, '_blank', 'noopener,noreferrer');
         opened.whatsapp = true;
       }
     }
     if (channels.email) {
       const to = String(c.email || '').trim();
       if (to) {
-        const url = 'https://mail.google.com/mail/?view=cm&fs=1&to=' + encodeURIComponent(to);
+        const subject = buildQuoteEmailSubject(payload);
+        const body = link || '';
+        const url = 'https://mail.google.com/mail/?view=cm&fs=1&tf=1' +
+          '&to=' + encodeURIComponent(to) +
+          '&su=' + encodeURIComponent(subject) +
+          (body ? ('&body=' + encodeURIComponent(body)) : '');
         setTimeout(() => {
           window.open(url, '_blank', 'noopener,noreferrer');
         }, channels.whatsapp && opened.whatsapp ? 450 : 0);
@@ -2519,15 +2532,24 @@
     return opened;
   }
 
+  async function uploadQuotePdfForShare(blob, filename){
+    if (!window.DolapDealer || !window.DolapDealer.uploadQuotePdf) {
+      return { ok: false, error: 'stale_client' };
+    }
+    return window.DolapDealer.uploadQuotePdf(blob, filename);
+  }
+
   async function sendQuotePdfToCustomer(payload, channels){
     const { blob, filename } = await createQuotePdfBlob(payload);
-    // E-posta: Windows Paylaş menüsünü atla → PDF indir + doğrudan Gmail compose
+    // Gmail tarayıcıda dosya ekleyemez → PDF Storage'a yüklenir; konu + PDF linki compose'a yazılır
     if (channels.email) {
-      downloadBlobFile(blob, filename);
-      const opened = openQuoteChannelApps(payload, channels);
-      return { shared: false, downloaded: true, ...opened };
+      const up = await uploadQuotePdfForShare(blob, filename);
+      const pdfUrl = up && up.ok ? up.url : '';
+      if (!pdfUrl) downloadBlobFile(blob, filename);
+      const opened = openQuoteChannelApps(payload, channels, pdfUrl);
+      return { shared: false, uploaded: !!pdfUrl, url: pdfUrl || null, ...opened };
     }
-    // Yalnızca WhatsApp: mümkünse dosya paylaşımı
+    // Yalnızca WhatsApp: mümkünse gerçek PDF dosyası paylaş
     const file = new File([blob], filename, { type: 'application/pdf' });
     const shareData = { files: [file], title: filename };
     if (channels.whatsapp && navigator.canShare && navigator.canShare(shareData)) {
@@ -2540,9 +2562,11 @@
         }
       }
     }
-    downloadBlobFile(blob, filename);
-    const opened = openQuoteChannelApps(payload, channels);
-    return { shared: false, downloaded: true, ...opened };
+    const up = await uploadQuotePdfForShare(blob, filename);
+    const pdfUrl = up && up.ok ? up.url : '';
+    if (!pdfUrl) downloadBlobFile(blob, filename);
+    const opened = openQuoteChannelApps(payload, channels, pdfUrl);
+    return { shared: false, uploaded: !!pdfUrl, url: pdfUrl || null, ...opened };
   }
 
   function renderQuoteSuccessShare(channels){

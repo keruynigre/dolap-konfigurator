@@ -242,6 +242,38 @@
     if (loadSession()) startHeartbeat();
   }
 
+  /** Teklif PDF'ini Storage'a yükler; Gmail/WhatsApp için paylaşılabilir URL döner. */
+  async function uploadQuotePdf(blob, filename) {
+    const sb = getClient();
+    if (!sb) return { ok: false, error: 'no_client' };
+    if (!blob) return { ok: false, error: 'no_blob' };
+    const safeName = String(filename || 'teklif.pdf')
+      .replace(/[\\/:*?"<>|]+/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim() || 'teklif.pdf';
+    const path =
+      (global.crypto && crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) +
+      '/' +
+      (safeName.toLowerCase().endsWith('.pdf') ? safeName : safeName + '.pdf');
+    try {
+      const { error } = await sb.storage.from('quote-pdfs').upload(path, blob, {
+        contentType: 'application/pdf',
+        upsert: false,
+        cacheControl: '3600'
+      });
+      if (error) {
+        console.error('quote pdf upload', error);
+        return { ok: false, error: error.message || 'upload_failed' };
+      }
+      const { data } = sb.storage.from('quote-pdfs').getPublicUrl(path);
+      const url = data && data.publicUrl;
+      if (!url) return { ok: false, error: 'no_public_url' };
+      return { ok: true, url, path };
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  }
+
   global.DolapDealer = {
     login,
     logout,
@@ -251,6 +283,7 @@
     submitQuoteLead,
     listQuoteLeads,
     markQuoteOutcome,
+    uploadQuotePdf,
     initIfLoggedIn,
     getClient,
     getDeviceId,
