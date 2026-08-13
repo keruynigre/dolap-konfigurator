@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bambi Admin — Üretici Paneli</title>
+<script>
+(function () {
+  try {
+    var raw = localStorage.getItem('sb-flhffroxhewrmyeufcsk-auth-token');
+    if (!raw) return;
+    var parsed = JSON.parse(raw);
+    var token = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
+    if (token) document.documentElement.classList.add('has-admin-session');
+  } catch (e) { /* ignore */ }
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -30,6 +41,8 @@
       radial-gradient(ellipse at 20% 0%, rgba(201,163,90,.12), transparent 50%),
       var(--bg);
   }
+  html.has-admin-session #login-view { display: none !important; }
+  html.has-admin-session #app-view { display: block; }
   .login-card {
     width: min(400px, 100%); background: var(--panel); border: 1px solid var(--line);
     border-radius: 8px; padding: 28px 24px;
@@ -695,6 +708,7 @@
   }
 
   async function showApp() {
+    document.documentElement.classList.add('has-admin-session');
     loginView.classList.add('hidden');
     appView.classList.add('open');
     document.getElementById('from').value = daysAgoISO(30);
@@ -709,6 +723,7 @@
 
   function showLogin() {
     stopAdminTouch();
+    document.documentElement.classList.remove('has-admin-session');
     appView.classList.remove('open');
     loginView.classList.remove('hidden');
   }

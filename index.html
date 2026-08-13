@@ -18,6 +18,12 @@
   } catch (e) {
     document.documentElement.setAttribute('data-theme', 'dark');
   }
+  try {
+    var dealer = JSON.parse(localStorage.getItem('dolapDealerSession') || 'null');
+    if (dealer && dealer.session_id && dealer.dealer) {
+      document.documentElement.classList.add('has-dealer-session');
+    }
+  } catch (e) { /* ignore */ }
 })();
 </script>
 <style>
@@ -1294,6 +1300,10 @@
   .lead-row-actions button:disabled { opacity: 0.55; cursor: wait; }
   .leads-err { min-height: 18px; color: var(--danger-text); font-size: 12px; margin: 0 0 8px; }
   .app.is-locked { pointer-events: none; filter: grayscale(0.15); opacity: 0.45; }
+  html.has-dealer-session #dealer-gate { display: none !important; }
+  html.has-dealer-session #app-root {
+    pointer-events: auto; filter: none; opacity: 1;
+  }
 </style>
 </head>
 <body>
@@ -5619,6 +5629,7 @@
     const nameEl = document.getElementById('dealer-chip-name');
     if (gate) gate.classList.add('hidden');
     if (app) app.classList.remove('is-locked');
+    document.documentElement.classList.add('has-dealer-session');
     if (chip && nameEl && session && session.dealer) {
       nameEl.textContent = session.dealer.name + ' (' + session.dealer.code + ')';
       chip.classList.add('visible');
@@ -5632,6 +5643,7 @@
     const chip = document.getElementById('dealer-chip');
     if (gate) gate.classList.remove('hidden');
     if (app) app.classList.add('is-locked');
+    document.documentElement.classList.remove('has-dealer-session');
     if (chip) chip.classList.remove('visible');
     updateOpenLeadsBadge(0);
     document.getElementById('dealer-code')?.focus();
