@@ -169,8 +169,14 @@ Deno.serve(async (req) => {
       return json({ ok: true, via: "resend" });
     }
 
-    const gmailUser = Deno.env.get("GMAIL_USER") || "";
-    const gmailPass = Deno.env.get("GMAIL_APP_PASSWORD") || "";
+    let gmailUser = Deno.env.get("GMAIL_USER") || "";
+    let gmailPass = Deno.env.get("GMAIL_APP_PASSWORD") || "";
+    if (!gmailUser || !gmailPass) {
+      const { data: mailCfg } = await sb.rpc("internal_mail_config");
+      const cfg = mailCfg && typeof mailCfg === "object" ? mailCfg : {};
+      gmailUser = gmailUser || String(cfg.gmail_user || "");
+      gmailPass = gmailPass || String(cfg.gmail_app_password || "");
+    }
     if (gmailUser && gmailPass) {
       const { SMTPClient } = await import(
         "https://deno.land/x/denomailer@1.6.0/mod.ts"
