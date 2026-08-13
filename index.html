@@ -1449,8 +1449,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="js/supabase-config.js?v=2"></script>
-<script src="js/dealer-session.js?v=5"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="js/supabase-config.js?v=3"></script>
+<script src="js/dealer-session.js?v=6"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -2534,6 +2535,31 @@
     return name ? ('Bambi dolap teklifi — ' + name) : 'Bambi dolap teklifi';
   }
 
+  function requestGmailAccessToken(){
+    const clientId = window.DOLAP_SUPABASE && window.DOLAP_SUPABASE.googleClientId;
+    const gis = window.google && window.google.accounts && window.google.accounts.oauth2;
+    if (!clientId || !gis || typeof gis.initTokenClient !== 'function') return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (token) => {
+        if (done) return;
+        done = true;
+        resolve(token || null);
+      };
+      try {
+        const client = gis.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/gmail.send',
+          callback: (resp) => finish(resp && resp.access_token),
+          error_callback: () => finish(null)
+        });
+        client.requestAccessToken({ prompt: '' });
+      } catch (_) {
+        finish(null);
+      }
+    });
+  }
+
   function openQuoteChannelApps(payload, channels, pdfUrl){
     const c = (payload && payload.customer) || {};
     const opened = { whatsapp: false, email: false };
@@ -2545,21 +2571,6 @@
         if (link) url += '?text=' + encodeURIComponent(link);
         window.open(url, '_blank', 'noopener,noreferrer');
         opened.whatsapp = true;
-      }
-    }
-    if (channels.email) {
-      const to = String(c.email || '').trim();
-      if (to) {
-        const subject = buildQuoteEmailSubject(payload);
-        const body = link || '';
-        const url = 'https://mail.google.com/mail/?view=cm&fs=1&tf=1' +
-          '&to=' + encodeURIComponent(to) +
-          '&su=' + encodeURIComponent(subject) +
-          (body ? ('&body=' + encodeURIComponent(body)) : '');
-        setTimeout(() => {
-          window.open(url, '_blank', 'noopener,noreferrer');
-        }, channels.whatsapp && opened.whatsapp ? 450 : 0);
-        opened.email = true;
       }
     }
     return opened;
@@ -2574,32 +2585,66 @@
 
   async function sendQuotePdfToCustomer(payload, channels){
     const { blob, filename } = await createQuotePdfBlob(payload);
-    // Gmail tarayıcıda dosya ekleyemez → PDF Storage'a yüklenir; konu + PDF linki compose'a yazılır
+    const up = await uploadQuotePdfForShare(blob, filename);
+    const pdfUrl = up && up.ok ? up.url : '';
+    const pdfPath = up && up.ok ? up.path : '';
+
     if (channels.email) {
-      const up = await uploadQuotePdfForShare(blob, filename);
-      const pdfUrl = up && up.ok ? up.url : '';
-      if (!pdfUrl) downloadBlobFile(blob, filename);
-      const opened = openQuoteChannelApps(payload, channels, pdfUrl);
-      return { shared: false, uploaded: !!pdfUrl, url: pdfUrl || null, ...opened };
-    }
-    // Yalnızca WhatsApp: mümkünse gerçek PDF dosyası paylaş
-    const file = new File([blob], filename, { type: 'application/pdf' });
-    const shareData = { files: [file], title: filename };
-    if (channels.whatsapp && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-        return { shared: true, whatsapp: true, email: false };
-      } catch (err) {
-        if (err && err.name === 'AbortError') {
-          return { shared: false, aborted: true, whatsapp: false, email: false };
+      const to = String((payload.customer && payload.customer.email) || '').trim();
+      const subject = buildQuoteEmailSubject(payload);
+      const gmailAccessToken = await requestGmailAccessToken();
+      let mailed = { ok: false };
+      if (pdfPath && window.DolapDealer && window.DolapDealer.sendQuoteEmail) {
+        mailed = await window.DolapDealer.sendQuoteEmail({
+          to,
+          subject,
+          filename,
+          path: pdfPath,
+          gmailAccessToken
+        });
+      }
+      if (!mailed || !mailed.ok) {
+        if (mailed && mailed.error === 'mail_not_configured') {
+          const mailTo = String((payload.customer && payload.customer.email) || '').trim();
+          if (mailTo) {
+            window.open(
+              'https://mail.google.com/mail/?view=cm&fs=1&tf=1' +
+                '&to=' + encodeURIComponent(mailTo) +
+                '&su=' + encodeURIComponent(subject) +
+                (pdfUrl ? ('&body=' + encodeURIComponent(pdfUrl)) : ''),
+              '_blank',
+              'noopener,noreferrer'
+            );
+          }
+        } else {
+          if (!pdfUrl) downloadBlobFile(blob, filename);
+          throw new Error((mailed && mailed.error) || 'mail_send_failed');
         }
       }
     }
-    const up = await uploadQuotePdfForShare(blob, filename);
-    const pdfUrl = up && up.ok ? up.url : '';
-    if (!pdfUrl) downloadBlobFile(blob, filename);
-    const opened = openQuoteChannelApps(payload, channels, pdfUrl);
-    return { shared: false, uploaded: !!pdfUrl, url: pdfUrl || null, ...opened };
+
+    if (channels.whatsapp && !channels.email) {
+      const file = new File([blob], filename, { type: 'application/pdf' });
+      const shareData = { files: [file], title: filename };
+      if (navigator.canShare && navigator.canShare(shareData)) {
+        try {
+          await navigator.share(shareData);
+          return { shared: true, whatsapp: true, email: false };
+        } catch (err) {
+          if (err && err.name === 'AbortError') {
+            return { shared: false, aborted: true, whatsapp: false, email: false };
+          }
+        }
+      }
+    }
+
+    if (channels.whatsapp) {
+      if (!pdfUrl) downloadBlobFile(blob, filename);
+      const opened = openQuoteChannelApps(payload, { whatsapp: true, email: false }, pdfUrl);
+      return { shared: false, uploaded: !!pdfUrl, emailed: !!channels.email, url: pdfUrl || null, ...opened };
+    }
+
+    return { shared: false, uploaded: !!pdfUrl, emailed: !!channels.email, url: pdfUrl || null, whatsapp: false, email: !!channels.email };
   }
 
   function renderQuoteSuccessShare(channels){
@@ -2673,7 +2718,11 @@
         await sendQuotePdfToCustomer(payload, channels);
       } catch (pdfErr) {
         console.error('PDF gönderimi hata', pdfErr);
-        setQuoteError('PDF oluşturulamadı. Tekrar deneyin.');
+        setQuoteError(
+          String(pdfErr && pdfErr.message || '').indexOf('pdf_') === 0
+            ? 'PDF oluşturulamadı. Tekrar deneyin.'
+            : 'E-posta gönderilemedi. Tekrar deneyin.'
+        );
         return;
       }
       quoteFormWrap.classList.add('hidden');

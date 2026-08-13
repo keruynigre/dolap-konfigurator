@@ -274,6 +274,34 @@
     }
   }
 
+  async function sendQuoteEmail(opts) {
+    opts = opts || {};
+    const s = loadSession();
+    const sb = getClient();
+    if (!s || !s.session_id) return { ok: false, error: 'no_session' };
+    if (!sb) return { ok: false, error: 'no_client' };
+    try {
+      const { data, error } = await sb.functions.invoke('send-quote-email', {
+        body: {
+          session_id: s.session_id,
+          to: opts.to,
+          subject: opts.subject,
+          filename: opts.filename,
+          path: opts.path,
+          gmail_access_token: opts.gmailAccessToken || null
+        }
+      });
+      if (error) {
+        console.error('send-quote-email', error);
+        return { ok: false, error: error.message || 'rpc_error' };
+      }
+      if (!data || !data.ok) return data || { ok: false, error: 'unknown' };
+      return data;
+    } catch (e) {
+      return { ok: false, error: String(e && e.message || e) };
+    }
+  }
+
   global.DolapDealer = {
     login,
     logout,
@@ -284,6 +312,7 @@
     listQuoteLeads,
     markQuoteOutcome,
     uploadQuotePdf,
+    sendQuoteEmail,
     initIfLoggedIn,
     getClient,
     getDeviceId,
