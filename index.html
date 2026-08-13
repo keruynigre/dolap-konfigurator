@@ -534,6 +534,87 @@
   }
   .quote-success p { margin: 0 0 16px; font-size: 13px; color: var(--ink-dim); line-height: 1.5; }
 
+  .quote-preview {
+    position: fixed; inset: 0; z-index: 120; display: none;
+    flex-direction: column; background: #2c2924;
+  }
+  .quote-preview.open { display: flex; }
+  .quote-preview-bar {
+    position: absolute; top: 14px; right: 14px; z-index: 2;
+    display: flex; gap: 10px;
+  }
+  .quote-preview-icon {
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,.28);
+    background: rgba(18,16,14,.82); color: #f4efe6;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 22px rgba(0,0,0,.35);
+  }
+  .quote-preview-icon:hover { border-color: var(--brass); color: var(--brass); background: rgba(28,25,22,.95); }
+  .quote-preview-icon:disabled { opacity: 0.55; cursor: wait; }
+  .quote-preview-icon svg { width: 20px; height: 20px; display: block; }
+  .quote-preview-scroll {
+    flex: 1; overflow: auto; padding: 72px 20px 36px;
+    display: flex; justify-content: center; align-items: flex-start;
+  }
+  .quote-preview-paper {
+    width: min(794px, 100%);
+    background: #fff;
+    box-shadow: 0 16px 48px rgba(0,0,0,.4);
+  }
+  .quote-pdf-root {
+    box-sizing: border-box; width: 794px; max-width: 100%; padding: 28px 32px;
+    font-family: "Segoe UI", Arial, sans-serif; color: #1a1712; font-size: 12px;
+    line-height: 1.45; background: #ffffff;
+  }
+  .quote-pdf-root * { box-sizing: border-box; }
+  .quote-pdf-root h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
+  .quote-pdf-root h2 { font-size: 14px; margin: 0 0 6px; font-weight: 600; }
+  .quote-pdf-root .eyebrow {
+    font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
+    color: #8a7350; margin: 0 0 16px;
+  }
+  .quote-pdf-root .muted { color: #7a746a; font-size: 11px; margin: 0 0 16px; }
+  .quote-pdf-root table.meta {
+    width: 100%; border-collapse: separate; border-spacing: 10px 10px; margin: 0 0 12px -10px;
+  }
+  .quote-pdf-root table.meta td.box {
+    width: 50%; border: 1px solid #ddd6cb; padding: 10px 12px; background: #faf8f4; vertical-align: top;
+  }
+  .quote-pdf-root .lbl {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #7a746a; margin-bottom: 3px;
+  }
+  .quote-pdf-root table.items { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+  .quote-pdf-root table.items th, .quote-pdf-root table.items td {
+    border-bottom: 1px solid #e6e0d6; padding: 8px 6px; text-align: left; vertical-align: top;
+  }
+  .quote-pdf-root table.items th {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #7a746a;
+  }
+  .quote-pdf-root .num { text-align: right; white-space: nowrap; }
+  .quote-pdf-root table.totals {
+    width: 100%; border-collapse: collapse; margin-top: 8px; border: 1px solid #ddd6cb;
+  }
+  .quote-pdf-root table.totals td { padding: 7px 12px; border-bottom: 1px solid #eee8de; }
+  .quote-pdf-root table.totals tr.grand td {
+    border-bottom: none; font-weight: 700; background: #f3eee4; color: #6e5630;
+  }
+  .quote-pdf-root .foot { margin-top: 22px; font-size: 10px; color: #8a847a; }
+
+  @media print {
+    body { background: #fff !important; }
+    body > *:not(#quote-preview) { display: none !important; }
+    #quote-preview {
+      display: block !important; position: static !important; background: #fff !important;
+    }
+    .quote-preview-bar { display: none !important; }
+    .quote-preview-scroll {
+      display: block !important; overflow: visible !important; padding: 0 !important;
+    }
+    .quote-preview-paper { width: 100% !important; box-shadow: none !important; }
+    .quote-pdf-root { width: 100% !important; padding: 0 !important; }
+  }
+
   .summary {
     position: sticky; bottom: 0; z-index: 3;
     margin-top: auto; border-top: 1px solid var(--line); padding-top: 16px; padding-bottom: 2px;
@@ -1420,6 +1501,23 @@
   </div>
 </div>
 
+<div class="quote-preview" id="quote-preview" aria-hidden="true">
+  <div class="quote-preview-bar">
+    <button type="button" class="quote-preview-icon" id="quote-preview-print" title="Yazdır" aria-label="Yazdır">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3h10v5"/><path d="M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="7" y="13" width="10" height="8" rx="1"/><path d="M17 11h.01"/></svg>
+    </button>
+    <button type="button" class="quote-preview-icon" id="quote-preview-share" title="Gönder" aria-label="Gönder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+    </button>
+    <button type="button" class="quote-preview-icon" id="quote-preview-close" title="Kapat" aria-label="Kapat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="quote-preview-scroll">
+    <div class="quote-preview-paper" id="quote-preview-paper"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1891,7 +1989,13 @@
   const quoteDone = document.getElementById('quote-done');
   const quotePdfBtn = document.getElementById('quote-pdf');
   const quotePdfSuccessBtn = document.getElementById('quote-pdf-success');
+  const quotePreview = document.getElementById('quote-preview');
+  const quotePreviewPaper = document.getElementById('quote-preview-paper');
+  const quotePreviewPrint = document.getElementById('quote-preview-print');
+  const quotePreviewShare = document.getElementById('quote-preview-share');
+  const quotePreviewClose = document.getElementById('quote-preview-close');
   let lastQuotePayload = null;
+  let quotePdfPromise = null;
 
   function hasSelectedAccessories(){
     for (const qty of selectedAccessories.values()) {
@@ -2446,6 +2550,7 @@
 
   function openQuoteModal(){
     if (!isQuoteReady()) return;
+    closeQuotePreview();
     lastQuotePayload = buildQuotePayload();
     quoteSummary.innerHTML = buildQuoteSummaryHtml();
     quoteFormWrap.classList.remove('hidden');
@@ -2460,6 +2565,39 @@
   function closeQuoteModal(){
     quoteModal.classList.remove('open');
     quoteModal.setAttribute('aria-hidden', 'true');
+  }
+
+  function openQuotePreview(payload){
+    const data = payload || lastQuotePayload;
+    if (!quotePreview || !quotePreviewPaper || !data) return;
+    quotePreviewPaper.innerHTML = buildQuotePdfHtml(data);
+    closeQuoteModal();
+    quotePreview.classList.add('open');
+    quotePreview.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeQuotePreview(){
+    if (!quotePreview) return;
+    quotePreview.classList.remove('open');
+    quotePreview.setAttribute('aria-hidden', 'true');
+  }
+
+  function printQuotePreview(){
+    window.print();
+  }
+
+  async function shareQuotePreview(){
+    if (!lastQuotePayload) return;
+    if (quotePreviewShare) quotePreviewShare.disabled = true;
+    try {
+      const pdf = quotePdfPromise ? await quotePdfPromise : await createQuotePdfBlob(lastQuotePayload);
+      quotePdfPromise = Promise.resolve(pdf);
+      await shareQuotePdfBlob(pdf.blob, pdf.filename);
+    } catch (err) {
+      console.error('PDF paylaşımı hata', err);
+    } finally {
+      if (quotePreviewShare) quotePreviewShare.disabled = false;
+    }
   }
 
   function setQuoteError(msg){
@@ -2567,7 +2705,11 @@
       const series = getLockedDoorSeries() || activeDoorSeries;
       const totals = payload.totals || {};
       const pricing = totals.pricing || {};
-      const pdfTask = createQuotePdfBlob(payload);
+      quotePdfPromise = createQuotePdfBlob(payload).catch((err) => {
+        console.error('PDF hazırlama hata', err);
+        quotePdfPromise = null;
+        throw err;
+      });
       const res = await window.DolapDealer.submitQuoteLead({
         customer: payload.customer,
         seriesId: series,
@@ -2586,15 +2728,7 @@
         setQuoteError(quoteLeadErrorMessage(res && res.error));
         return;
       }
-      try {
-        const { blob, filename } = await pdfTask;
-        await shareQuotePdfBlob(blob, filename);
-      } catch (pdfErr) {
-        console.error('PDF paylaşımı hata', pdfErr);
-      }
-      quoteFormWrap.classList.add('hidden');
-      quoteSuccess.classList.add('visible');
-      renderQuoteSuccessShare();
+      openQuotePreview(payload);
       if (typeof syncOpenLeadsBadge === 'function') syncOpenLeadsBadge();
     } catch (err) {
       console.error('Teklif kaydı hata', err);
@@ -5337,6 +5471,9 @@
   quotePdfBtn.addEventListener('click', onQuotePdfClick);
   quotePdfSuccessBtn.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
   quoteForm.addEventListener('submit', submitQuote);
+  quotePreviewPrint?.addEventListener('click', printQuotePreview);
+  quotePreviewShare?.addEventListener('click', shareQuotePreview);
+  quotePreviewClose?.addEventListener('click', closeQuotePreview);
   document.getElementById('quote-phone').addEventListener('input', onQuotePhoneInput);
   document.getElementById('quote-phone').addEventListener('blur', onQuotePhoneInput);
   quoteModal.addEventListener('click', (e) => {
@@ -5376,7 +5513,8 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (leadsModal?.classList.contains('open')) closeLeadsModal();
+    if (quotePreview?.classList.contains('open')) closeQuotePreview();
+    else if (leadsModal?.classList.contains('open')) closeLeadsModal();
     else if (setsModal?.classList.contains('open')) closeSetsModal();
     else if (accModal?.classList.contains('open')) closeAccModal();
     else if (isoModal.classList.contains('open')) closeIsoModal();
