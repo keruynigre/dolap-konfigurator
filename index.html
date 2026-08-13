@@ -1144,11 +1144,32 @@
   .dealer-chip button:hover { border-color: var(--brass); color: var(--brass); }
   .dealer-chip button.dealer-leads-btn {
     border-color: rgba(201,163,90,.45); color: var(--brass);
+    position: relative;
+  }
+  .dealer-chip button.dealer-leads-btn .leads-pending-badge {
+    display: none; margin-left: 6px; min-width: 18px; padding: 1px 6px;
+    border-radius: 999px; background: var(--brass); color: var(--brass-ink);
+    font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+    vertical-align: middle;
+  }
+  .dealer-chip button.dealer-leads-btn.has-pending {
+    border-color: var(--brass);
+    box-shadow: 0 0 0 1px rgba(201,163,90,.35), 0 0 18px rgba(201,163,90,.28);
+    animation: leads-pending-pulse 1.6s ease-in-out infinite;
+  }
+  .dealer-chip button.dealer-leads-btn.has-pending .leads-pending-badge { display: inline-block; }
+  @keyframes leads-pending-pulse {
+    0%, 100% { box-shadow: 0 0 0 1px rgba(201,163,90,.35), 0 0 10px rgba(201,163,90,.2); }
+    50% { box-shadow: 0 0 0 2px rgba(201,163,90,.55), 0 0 22px rgba(201,163,90,.42); }
   }
   .leads-list { display: flex; flex-direction: column; gap: 10px; }
   .lead-row {
     border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px;
     padding: 12px 14px; display: grid; gap: 8px;
+  }
+  .lead-row.is-open-pending {
+    border-color: rgba(201,163,90,.65);
+    box-shadow: inset 0 0 0 1px rgba(201,163,90,.18);
   }
   .lead-row-top {
     display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px;
@@ -1196,7 +1217,9 @@
         <p>Gövdeleri yan yana ekleyin, kapak alanına tıklayarak malzeme seçin. Tutacaklar otomatik birbirine bakar; gövde simgesi, çekmece ve silme simgelerini gövde üzerinde kullanın.</p>
         <div class="dealer-chip" id="dealer-chip">
           <span>Mağaza: <strong id="dealer-chip-name">—</strong></span>
-          <button type="button" class="dealer-leads-btn" id="dealer-leads-btn">Tekliflerim</button>
+          <button type="button" class="dealer-leads-btn" id="dealer-leads-btn" title="İşaret bekleyen teklifler">
+            Tekliflerim<span class="leads-pending-badge" id="leads-pending-badge" aria-hidden="true">0</span>
+          </button>
           <button type="button" id="dealer-logout">Çıkış</button>
         </div>
       </div>
@@ -2401,6 +2424,7 @@
       }
       quoteFormWrap.classList.add('hidden');
       quoteSuccess.classList.add('visible');
+      if (typeof syncOpenLeadsBadge === 'function') syncOpenLeadsBadge();
     } catch (err) {
       console.error('Teklif kaydı hata', err);
       setQuoteError(quoteLeadErrorMessage(err && err.message));
@@ -5254,6 +5278,7 @@
       nameEl.textContent = session.dealer.name + ' (' + session.dealer.code + ')';
       chip.classList.add('visible');
     }
+    syncOpenLeadsBadge();
   }
 
   function lockAppForDealer(){
@@ -5263,6 +5288,7 @@
     if (gate) gate.classList.remove('hidden');
     if (app) app.classList.add('is-locked');
     if (chip) chip.classList.remove('visible');
+    updateOpenLeadsBadge(0);
     document.getElementById('dealer-code')?.focus();
   }
 
@@ -5292,11 +5318,13 @@
   const leadsModal = document.getElementById('leads-modal');
   const leadsList = document.getElementById('leads-list');
   const leadsErr = document.getElementById('leads-err');
+  const leadsBtn = document.getElementById('dealer-leads-btn');
+  const leadsPendingBadge = document.getElementById('leads-pending-badge');
 
   function outcomeLabel(outcome){
     if (outcome === 'sold') return 'Satış';
     if (outcome === 'lost') return 'Satılmadı';
-    return 'Teklif';
+    return 'Bekliyor';
   }
 
   function fmtLeadWhen(iso){
@@ -5310,10 +5338,42 @@
     leadsErr.textContent = msg || '';
   }
 
+  function updateOpenLeadsBadge(count){
+    const n = Math.max(0, Number(count) || 0);
+    if (leadsPendingBadge) {
+      leadsPendingBadge.textContent = String(n);
+      leadsPendingBadge.setAttribute('aria-hidden', n > 0 ? 'false' : 'true');
+    }
+    if (leadsBtn) {
+      leadsBtn.classList.toggle('has-pending', n > 0);
+      leadsBtn.setAttribute(
+        'title',
+        n > 0
+          ? (n + ' teklif Satış / Satılmadı bekliyor')
+          : 'Tekliflerim'
+      );
+      leadsBtn.setAttribute('aria-label',
+        n > 0 ? ('Tekliflerim, ' + n + ' işaret bekliyor') : 'Tekliflerim'
+      );
+    }
+  }
+
+  async function syncOpenLeadsBadge(){
+    if (!window.DolapDealer || !window.DolapDealer.getSession()) {
+      updateOpenLeadsBadge(0);
+      return;
+    }
+    const res = await window.DolapDealer.listQuoteLeads(50);
+    if (!res || !res.ok) return;
+    const openCount = (res.leads || []).filter(l => (l.outcome || 'open') === 'open').length;
+    updateOpenLeadsBadge(openCount);
+  }
+
   function closeLeadsModal(){
     if (!leadsModal) return;
     leadsModal.classList.remove('open');
     leadsModal.setAttribute('aria-hidden', 'true');
+    syncOpenLeadsBadge();
   }
 
   async function openLeadsModal(){
@@ -5337,12 +5397,22 @@
       );
       return;
     }
-    const leads = res.leads || [];
+    const leads = (res.leads || []).slice().sort((a, b) => {
+      const ao = (a.outcome || 'open') === 'open' ? 0 : 1;
+      const bo = (b.outcome || 'open') === 'open' ? 0 : 1;
+      if (ao !== bo) return ao - bo;
+      return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    });
+    const openCount = leads.filter(l => (l.outcome || 'open') === 'open').length;
+    updateOpenLeadsBadge(openCount);
     if (!leads.length) {
       leadsList.innerHTML = '<p class="sets-empty">Henüz gönderilmiş teklif yok.</p>';
       return;
     }
-    leadsList.innerHTML = leads.map(l => {
+    const pendingNote = openCount
+      ? '<p class="leads-err" style="color:var(--brass)">İşaret bekleyen: ' + openCount + ' teklif — Satış oldu veya Satılmadı seçin.</p>'
+      : '';
+    leadsList.innerHTML = pendingNote + leads.map(l => {
       const outcome = l.outcome || 'open';
       const series = (DOOR_SERIES[l.series_id] && DOOR_SERIES[l.series_id].label) || l.series_id || '—';
       const price = l.total_price != null ? priceFmt.format(l.total_price) : '—';
@@ -5357,7 +5427,7 @@
           '<button type="button" data-lead-act="open" data-lead-id="' + escapeHtml(l.id) + '">Teklife geri al</button>';
       }
       return (
-        '<article class="lead-row" data-lead-id="' + escapeHtml(l.id) + '">' +
+        '<article class="lead-row' + (outcome === 'open' ? ' is-open-pending' : '') + '" data-lead-id="' + escapeHtml(l.id) + '">' +
           '<div class="lead-row-top">' +
             '<h3 class="lead-row-name">' + escapeHtml(l.customer_name || '—') + '</h3>' +
             '<span class="lead-badge is-' + escapeHtml(outcome) + '">' + outcomeLabel(outcome) + '</span>' +
