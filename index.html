@@ -2414,11 +2414,6 @@
     const validUntil = payload.validUntil || quoteValidUntilIso(payload.createdAt);
     const validStr = formatQuoteDate(validUntil);
     const salesRep = String(payload.salesRep || '').trim();
-    const dimLine = !(payload.config || []).length
-      ? ((payload.accessories || []).length ? 'Yalnızca ek ürün siparişi' : '—')
-      : (t.mode === 'corner'
-        ? 'Sol ' + t.left + ' cm · Sağ ' + t.right + ' cm · Yükseklik ' + (t.heightCm || BODY_HEIGHT_CM) + ' cm'
-        : 'Toplam ' + (t.total || 0) + ' cm · Yükseklik ' + (t.heightCm || BODY_HEIGHT_CM) + ' cm');
 
     const rowsHtml = items.length
       ? items.map(item =>
@@ -2435,7 +2430,6 @@
       '<div class="quote-pdf-root">' +
         '<p class="eyebrow">Bambi Modüler</p>' +
         '<h1>Teklif Formu</h1>' +
-        '<p class="muted">' + escapeHtml(dateStr) + ' · ' + escapeHtml(dimLine) + '</p>' +
         '<table class="meta"><tbody>' +
           '<tr>' +
             '<td class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</td>' +
