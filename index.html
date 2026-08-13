@@ -778,6 +778,10 @@
   }
   .iso-btn:hover { background: rgba(201,163,90,0.14); }
   .iso-btn:active { transform: scale(0.98); }
+  .iso-btn.active {
+    background: rgba(201,163,90,0.92); color: var(--brass-ink); border-color: var(--brass);
+  }
+  .iso-btn.active:hover { filter: brightness(1.05); }
   .iso-btn[hidden] { display: none !important; }
 
   .iso-modal {
@@ -796,6 +800,7 @@
     display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
     padding: 16px 18px 12px; border-bottom: 1px solid var(--line); flex-shrink: 0;
   }
+  .iso-head-actions { display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0; }
   .iso-head h2 {
     margin: 0 0 4px; font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600;
   }
@@ -1069,6 +1074,11 @@
   @keyframes flip-door { 0% { transform: rotateY(0deg); } 50% { transform: rotateY(90deg); } 100% { transform: rotateY(0deg); } }
   .door-slot .door-content {
     position: absolute; inset: 0;
+    transition: opacity 0.22s ease;
+  }
+  /* Kapaklar yerinde / fiyatta kalır; yalnızca görsel saydamlık */
+  .canvas.doors-ghost .door-slot:not(.empty) .door-content {
+    opacity: 0.34;
   }
   .door-slot .door-content.is-mirrored { transform: scaleX(-1); }
   /* Kapak silme: varsayılan gizli — hover ile yalnızca o kapakta görünür */
@@ -1409,12 +1419,13 @@
           </button>
         </div>
         <span class="canvas-toolbar-spacer" aria-hidden="true"></span>
+        <button type="button" class="iso-btn" id="ghost-doors-btn" hidden aria-pressed="false" title="Kapakları saydam yap — iç yapı görünür, kapaklar fiyatta kalır">İç yapıyı göster</button>
         <button type="button" class="iso-btn" id="iso-btn" hidden>İzometrik görünüm</button>
       </div>
       <div class="canvas empty" id="canvas">
         <div class="empty-msg">Henüz gövde eklenmedi.<br>Soldan bir gövde tipi seçerek başlayın.</div>
       </div>
-      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İzometrik görünümü açabilirsiniz.</p>
+      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İç yapıyı görmek için kapakları saydam yapabilirsiniz — kapaklar fiyatta kalır. İzometrik görünümü açabilirsiniz.</p>
     </main>
   </div>
 </div>
@@ -1456,7 +1467,10 @@
         <h2 id="iso-title">İzometrik görünüm</h2>
         <p id="iso-sub">Ürünün 3D önizlemesi. Sol tıkla gövde sırasını değiştirin; sağ tıkla kamerayı döndürün; tekerlek veya +/− ile yakınlaştırın.</p>
       </div>
-      <button type="button" class="iso-close" id="iso-close">Kapat</button>
+      <div class="iso-head-actions">
+        <button type="button" class="iso-btn" id="iso-ghost-btn" aria-pressed="false" title="Kapakları saydam yap — iç yapı görünür, kapaklar fiyatta kalır">İç yapıyı göster</button>
+        <button type="button" class="iso-close" id="iso-close">Kapat</button>
+      </div>
     </div>
     <div class="iso-stage" id="iso-stage">
       <canvas id="iso-canvas" width="900" height="560"></canvas>
@@ -1912,6 +1926,9 @@
   /** Yatak seti seçimleri: ref -> { size, qty } */
   let selectedSets = new Map();
   const SET_QTY_MAX = 10;
+  /** Kapaklar dolapta ve fiyatta kalır; yalnızca görsel saydamlık. */
+  let doorsGhost = false;
+  const DOORS_GHOST_ALPHA = 0.34;
   let remoteQuote = {
     pricing: { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 },
     lineItems: [],
@@ -2732,6 +2749,8 @@
 
   /* ——— Köşe dolap izometrik 3D önizleme ——— */
   const isoBtn = document.getElementById('iso-btn');
+  const ghostDoorsBtn = document.getElementById('ghost-doors-btn');
+  const isoGhostBtn = document.getElementById('iso-ghost-btn');
   const isoModal = document.getElementById('iso-modal');
   const isoClose = document.getElementById('iso-close');
   const isoStage = document.getElementById('iso-stage');
@@ -2763,10 +2782,32 @@
     return modules.length > 0;
   }
 
+  function syncDoorsGhostUi(){
+    canvas.classList.toggle('doors-ghost', !!doorsGhost);
+    const label = doorsGhost ? 'Kapakları göster' : 'İç yapıyı göster';
+    const title = doorsGhost
+      ? 'Kapakları tekrar opak yap'
+      : 'Kapakları saydam yap — iç yapı görünür, kapaklar fiyatta kalır';
+    [ghostDoorsBtn, isoGhostBtn].forEach(btn => {
+      if (!btn) return;
+      btn.textContent = label;
+      btn.title = title;
+      btn.setAttribute('aria-pressed', doorsGhost ? 'true' : 'false');
+      btn.classList.toggle('active', !!doorsGhost);
+    });
+    if (ghostDoorsBtn) ghostDoorsBtn.hidden = !hasIsoLayout();
+  }
+
+  function toggleDoorsGhost(){
+    doorsGhost = !doorsGhost;
+    syncDoorsGhostUi();
+  }
+
   function updateIsoButton(){
     if (!isoBtn) return;
     const show = hasIsoLayout();
     isoBtn.hidden = !show;
+    syncDoorsGhostUi();
     if (!show && isoModal.classList.contains('open')) closeIsoModal();
   }
 
@@ -2885,6 +2926,8 @@
     const edgeBias = 0.82;
 
     function pushFace(pts, fill, opts){
+      opts = Object.assign({}, opts || {});
+      if (spec.alpha != null) opts.alpha = spec.alpha;
       faces.push(isoFace(pts, fill, style.edge, opts));
     }
 
@@ -3063,6 +3106,8 @@
     return {
       depth: avg + (opts.depthBias || 0),
       draw: (ctx) => {
+        const prevAlpha = ctx.globalAlpha;
+        if (opts.alpha != null) ctx.globalAlpha = prevAlpha * opts.alpha;
         isoPoly(ctx, corners, fill, stroke, opts.lineW);
         if (opts.gloss) {
           const g = ctx.createLinearGradient(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
@@ -3079,6 +3124,7 @@
           const b = lerp(corners[1], corners[2], t0);
           isoPoly(ctx, [corners[0], corners[1], b, a], opts.band, stroke, opts.lineW);
         }
+        ctx.globalAlpha = prevAlpha;
         // Boş kapak: tarama yok — düz dolu yüzey
       }
     };
@@ -3446,7 +3492,8 @@
       isoPushDoorSlab(faces, P, {
         faceAxis: 'n', style: doorStyle,
         nx, nz, ax0: i0x + nx * push, az0: i0z + nz * push, ax1: i1x + nx * push, az1: i1z + nz * push,
-        y0: t + 0.01, y1: h - t - 0.01
+        y0: t + 0.01, y1: h - t - 0.01,
+        alpha: doorsGhost ? DOORS_GHOST_ALPHA : undefined
       });
     } else {
       pushClosedDiagonal(0.75);
@@ -3473,6 +3520,7 @@
     const cornerIdx = modules.findIndex(m => m.type === 'corner');
 
     function doorRevealsInterior(mat){
+      if (doorsGhost) return true;
       if (!mat) return true;
       return doorPreviewStyle(mat).kind === 'glass';
     }
@@ -3515,7 +3563,8 @@
               x0: open0 + fracs[di][0] * openW + pad,
               x1: open0 + fracs[di][1] * openW - pad,
               y0: frame + 0.006, y1: HEIGHT - frame - 0.006,
-              zIn: originZ + DEPTH
+              zIn: originZ + DEPTH,
+              alpha: doorsGhost ? DOORS_GHOST_ALPHA : undefined
             });
           } else {
             const open0 = originZ + frame;
@@ -3525,7 +3574,8 @@
               z0: open0 + fracs[di][0] * openW + pad,
               z1: open0 + fracs[di][1] * openW - pad,
               y0: frame + 0.006, y1: HEIGHT - frame - 0.006,
-              xIn: originX + DEPTH
+              xIn: originX + DEPTH,
+              alpha: doorsGhost ? DOORS_GHOST_ALPHA : undefined
             });
           }
         }
@@ -5452,6 +5502,8 @@
   });
 
   isoBtn.addEventListener('click', openIsoModal);
+  ghostDoorsBtn?.addEventListener('click', toggleDoorsGhost);
+  isoGhostBtn?.addEventListener('click', toggleDoorsGhost);
   isoClose.addEventListener('click', closeIsoModal);
   isoModal.addEventListener('click', (e) => {
     if (e.target === isoModal) closeIsoModal();
