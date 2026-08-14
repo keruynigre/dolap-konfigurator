@@ -534,7 +534,16 @@
     font-size: 11px; color: var(--ink-dim); line-height: 1.55;
   }
   .quote-summary-box strong { color: var(--ink); font-weight: 500; }
-  .quote-summary-box .q-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); color: var(--brass); font-size: 12px; }
+  .quote-summary-box .q-total { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); color: var(--ink-dim); font-size: 12px; }
+  .quote-summary-box .q-disc { color: var(--danger-text, #c98b7c); }
+  .quote-summary-box .q-offer { margin-top: 4px; color: var(--brass); font-size: 13px; font-weight: 600; }
+  .quote-discount {
+    display: grid; grid-template-columns: 0.9fr 1.3fr; gap: 10px; margin: 0 0 14px;
+  }
+  .quote-discount .quote-field { margin-bottom: 0; }
+  .quote-discount-hint {
+    grid-column: 1 / -1; margin: 0; font-size: 11px; color: var(--ink-dim); line-height: 1.4;
+  }
   .quote-summary-box .q-list { margin: 0 0 10px; }
   .quote-summary-box .q-row {
     display: grid; grid-template-columns: 1fr auto auto; gap: 8px 10px;
@@ -1611,6 +1620,17 @@
       <p class="quote-sub">Düzenlemeniz tamam. Bilgilerinizi bırakın; konfigürasyon özeti ile birlikte teklif talebiniz iletilsin.</p>
       <div class="quote-summary-box" id="quote-summary"></div>
       <form id="quote-form">
+        <div class="quote-discount" id="quote-discount">
+          <p class="quote-discount-hint">Katalog tutarı üzerinden iskonto uygulayın. Yüzde veya teklif tutarını elle girebilirsiniz.</p>
+          <div class="quote-field">
+            <label for="quote-discount-pct">İskonto (%)</label>
+            <input id="quote-discount-pct" name="discount_pct" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+          </div>
+          <div class="quote-field">
+            <label for="quote-discount-price">Teklif tutarı</label>
+            <input id="quote-discount-price" name="discount_price" type="text" inputmode="decimal" autocomplete="off" placeholder="Elle girin">
+          </div>
+        </div>
         <div class="quote-field">
           <label for="quote-name">Ad Soyad <span class="req" aria-hidden="true">*</span></label>
           <input id="quote-name" name="name" type="text" required autocomplete="name" placeholder="Adınız Soyadınız">
@@ -1743,9 +1763,9 @@
       joinTrimLeft: 9, joinTrimRight: 10,
       joinTrimLeftDrawer: 0, joinTrimRightDrawer: 0,
       doorInset: { left: 0, right: 0, top: 0, bottom: 0 },
-      // Görseldeki dikmeler eşit 1/3 değil; sol bölme ~0.36 (aksi halde sol kapak kısa kalır)
-      doorFracs: [[0, 0.361], [0.361, 0.681], [0.681, 1]],
-      doors: 3, widthCm: DOOR_WIDTH_CM * 3, heightCm: BODY_HEIGHT_CM, label: '3 Kapaklı Gövde', drawerZone: [0.361, 1]
+      // Sol kapak dikme merkezinde bitsin (asset dikmesi ~0.343; 0.36 sola taşıyordu)
+      doorFracs: [[0, 0.343], [0.343, 0.672], [0.672, 1]],
+      doors: 3, widthCm: DOOR_WIDTH_CM * 3, heightCm: BODY_HEIGHT_CM, label: '3 Kapaklı Gövde', drawerZone: [0.343, 1]
     },
     // Köşe gövde — tek kapak; diğer gövdelere yapışmaz (gap)
     'corner': {
@@ -2192,9 +2212,106 @@
     return (remoteQuote.lineItems || []).slice();
   }
 
+  function roundQuoteMoney(n){
+    return Math.round((Number(n) || 0) * 100) / 100;
+  }
+
+  function parseQuoteNumber(raw){
+    let s = String(raw || '').trim().replace(/\s/g, '').replace(/[₺tlTL]/g, '');
+    if (!s) return null;
+    if (s.includes(',') && s.includes('.')) s = s.replace(/\./g, '').replace(',', '.');
+    else if (s.includes(',')) s = s.replace(',', '.');
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatQuotePct(n){
+    const r = Math.round((Number(n) || 0) * 100) / 100;
+    if (!r) return '';
+    return String(r).replace('.', ',');
+  }
+
+  function catalogQuoteTotal(){
+    return roundQuoteMoney((calculatePricing() || {}).total);
+  }
+
+  function getQuoteDiscount(){
+    const list = catalogQuoteTotal();
+    const pctEl = document.getElementById('quote-discount-pct');
+    const priceEl = document.getElementById('quote-discount-price');
+    const typedPct = parseQuoteNumber(pctEl && pctEl.value);
+    const typedNet = parseQuoteNumber(priceEl && priceEl.value);
+    let pct = typedPct == null ? 0 : Math.max(0, Math.min(100, typedPct));
+    let net = typedNet == null ? list : Math.max(0, typedNet);
+    if (typedNet != null && list > 0) {
+      pct = Math.max(0, Math.min(100, roundQuoteMoney(((list - net) / list) * 100)));
+    } else if (typedPct != null) {
+      net = roundQuoteMoney(list * (1 - pct / 100));
+    } else {
+      pct = 0;
+      net = list;
+    }
+    const amount = roundQuoteMoney(Math.max(0, list - net));
+    if (net > list) pct = 0;
+    return { list, pct, amount, net: roundQuoteMoney(net) };
+  }
+
+  let quoteDiscountSyncing = false;
+
+  function applyQuoteDiscountFrom(source){
+    if (quoteDiscountSyncing) return;
+    const list = catalogQuoteTotal();
+    const pctEl = document.getElementById('quote-discount-pct');
+    const priceEl = document.getElementById('quote-discount-price');
+    if (!pctEl || !priceEl) return;
+    quoteDiscountSyncing = true;
+    try {
+      if (source === 'pct') {
+        const typed = parseQuoteNumber(pctEl.value);
+        const pct = typed == null ? 0 : Math.max(0, Math.min(100, typed));
+        const net = roundQuoteMoney(list * (1 - pct / 100));
+        if (typed == null && !String(pctEl.value || '').trim()) {
+          priceEl.value = priceFmt.format(list);
+        } else {
+          priceEl.value = priceFmt.format(net);
+        }
+      } else if (source === 'price') {
+        const typed = parseQuoteNumber(priceEl.value);
+        if (typed == null) {
+          pctEl.value = '';
+        } else {
+          const net = Math.max(0, typed);
+          const pct = list > 0 ? Math.max(0, Math.min(100, ((list - net) / list) * 100)) : 0;
+          pctEl.value = net >= list ? '' : formatQuotePct(pct);
+        }
+      } else {
+        pctEl.value = '';
+        priceEl.value = priceFmt.format(list);
+      }
+    } finally {
+      quoteDiscountSyncing = false;
+    }
+    if (quoteSummary) quoteSummary.innerHTML = buildQuoteSummaryHtml();
+  }
+
+  function resetQuoteDiscount(){
+    applyQuoteDiscountFrom('reset');
+  }
+
+  function pricingWithDiscount(){
+    const catalog = calculatePricing() || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 };
+    const d = getQuoteDiscount();
+    return Object.assign({}, catalog, {
+      listTotal: d.list,
+      discountPct: d.pct,
+      discountAmount: d.amount,
+      total: d.net
+    });
+  }
+
   function buildQuoteSummaryHtml(){
     const t = getLayoutTotals();
-    const p = calculatePricing();
+    const d = getQuoteDiscount();
     const items = buildQuoteLineItems();
     const listHtml = items.length
       ? '<div class="q-list">' + items.map(item =>
@@ -2212,9 +2329,19 @@
         ? 'Sol: ' + t.left + ' cm · Sağ: ' + t.right + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm'
         : 'Toplam ölçü: ' + t.total + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm');
 
-    return listHtml +
-      '<div class="q-total">' + dimLine + '<br>Toplam: ' +
-      priceFmt.format(p.total) + '</div>';
+    let money = dimLine + '<br>Katalog: ' + priceFmt.format(d.list);
+    if (d.amount > 0.005) {
+      money += '<br><span class="q-disc">İskonto: %' +
+        escapeHtml(formatQuotePct(d.pct) || '0') +
+        ' · −' + priceFmt.format(d.amount) + '</span>';
+      money += '<br><span class="q-offer">Teklif: ' + priceFmt.format(d.net) + '</span>';
+    } else if (d.net > d.list + 0.005) {
+      money += '<br><span class="q-offer">Teklif: ' + priceFmt.format(d.net) + '</span>';
+    } else {
+      money += '<br><span class="q-offer">Toplam: ' + priceFmt.format(d.net) + '</span>';
+    }
+
+    return listHtml + '<div class="q-total">' + money + '</div>';
   }
 
   function listSelectedAccessories(){
@@ -2431,7 +2558,7 @@
       totals: {
         ...getLayoutTotals(),
         heightCm: BODY_HEIGHT_CM,
-        pricing: calculatePricing()
+        pricing: pricingWithDiscount()
       },
       lineItems: buildQuoteLineItems(),
       salesRep: readQuoteSalesRep(),
@@ -2496,7 +2623,14 @@
           '<tr><td>Kapak</td><td class="num">' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</td></tr>' +
           '<tr><td>Çekmece</td><td class="num">' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</td></tr>' +
           '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
-          '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
+          ((pricing.sets)
+            ? '<tr><td>Yatak seti</td><td class="num">' + escapeHtml(priceFmt.format(pricing.sets || 0)) + '</td></tr>'
+            : '') +
+          ((pricing.discountAmount > 0.005)
+            ? '<tr><td>Katalog tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.listTotal != null ? pricing.listTotal : (pricing.total || 0) + (pricing.discountAmount || 0))) + '</td></tr>' +
+              '<tr><td>İskonto' + (pricing.discountPct ? ' (%' + escapeHtml(formatQuotePct(pricing.discountPct)) + ')' : '') + '</td><td class="num">−' + escapeHtml(priceFmt.format(pricing.discountAmount)) + '</td></tr>' +
+              '<tr class="grand"><td>Teklif tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>'
+            : '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>') +
         '</tbody></table>' +
         '<p class="foot">Bu teklif ' + escapeHtml(validStr) + ' tarihine kadar geçerlidir. Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
         '<p class="legal">Bambi Yatak teklifte yer alan ürün, fiyat ve ödeme koşullarında değişiklik yapma hakkını teklif onaylanana kadar saklı tutar.</p>' +
@@ -2639,14 +2773,14 @@
     if (!isQuoteReady()) return;
     closeQuotePreview();
     await refreshRemotePricing();
-    lastQuotePayload = buildQuotePayload();
-    quoteSummary.innerHTML = buildQuoteSummaryHtml();
     quoteFormWrap.classList.remove('hidden');
     quoteSuccess.classList.remove('visible');
     setQuoteError('');
     quoteForm.reset();
     const salesRepEl = document.getElementById('quote-sales-rep');
     if (salesRepEl) salesRepEl.value = loadRememberedSalesRep();
+    resetQuoteDiscount();
+    lastQuotePayload = buildQuotePayload();
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
@@ -2812,6 +2946,12 @@
           accessories: payload.accessories,
           totals: payload.totals,
           lineItems: payload.lineItems,
+          discount: {
+            listTotal: pricing.listTotal,
+            pct: pricing.discountPct,
+            amount: pricing.discountAmount,
+            net: pricing.total
+          },
           createdAt: payload.createdAt
         }
       });
@@ -5740,6 +5880,15 @@
   quoteDone.addEventListener('click', closeQuoteModal);
   quotePdfSuccessBtn?.addEventListener('click', () => downloadQuotePdf(lastQuotePayload));
   quoteForm.addEventListener('submit', submitQuote);
+  document.getElementById('quote-discount-pct')?.addEventListener('input', () => applyQuoteDiscountFrom('pct'));
+  document.getElementById('quote-discount-pct')?.addEventListener('blur', () => applyQuoteDiscountFrom('pct'));
+  document.getElementById('quote-discount-price')?.addEventListener('input', () => applyQuoteDiscountFrom('price'));
+  document.getElementById('quote-discount-price')?.addEventListener('blur', () => {
+    applyQuoteDiscountFrom('price');
+    const d = getQuoteDiscount();
+    const priceEl = document.getElementById('quote-discount-price');
+    if (priceEl && parseQuoteNumber(priceEl.value) != null) priceEl.value = priceFmt.format(d.net);
+  });
   quotePreviewPrint?.addEventListener('click', printQuotePreview);
   quotePreviewShare?.addEventListener('click', shareQuotePreview);
   quotePreviewClose?.addEventListener('click', closeQuotePreview);
