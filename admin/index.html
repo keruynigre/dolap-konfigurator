@@ -516,7 +516,11 @@
         <h2>Gönderilen teklif formları</h2>
         <div class="search-row">
           <input type="search" id="leads-search" placeholder="Ad, telefon, e-posta, mağaza veya durum ara…">
+          <button class="btn btn-ghost" type="button" id="leads-export-unsold" style="width:auto;flex-shrink:0;white-space:nowrap">Satılmayanları Excel'e al</button>
         </div>
+        <p class="muted" style="margin:0;padding:8px 14px;font-size:12px;line-height:1.45;border-bottom:1px solid var(--line)">
+          Satışa dönüşmeyen teklifler (açık ve satılmadı). Müşteri hizmetleri arayıp almama sebebini işleyebilir.
+        </p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -1144,6 +1148,7 @@
   document.getElementById('dealer-live-only')?.addEventListener('change', renderDealers);
   document.getElementById('leads-refresh').addEventListener('click', loadLeads);
   document.getElementById('leads-search').addEventListener('input', renderLeads);
+  document.getElementById('leads-export-unsold')?.addEventListener('click', exportUnsoldLeads);
 
   document.addEventListener('click', (e) => {
     const th = e.target.closest('th.sortable');
@@ -1590,6 +1595,14 @@
     }
   }
 
+  function leadStoreName(row) {
+    const name = String(row.dealer_name || row.name || '').trim();
+    if (name) return name;
+    const code = String(row.dealer_code || row.code || '').trim();
+    if (code && !/^u-/i.test(code)) return code;
+    return '';
+  }
+
   async function loadLeads() {
     const from = document.getElementById('leads-from').value || daysAgoISO(30);
     const to = document.getElementById('leads-to').value || todayISO();
@@ -1652,7 +1665,7 @@
 
   function leadsDealerSortValue(d, key) {
     if (key === 'dealer') {
-      return String((d.dealer_code || '') + ' ' + (d.dealer_name || '')).toLocaleLowerCase('tr');
+      return leadStoreName(d).toLocaleLowerCase('tr');
     }
     return Number(d[key]) || 0;
   }
@@ -1663,7 +1676,7 @@
     const body = document.getElementById('leads-dealer-rows');
     body.innerHTML = rows.length
       ? rows.map(d =>
-          '<tr><td>' + escapeHtml((d.dealer_code || '') + (d.dealer_name ? ' · ' + d.dealer_name : '')) +
+          '<tr><td>' + escapeHtml(leadStoreName(d) || '—') +
           '</td><td class="num">' + d.lead_count +
           '</td><td class="num">' + (d.sold_count || 0) +
           '</td><td class="num">' + escapeHtml(fmtMoney(d.lead_total_price)) + '</td></tr>'
@@ -1686,7 +1699,7 @@
       case 'customer_email':
         return String(l.customer_email || '').toLocaleLowerCase('tr');
       case 'dealer':
-        return String((l.dealer_code || '') + ' ' + (l.dealer_name || '')).toLocaleLowerCase('tr');
+        return leadStoreName(l).toLocaleLowerCase('tr');
       case 'series_id':
         return String(SERIES_LABELS[l.series_id] || l.series_id || '').toLocaleLowerCase('tr');
       case 'total_price':
@@ -1700,17 +1713,21 @@
     }
   }
 
-  function renderLeads() {
-    syncSortHeaders(document.getElementById('leads-head'), tableSort.leads);
+  function filterLeadsCache() {
     const q = (document.getElementById('leads-search').value || '').trim().toLowerCase();
-    const filtered = leadsCache.filter(l => {
+    return leadsCache.filter(l => {
       if (!q) return true;
       return [
         l.customer_name, l.customer_phone, l.customer_email,
-        l.dealer_code, l.dealer_name, l.series_id, l.customer_note,
+        leadStoreName(l), l.series_id, l.customer_note,
         l.outcome, outcomeLabel(l.outcome), l.sale_ref
       ].join(' ').toLowerCase().includes(q);
     });
+  }
+
+  function renderLeads() {
+    syncSortHeaders(document.getElementById('leads-head'), tableSort.leads);
+    const filtered = filterLeadsCache();
     const rows = sortRows(filtered, tableSort.leads, leadSortValue);
     const body = document.getElementById('leads-rows');
     if (!rows.length) {
@@ -1724,7 +1741,7 @@
         '<td>' + escapeHtml(l.customer_name) + '</td>' +
         '<td>' + escapeHtml(l.customer_phone) + '</td>' +
         '<td>' + escapeHtml(l.customer_email) + '</td>' +
-        '<td>' + escapeHtml((l.dealer_code || '') + (l.dealer_name ? ' · ' + l.dealer_name : '')) + '</td>' +
+        '<td>' + escapeHtml(leadStoreName(l) || '—') + '</td>' +
         '<td>' + escapeHtml(SERIES_LABELS[l.series_id] || l.series_id || '—') + '</td>' +
         '<td class="num">' + escapeHtml(fmtMoney(l.total_price)) + '</td>' +
         '<td>' + escapeHtml(l.sale_ref || '—') + '</td>' +
@@ -1733,6 +1750,57 @@
           '" title="Teklifi sil">Sil</button></td>' +
       '</tr>'
     ).join('');
+  }
+
+  function exportUnsoldLeads() {
+    const unsold = filterLeadsCache().filter(l => l.outcome !== 'sold');
+    if (!unsold.length) {
+      alert('Bu aralıkta satışa dönüşmeyen teklif yok.');
+      return;
+    }
+    if (typeof XLSX === 'undefined') {
+      alert('Excel kütüphanesi yüklenemedi.');
+      return;
+    }
+    const to = document.getElementById('leads-to').value || todayISO();
+    const header = [
+      'Tarih',
+      'Durum',
+      'Ad Soyad',
+      'Telefon',
+      'E-posta',
+      'Mağaza',
+      'Model',
+      'Tutar (₺)',
+      'Teklif notu',
+      'Görüşme tarihi',
+      'Almama sebebi',
+      'Görüşme notu'
+    ];
+    const aoa = [header].concat(unsold.map(l => [
+      fmtDateTime(l.created_at),
+      outcomeLabel(l.outcome),
+      l.customer_name || '',
+      l.customer_phone || '',
+      l.customer_email || '',
+      leadStoreName(l),
+      SERIES_LABELS[l.series_id] || l.series_id || '',
+      Number(l.total_price) || 0,
+      l.customer_note || '',
+      '',
+      '',
+      ''
+    ]));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [
+      { wch: 20 }, { wch: 12 }, { wch: 22 }, { wch: 16 }, { wch: 28 },
+      { wch: 22 }, { wch: 14 }, { wch: 14 }, { wch: 28 },
+      { wch: 16 }, { wch: 24 }, { wch: 32 }
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Takip');
+    const stamp = String(to || todayISO()).replace(/-/g, '');
+    XLSX.writeFile(wb, 'bambi-musteri-takip-' + stamp + '.xlsx');
   }
 
   async function deleteLead(leadId) {
