@@ -1774,7 +1774,7 @@
   const DOOR_WIDTH_CM = 50;
   const FLUSH_REF_H = 890; // all flush body images share this height
 
-  const ASSET_VERSION = '9';
+  const ASSET_VERSION = '10';
   /** assets/ uzun cache. Görsel değişince ASSET_VERSION artır. */
   function assetUrl(src){
     if (!src || typeof src !== 'string') return src;
@@ -1902,7 +1902,17 @@
       materials: {
         ceviz:  { kind: 'image', img: ASSETS.ceviz,  crop: [228, 67, 419, 939], label: 'Rubens', tier: 'wood', swatch: 'linear-gradient(165deg, #9a6a3f, #5f3c22)', tone: 'on-dark', bottomTrim: true },
         aytasi: { kind: 'image', img: ASSETS.aytasi, crop: [247, 74, 436, 925], label: 'Aytaşı', tier: 'wood', swatch: 'linear-gradient(165deg, #d8c3a3, #b3987a)', tone: 'on-light', bottomTrim: true },
-        ayna:   {},
+        ayna: {
+          kind: 'image',
+          img: 'assets/doors/welldora/ayna.webp?v=10',
+          crop: [480, 198, 850, 1850],
+          canvasW: 1334,
+          canvasH: 2002,
+          label: 'Ayna',
+          tier: 'ayna',
+          swatch: 'linear-gradient(165deg, #f2f4f5, #8f959a)',
+          tone: 'on-light'
+        },
         cam:    {}
       },
       accessories: {
