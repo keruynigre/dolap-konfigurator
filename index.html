@@ -19,6 +19,12 @@
     document.documentElement.setAttribute('data-theme', 'dark');
   }
   try {
+    var w = parseInt(localStorage.getItem('dolapSidebarW'), 10);
+    if (w >= 260 && w <= 500) {
+      document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+    }
+  } catch (e) { /* ignore */ }
+  try {
     var hash = String(location.hash || '');
     var search = String(location.search || '');
     var isPassLink = /(?:^|[?&#])type=(invite|recovery|signup)\b/i.test(hash + search);
@@ -60,6 +66,7 @@
     --series-veil: rgba(18,16,14,.78);
     --radius: 3px;
     --logo-filter: none;
+    --sidebar-w: 320px;
   }
   html[data-theme="light"] {
     color-scheme: light;
@@ -116,12 +123,8 @@
     text-shadow: none;
     white-space: nowrap;
   }
-  header .header-lead p {
-    margin: 0; color: var(--ink-dim); font-size: 10.5px; line-height: 1.4;
-    width: 0; min-width: 100%;
-  }
   header .brand-logo {
-    display: block; height: 56px; width: auto; max-width: min(200px, 28vw);
+    display: block; height: 72px; width: auto; max-width: min(248px, 34vw);
     object-fit: contain; justify-self: center;
     filter: var(--logo-filter);
   }
@@ -157,22 +160,47 @@
     header .header-lead { justify-self: stretch; width: 100%; max-width: 100%; }
     header h1 { white-space: normal; }
     header .header-end { justify-self: center; align-items: center; }
-    header .brand-logo, header .brand-script { height: 48px; }
+    header .brand-logo { height: 62px; }
+    header .brand-script { height: 48px; }
   }
 
   .layout {
-    flex: 1; display: grid; grid-template-columns: 320px 1fr;
+    flex: 1; display: grid; grid-template-columns: var(--sidebar-w) 0px 1fr;
     min-height: 0;
-    transition: grid-template-columns 0.25s ease;
   }
-  .layout.configure-mode { grid-template-columns: 292px 1fr; }
+  .layout.configure-mode { grid-template-columns: var(--sidebar-w) 0px 1fr; }
+  .layout.is-resizing { cursor: col-resize; user-select: none; }
+  .layout.is-resizing * { cursor: col-resize !important; user-select: none; }
 
   .sidebar {
     border-right: 1px solid var(--line); padding: 24px;
     display: flex; flex-direction: column; gap: 20px;
     overflow-y: auto; transition: padding 0.25s ease;
+    min-width: 0;
   }
   .sidebar.configure-mode { padding: 18px 16px; gap: 16px; }
+
+  .sidebar-resizer {
+    position: relative; z-index: 8;
+    display: block; width: 10px; margin-left: -5px; min-height: 100%;
+    padding: 0; border: 0; background: transparent;
+    appearance: none; -webkit-appearance: none;
+    cursor: col-resize; touch-action: none;
+    align-self: stretch;
+  }
+  .sidebar-resizer::before {
+    content: "";
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 3px; height: 36px; border-radius: 2px;
+    background: var(--line); opacity: 0.75;
+    transition: background 0.15s, height 0.15s, opacity 0.15s;
+  }
+  .sidebar-resizer:hover::before,
+  .sidebar-resizer:focus-visible::before,
+  .layout.is-resizing .sidebar-resizer::before {
+    background: var(--brass); opacity: 1; height: 56px;
+  }
 
   .control-group h2 { font-family: 'Space Grotesk', sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-dim); margin: 0 0 14px; font-weight: 600; }
 
@@ -1202,6 +1230,7 @@
 
   @media (max-width: 760px) {
     .layout { grid-template-columns: 1fr; }
+    .sidebar-resizer { display: none; }
     .sidebar {
       border-right: none; border-bottom: 1px solid var(--line);
       flex-direction: row; flex-wrap: wrap;
@@ -1363,7 +1392,6 @@
     <div class="header-bar">
       <div class="header-lead">
         <h1>Hayalindeki dolabı kur</h1>
-        <p>Gövdeleri yan yana ekleyin, kapak alanına tıklayarak malzeme seçin. Tutacaklar otomatik birbirine bakar; gövde simgesi, çekmece ve silme simgelerini gövde üzerinde kullanın.</p>
         <div class="dealer-chip" id="dealer-chip">
           <span>Mağaza: <strong id="dealer-chip-name">—</strong></span>
           <button type="button" class="dealer-leads-btn" id="dealer-leads-btn" title="İşaret bekleyen teklifler">
@@ -1424,6 +1452,7 @@
         <button class="quote-btn" id="quote-btn" type="button" disabled>Teklif Formu Gönder</button>
       </div>
     </aside>
+    <button type="button" class="sidebar-resizer" id="sidebar-resizer" aria-label="Sol menü genişliği" title="Sürükleyerek menüyü genişletin"></button>
 
     <main class="canvas-wrap">
       <div class="canvas-toolbar">
@@ -2858,13 +2887,13 @@
   }
 
   /** Dünya uzayı yüzey normali kameraya bakıyor mu? (kapak arkasını gizle) */
-  function isoNormalFacesCamera(nx, ny, nz){
+  function isoNormalFacesCamera(nx, ny, nz, minZ){
     const cy = Math.cos(isoYaw), sy = Math.sin(isoYaw);
     const cp = Math.cos(isoPitch), sp = Math.sin(isoPitch);
     const z1 = nx * sy + nz * cy;
     const z2 = ny * sp + z1 * cp;
     // view-z büyüdükçe kamera yakını; normale doğru = z2 > 0
-    return z2 > 0.02;
+    return z2 > (minZ == null ? 0.02 : minZ);
   }
 
   // Kapak ve gövde panel kalınlığı (m) — eşit
@@ -2881,36 +2910,37 @@
     return style.edge || '#8a8276';
   }
 
-  /** Eksen hizalı dolu kutu (görünür yüzler). */
-  function isoPushSolidBox(faces, P, x0, x1, y0, y1, z0, z1, fillSide, fillFlat, stroke, bias){
+  /** Eksen hizalı dolu kutu (görünür yüzler). hide: { x0, x1, y0, y1, z0, z1 } dışa sızan yüzleri kapatır. */
+  function isoPushSolidBox(faces, P, x0, x1, y0, y1, z0, z1, fillSide, fillFlat, stroke, bias, hide){
     bias = bias || 0;
+    hide = hide || {};
     const opts = { depthBias: bias };
-    if (isoNormalFacesCamera(-1, 0, 0)) {
+    if (!hide.x0 && isoNormalFacesCamera(-1, 0, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)
       ], fillSide, stroke, opts));
     }
-    if (isoNormalFacesCamera(1, 0, 0)) {
+    if (!hide.x1 && isoNormalFacesCamera(1, 0, 0)) {
       faces.push(isoFace([
         P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1)
       ], fillSide, stroke, opts));
     }
-    if (isoNormalFacesCamera(0, -1, 0)) {
+    if (!hide.y0 && isoNormalFacesCamera(0, -1, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)
       ], fillFlat, stroke, opts));
     }
-    if (isoNormalFacesCamera(0, 1, 0)) {
+    if (!hide.y1 && isoNormalFacesCamera(0, 1, 0)) {
       faces.push(isoFace([
         P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0)
       ], fillFlat, stroke, opts));
     }
-    if (isoNormalFacesCamera(0, 0, -1)) {
+    if (!hide.z0 && isoNormalFacesCamera(0, 0, -1)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y1, z0), P(x1, y1, z0), P(x1, y0, z0)
       ], fillSide, stroke, opts));
     }
-    if (isoNormalFacesCamera(0, 0, 1)) {
+    if (!hide.z1 && isoNormalFacesCamera(0, 0, 1)) {
       faces.push(isoFace([
         P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)
       ], fillSide, stroke, opts));
@@ -2927,8 +2957,9 @@
     const y0 = spec.y0, y1 = spec.y1;
     const thick = spec.thick == null ? ISO_DOOR_THICK : spec.thick;
     const edgeFill = isoDoorEdgeFill(style);
-    const frontBias = 0.9;
-    const edgeBias = 0.82;
+    const frontBias = spec.frontBias == null ? 0.9 : spec.frontBias;
+    const edgeBias = spec.edgeBias == null ? 0.82 : spec.edgeBias;
+    const hideEnds = !!spec.hideEnds;
 
     function pushFace(pts, fill, opts){
       opts = Object.assign({}, opts || {});
@@ -2941,12 +2972,12 @@
       const zIn = spec.zIn;
       const zOut = zIn + thick;
       // Sol / sağ kenar
-      if (isoNormalFacesCamera(-1, 0, 0)) {
+      if (!hideEnds && isoNormalFacesCamera(-1, 0, 0)) {
         pushFace([
           P(x0, y0, zIn), P(x0, y0, zOut), P(x0, y1, zOut), P(x0, y1, zIn)
         ], edgeFill, { depthBias: edgeBias });
       }
-      if (isoNormalFacesCamera(1, 0, 0)) {
+      if (!hideEnds && isoNormalFacesCamera(1, 0, 0)) {
         pushFace([
           P(x1, y0, zIn), P(x1, y1, zIn), P(x1, y1, zOut), P(x1, y0, zOut)
         ], edgeFill, { depthBias: edgeBias });
@@ -2981,12 +3012,12 @@
       const z0 = spec.z0, z1 = spec.z1;
       const xIn = spec.xIn;
       const xOut = xIn + thick;
-      if (isoNormalFacesCamera(0, 0, -1)) {
+      if (!hideEnds && isoNormalFacesCamera(0, 0, -1)) {
         pushFace([
           P(xIn, y0, z0), P(xOut, y0, z0), P(xOut, y1, z0), P(xIn, y1, z0)
         ], edgeFill, { depthBias: edgeBias });
       }
-      if (isoNormalFacesCamera(0, 0, 1)) {
+      if (!hideEnds && isoNormalFacesCamera(0, 0, 1)) {
         pushFace([
           P(xIn, y0, z1), P(xIn, y1, z1), P(xOut, y1, z1), P(xOut, y0, z1)
         ], edgeFill, { depthBias: edgeBias });
@@ -3237,6 +3268,7 @@
     opts = opts || {};
     const withDrawer = !!opts.withDrawer;
     const drawersOnly = !!opts.drawersOnly;
+    const endShelves = !!opts.endShelves;
     const pal = isoPalette();
     const back = pal.back;
     const shelf = pal.shelf;
@@ -3245,12 +3277,25 @@
     const drawerEdge = pal.drawerEdge;
     const rod = document.documentElement.getAttribute('data-theme') === 'light' ? '#b5aa9a' : '#8a8278';
     const bias = 0.2;
+    const t = ISO_PANEL_THICK;
     const x0 = originX + t0 + (t1 - t0) * 0.015;
     const x1 = originX + t1 - (t1 - t0) * 0.015;
     const z0 = originZ + t0 + (t1 - t0) * 0.015;
     const z1 = originZ + t1 - (t1 - t0) * 0.015;
     const yDrawerTop = withDrawer ? height * 0.38 : 0;
     const yHangBot = withDrawer ? height * 0.40 : height * 0.04;
+    const drawerStyle = { fill: drawerFace, edge: drawerEdge };
+    const sideFill = '#d0c8bc';
+    const y0b = height * 0.02;
+    const y1b = height * 0.98;
+    const flushA = t0 <= 0.04;
+    const flushB = opts.moduleSpan != null && t1 >= opts.moduleSpan - 0.04;
+    const boardBias = bias + 0.05;
+    const postBias = bias + 0.24;
+
+    function fillFace(pts, fill, extraBias){
+      faces.push(isoFace(pts, fill, null, { depthBias: extraBias }));
+    }
 
     function drawRod(a, b){
       faces.push({
@@ -3272,150 +3317,213 @@
       });
     }
 
-    function drawDrawers(makePts, makeHandle){
+    function drawHandle(a, b){
+      faces.push({
+        depth: (a.depth + b.depth) / 2 + bias + 0.25,
+        draw: (ctx) => {
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = document.documentElement.getAttribute('data-theme') === 'light' ? '#a89884' : '#6a635a';
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+        }
+      });
+    }
+
+    function drawDrawersZ(zIn){
       const rows = 3;
+      const xa = x0 + 0.01, xb = x1 - 0.01;
       for (let r = 0; r < rows; r++) {
         const ya = height * 0.03 + (yDrawerTop - height * 0.03) * (r / rows) + 0.01;
         const yb = height * 0.03 + (yDrawerTop - height * 0.03) * ((r + 1) / rows) - 0.006;
-        faces.push(isoFace(makePts(ya, yb), drawerFace, drawerEdge, { depthBias: bias + 0.22 }));
-        const h = makeHandle((ya + yb) / 2);
-        faces.push({
-          depth: (h.a.depth + h.b.depth) / 2 + bias + 0.25,
-          draw: (ctx) => {
-            ctx.beginPath();
-            ctx.moveTo(h.a.x, h.a.y);
-            ctx.lineTo(h.b.x, h.b.y);
-            ctx.strokeStyle = document.documentElement.getAttribute('data-theme') === 'light' ? '#a89884' : '#6a635a';
-            ctx.lineWidth = 2;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-          }
+        isoPushDoorSlab(faces, P, {
+          faceAxis: 'z', style: drawerStyle,
+          x0: xa, x1: xb, y0: ya, y1: yb, zIn: zIn, thick: t,
+          frontBias: bias + 0.22, edgeBias: bias + 0.18, hideEnds: true
         });
+        const zH = zIn + t + 0.008;
+        const yh = (ya + yb) / 2;
+        drawHandle(
+          P(xa + (xb - xa) * 0.35, yh, zH),
+          P(xa + (xb - xa) * 0.65, yh, zH)
+        );
+      }
+    }
+
+    function drawDrawersX(xIn){
+      const rows = 3;
+      const za = z0 + 0.01, zb = z1 - 0.01;
+      for (let r = 0; r < rows; r++) {
+        const ya = height * 0.03 + (yDrawerTop - height * 0.03) * (r / rows) + 0.01;
+        const yb = height * 0.03 + (yDrawerTop - height * 0.03) * ((r + 1) / rows) - 0.006;
+        isoPushDoorSlab(faces, P, {
+          faceAxis: 'x', style: drawerStyle,
+          z0: za, z1: zb, y0: ya, y1: yb, xIn: xIn, thick: t,
+          frontBias: bias + 0.22, edgeBias: bias + 0.18, hideEnds: true
+        });
+        const xH = xIn + t + 0.008;
+        const yh = (ya + yb) / 2;
+        drawHandle(
+          P(xH, yh, za + (zb - za) * 0.35),
+          P(xH, yh, za + (zb - za) * 0.65)
+        );
       }
     }
 
     if (faceAxis === 'z') {
-      const zBack = originZ + 0.03;
-      const zFront = originZ + depth - 0.02;
+      const zBack = originZ + t + 0.01;
+      const zDiv = originZ + depth - 0.012;
+      const zShelf = zDiv - 0.008;
+      const bay0 = originX + t0;
+      const bay1 = originX + t1;
+      const xL = bay0 + t + 0.004;
+      const xR = bay1 - t - 0.004;
+      const zDrawerIn = zDiv - t;
 
       if (drawersOnly && withDrawer) {
-        drawDrawers(
-          (ya, yb) => [
-            P(x0 + 0.01, ya, zFront + 0.01), P(x1 - 0.01, ya, zFront + 0.01),
-            P(x1 - 0.01, yb, zFront + 0.01), P(x0 + 0.01, yb, zFront + 0.01)
-          ],
-          (yh) => ({
-            a: P(x0 + (x1 - x0) * 0.35, yh, zFront + 0.02),
-            b: P(x0 + (x1 - x0) * 0.65, yh, zFront + 0.02)
-          })
-        );
+        drawDrawersZ(zDrawerIn);
         return;
       }
 
-      faces.push(isoFace([
-        P(x0, height * 0.02, zBack), P(x1, height * 0.02, zBack),
-        P(x1, height * 0.98, zBack), P(x0, height * 0.98, zBack)
-      ], back, shelfEdge, { depthBias: bias }));
+      fillFace([
+        P(xL, y0b, zBack), P(xR, y0b, zBack),
+        P(xR, y1b, zBack), P(xL, y1b, zBack)
+      ], back, bias);
+
+      function boardZ(yTop, extraBias){
+        const yBot = yTop - t;
+        if (isoNormalFacesCamera(0, 1, 0)) {
+          fillFace([
+            P(xL, yTop, zBack), P(xR, yTop, zBack),
+            P(xR, yTop, zShelf), P(xL, yTop, zShelf)
+          ], shelf, extraBias);
+        }
+        if (isoNormalFacesCamera(0, 0, 1)) {
+          fillFace([
+            P(xL, yBot, zShelf), P(xR, yBot, zShelf),
+            P(xR, yTop, zShelf), P(xL, yTop, zShelf)
+          ], shelfEdge, extraBias);
+        }
+      }
+
+      function uprightZ(xOut, xIn){
+        if (xIn > xOut && isoNormalFacesCamera(1, 0, 0)) {
+          fillFace([
+            P(xIn, y0b, zBack), P(xIn, y0b, zDiv),
+            P(xIn, y1b, zDiv), P(xIn, y1b, zBack)
+          ], sideFill, postBias);
+        } else if (xIn < xOut && isoNormalFacesCamera(-1, 0, 0)) {
+          fillFace([
+            P(xIn, y0b, zBack), P(xIn, y1b, zBack),
+            P(xIn, y1b, zDiv), P(xIn, y0b, zDiv)
+          ], sideFill, postBias);
+        }
+        if (isoNormalFacesCamera(0, 0, 1)) {
+          const xa = Math.min(xOut, xIn);
+          const xb = Math.max(xOut, xIn);
+          fillFace([
+            P(xa, y0b, zDiv), P(xb, y0b, zDiv),
+            P(xb, y1b, zDiv), P(xa, y1b, zDiv)
+          ], shelfEdge, postBias + 0.02);
+        }
+      }
 
       if (kind === 'shelf') {
-        faces.push(isoFace([
-          P(x0, height * 0.02, zBack), P(x0, height * 0.02, zFront),
-          P(x0, height * 0.98, zFront), P(x0, height * 0.98, zBack)
-        ], '#d0c8bc', shelfEdge, { depthBias: bias }));
-        faces.push(isoFace([
-          P(x1, height * 0.02, zBack), P(x1, height * 0.02, zFront),
-          P(x1, height * 0.98, zFront), P(x1, height * 0.98, zBack)
-        ], '#d0c8bc', shelfEdge, { depthBias: bias }));
-        for (let s = 1; s <= 5; s++) {
-          const y = height * (s / 6);
-          faces.push(isoFace([
-            P(x0, y, zBack), P(x1, y, zBack),
-            P(x1, y, zFront), P(x0, y, zFront)
-          ], shelf, shelfEdge, { depthBias: bias + 0.05 }));
-        }
+        for (let s = 1; s <= 5; s++) boardZ(height * (s / 6), boardBias);
+        if (!flushA) uprightZ(bay0, bay0 + t);
+        if (!flushB) uprightZ(bay1, bay1 - t);
         return;
       }
 
-      faces.push(isoFace([
-        P(x0, yHangBot, zBack), P(x1, yHangBot, zBack),
-        P(x1, yHangBot, zFront), P(x0, yHangBot, zFront)
-      ], shelf, shelfEdge, { depthBias: bias + 0.04 }));
-      const yRod = height * (withDrawer ? 0.78 : 0.88);
-      drawRod(P(x0 + 0.02, yRod, originZ + depth * 0.55), P(x1 - 0.02, yRod, originZ + depth * 0.55));
-      if (withDrawer) {
-        drawDrawers(
-          (ya, yb) => [
-            P(x0 + 0.01, ya, zFront + 0.01), P(x1 - 0.01, ya, zFront + 0.01),
-            P(x1 - 0.01, yb, zFront + 0.01), P(x0 + 0.01, yb, zFront + 0.01)
-          ],
-          (yh) => ({
-            a: P(x0 + (x1 - x0) * 0.35, yh, zFront + 0.02),
-            b: P(x0 + (x1 - x0) * 0.65, yh, zFront + 0.02)
-          })
-        );
+      if (endShelves) {
+        if (withDrawer) boardZ(yHangBot, boardBias);
+        else boardZ(height * (1 / 6), boardBias);
+        boardZ(height * (5 / 6), boardBias);
+      } else {
+        boardZ(yHangBot, boardBias);
       }
+      const yRod = height * (endShelves ? (withDrawer ? 0.70 : 0.72) : (withDrawer ? 0.78 : 0.88));
+      drawRod(P(xL + 0.02, yRod, originZ + depth * 0.55), P(xR - 0.02, yRod, originZ + depth * 0.55));
+      if (withDrawer) drawDrawersZ(zDrawerIn);
       return;
     }
 
-    const xBack = originX + 0.03;
-    const xFront = originX + depth - 0.02;
+    const xBack = originX + t + 0.01;
+    const xDiv = originX + depth - 0.012;
+    const xShelf = xDiv - 0.008;
+    const bay0 = originZ + t0;
+    const bay1 = originZ + t1;
+    const zL = bay0 + t + 0.004;
+    const zR = bay1 - t - 0.004;
+    const xDrawerIn = xDiv - t;
 
     if (drawersOnly && withDrawer) {
-      drawDrawers(
-        (ya, yb) => [
-          P(xFront + 0.01, ya, z0 + 0.01), P(xFront + 0.01, ya, z1 - 0.01),
-          P(xFront + 0.01, yb, z1 - 0.01), P(xFront + 0.01, yb, z0 + 0.01)
-        ],
-        (yh) => ({
-          a: P(xFront + 0.02, yh, z0 + (z1 - z0) * 0.35),
-          b: P(xFront + 0.02, yh, z0 + (z1 - z0) * 0.65)
-        })
-      );
+      drawDrawersX(xDrawerIn);
       return;
     }
 
-    faces.push(isoFace([
-      P(xBack, height * 0.02, z0), P(xBack, height * 0.02, z1),
-      P(xBack, height * 0.98, z1), P(xBack, height * 0.98, z0)
-    ], back, shelfEdge, { depthBias: bias }));
+    fillFace([
+      P(xBack, y0b, zL), P(xBack, y0b, zR),
+      P(xBack, y1b, zR), P(xBack, y1b, zL)
+    ], back, bias);
+
+    function boardX(yTop, extraBias){
+      const yBot = yTop - t;
+      if (isoNormalFacesCamera(0, 1, 0)) {
+        fillFace([
+          P(xBack, yTop, zL), P(xBack, yTop, zR),
+          P(xShelf, yTop, zR), P(xShelf, yTop, zL)
+        ], shelf, extraBias);
+      }
+      if (isoNormalFacesCamera(1, 0, 0)) {
+        fillFace([
+          P(xShelf, yBot, zL), P(xShelf, yBot, zR),
+          P(xShelf, yTop, zR), P(xShelf, yTop, zL)
+        ], shelfEdge, extraBias);
+      }
+    }
+
+    function uprightX(zOut, zIn){
+      if (zIn > zOut && isoNormalFacesCamera(0, 0, 1)) {
+        fillFace([
+          P(xBack, y0b, zIn), P(xDiv, y0b, zIn),
+          P(xDiv, y1b, zIn), P(xBack, y1b, zIn)
+        ], sideFill, postBias);
+      } else if (zIn < zOut && isoNormalFacesCamera(0, 0, -1)) {
+        fillFace([
+          P(xBack, y0b, zIn), P(xBack, y1b, zIn),
+          P(xDiv, y1b, zIn), P(xDiv, y0b, zIn)
+        ], sideFill, postBias);
+      }
+      if (isoNormalFacesCamera(1, 0, 0)) {
+        const za = Math.min(zOut, zIn);
+        const zb = Math.max(zOut, zIn);
+        fillFace([
+          P(xDiv, y0b, za), P(xDiv, y0b, zb),
+          P(xDiv, y1b, zb), P(xDiv, y1b, za)
+        ], shelfEdge, postBias + 0.02);
+      }
+    }
 
     if (kind === 'shelf') {
-      faces.push(isoFace([
-        P(xBack, height * 0.02, z0), P(xFront, height * 0.02, z0),
-        P(xFront, height * 0.98, z0), P(xBack, height * 0.98, z0)
-      ], '#d0c8bc', shelfEdge, { depthBias: bias }));
-      faces.push(isoFace([
-        P(xBack, height * 0.02, z1), P(xFront, height * 0.02, z1),
-        P(xFront, height * 0.98, z1), P(xBack, height * 0.98, z1)
-      ], '#d0c8bc', shelfEdge, { depthBias: bias }));
-      for (let s = 1; s <= 5; s++) {
-        const y = height * (s / 6);
-        faces.push(isoFace([
-          P(xBack, y, z0), P(xBack, y, z1),
-          P(xFront, y, z1), P(xFront, y, z0)
-        ], shelf, shelfEdge, { depthBias: bias + 0.05 }));
-      }
+      for (let s = 1; s <= 5; s++) boardX(height * (s / 6), boardBias);
+      if (!flushA) uprightX(bay0, bay0 + t);
+      if (!flushB) uprightX(bay1, bay1 - t);
       return;
     }
 
-    faces.push(isoFace([
-      P(xBack, yHangBot, z0), P(xBack, yHangBot, z1),
-      P(xFront, yHangBot, z1), P(xFront, yHangBot, z0)
-    ], shelf, shelfEdge, { depthBias: bias + 0.04 }));
-    const yRod = height * (withDrawer ? 0.78 : 0.88);
-    drawRod(P(originX + depth * 0.55, yRod, z0 + 0.02), P(originX + depth * 0.55, yRod, z1 - 0.02));
-    if (withDrawer) {
-      drawDrawers(
-        (ya, yb) => [
-          P(xFront + 0.01, ya, z0 + 0.01), P(xFront + 0.01, ya, z1 - 0.01),
-          P(xFront + 0.01, yb, z1 - 0.01), P(xFront + 0.01, yb, z0 + 0.01)
-        ],
-        (yh) => ({
-          a: P(xFront + 0.02, yh, z0 + (z1 - z0) * 0.35),
-          b: P(xFront + 0.02, yh, z0 + (z1 - z0) * 0.65)
-        })
-      );
+    if (endShelves) {
+      if (withDrawer) boardX(yHangBot, boardBias);
+      else boardX(height * (1 / 6), boardBias);
+      boardX(height * (5 / 6), boardBias);
+    } else {
+      boardX(yHangBot, boardBias);
     }
+    const yRod = height * (endShelves ? (withDrawer ? 0.70 : 0.72) : (withDrawer ? 0.78 : 0.88));
+    drawRod(P(originX + depth * 0.55, yRod, zL + 0.02), P(originX + depth * 0.55, yRod, zR - 0.02));
+    if (withDrawer) drawDrawersX(xDrawerIn);
   }
 
   function isoCornerUnit(cW, depth, h, doorStyle, ox, oy, scale){
@@ -3474,7 +3582,8 @@
     const i0z = C.z + alongZ * len * inset;
     const i1x = D.x - alongX * len * inset;
     const i1z = D.z - alongZ * len * inset;
-    const frontOpen = isoNormalFacesCamera(nx, 0, nz);
+    const frontOpen = isoNormalFacesCamera(nx, 0, nz, 0.12);
+    const revealInterior = doorsGhost || doorStyle.kind === 'empty' || doorStyle.kind === 'glass';
 
     function pushClosedDiagonal(bias){
       const fx0 = C.x - nx * t, fz0 = C.z - nz * t;
@@ -3489,10 +3598,44 @@
       }
     }
 
-    if (doorStyle.kind === 'empty') {
-      pushClosedDiagonal(frontOpen ? 0.15 : 0.7);
-    } else if (frontOpen) {
-      pushClosedDiagonal(0.1);
+    function pushCornerShelves(){
+      const pad = t + 0.014;
+      const xOuter = cW - pad;
+      const zOuter = cW - pad;
+      const d = depth - pad;
+      const extra = 0.18;
+      function fill(pts, col, b){
+        faces.push(isoFace(pts, col, null, { depthBias: b }));
+      }
+      for (const s of [1, 5]) {
+        const yTop = h * (s / 6);
+        const yBot = yTop - t;
+        if (isoNormalFacesCamera(0, 1, 0)) {
+          fill([
+            P(pad, yTop, pad), P(xOuter, yTop, pad),
+            P(xOuter, yTop, d), P(pad, yTop, d)
+          ], pal.shelf, extra);
+          fill([
+            P(pad, yTop, d), P(d, yTop, d),
+            P(d, yTop, zOuter), P(pad, yTop, zOuter)
+          ], pal.shelf, extra);
+        }
+        if (isoNormalFacesCamera(0, 0, 1)) {
+          fill([
+            P(d, yBot, d), P(xOuter, yBot, d),
+            P(xOuter, yTop, d), P(d, yTop, d)
+          ], pal.shelfEdge, extra);
+        }
+        if (isoNormalFacesCamera(1, 0, 0)) {
+          fill([
+            P(d, yBot, d), P(d, yBot, zOuter),
+            P(d, yTop, zOuter), P(d, yTop, d)
+          ], pal.shelfEdge, extra);
+        }
+      }
+    }
+
+    function pushCornerDoor(){
       const push = 0.004;
       isoPushDoorSlab(faces, P, {
         faceAxis: 'n', style: doorStyle,
@@ -3500,6 +3643,16 @@
         y0: t + 0.01, y1: h - t - 0.01,
         alpha: doorsGhost ? DOORS_GHOST_ALPHA : undefined
       });
+    }
+
+    if (revealInterior && frontOpen) {
+      pushCornerShelves();
+      if (doorStyle.kind !== 'empty') pushCornerDoor();
+    } else if (doorStyle.kind === 'empty') {
+      pushClosedDiagonal(frontOpen ? 0.15 : 0.7);
+    } else if (frontOpen) {
+      pushClosedDiagonal(0.1);
+      pushCornerDoor();
     } else {
       pushClosedDiagonal(0.75);
     }
@@ -3546,8 +3699,8 @@
       let shelfT0 = 0, shelfT1 = 0;
       const doorFaces = [];
       const frontFacesCam = faceAxis === 'z'
-        ? isoNormalFacesCamera(0, 0, 1)
-        : isoNormalFacesCamera(1, 0, 0);
+        ? isoNormalFacesCamera(0, 0, 1, 0.22)
+        : isoNormalFacesCamera(1, 0, 0, 0.22);
 
       for (let di = 0; di < n; di++) {
         const mat = mod.doors[di]?.material;
@@ -3601,7 +3754,7 @@
       const showInterior = frontFacesCam && (shelfOpen || openHangSpans.length);
       if (showInterior) {
         if (shelfOpen) {
-          isoBayInterior('shelf', faceAxis, originX, originZ, shelfT0, shelfT1, DEPTH, HEIGHT, P, faces, {});
+          isoBayInterior('shelf', faceAxis, originX, originZ, shelfT0, shelfT1, DEPTH, HEIGHT, P, faces, { moduleSpan: sizeAlong });
         }
         if (openHangSpans.length) {
           const allHangOpen = hangSpan && openHangSpans.length === hangFracs.length;
@@ -3612,49 +3765,40 @@
             return mid >= zone[0] - 1e-6 && mid <= zone[1] + 1e-6;
           });
           isoBayInterior('hang', faceAxis, originX, originZ, h0, h1, DEPTH, HEIGHT, P, faces, {
-            withDrawer: showDrawers
+            withDrawer: showDrawers,
+            moduleSpan: sizeAlong,
+            endShelves: mod.type === '2door'
           });
         }
 
         const pal = isoPalette();
-        const capBias = 0.55;
+        const capBias = 1.15;
+        const tCap = ISO_PANEL_THICK;
         if (faceAxis === 'z') {
           if (isoNormalFacesCamera(-1, 0, 0)) {
-            faces.push(isoFace([
-              P(originX, 0, originZ), P(originX, HEIGHT, originZ),
-              P(originX, HEIGHT, originZ + DEPTH), P(originX, 0, originZ + DEPTH)
-            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX, originX + tCap, 0, HEIGHT, originZ, originZ + DEPTH, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { x1: true });
           }
           if (isoNormalFacesCamera(1, 0, 0)) {
-            faces.push(isoFace([
-              P(originX + sizeAlong, 0, originZ), P(originX + sizeAlong, 0, originZ + DEPTH),
-              P(originX + sizeAlong, HEIGHT, originZ + DEPTH), P(originX + sizeAlong, HEIGHT, originZ)
-            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX + sizeAlong - tCap, originX + sizeAlong, 0, HEIGHT, originZ, originZ + DEPTH, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { x0: true });
           }
           if (isoNormalFacesCamera(0, 0, -1)) {
-            faces.push(isoFace([
-              P(originX, 0, originZ), P(originX + sizeAlong, 0, originZ),
-              P(originX + sizeAlong, HEIGHT, originZ), P(originX, HEIGHT, originZ)
-            ], pal.carcass, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX, originX + sizeAlong, 0, HEIGHT, originZ, originZ + tCap, pal.carcass, pal.carcassTop, pal.edgeSoft, capBias, { z1: true });
+          }
+          if (isoNormalFacesCamera(0, 1, 0)) {
+            isoPushSolidBox(faces, P, originX, originX + sizeAlong, HEIGHT - tCap, HEIGHT, originZ, originZ + DEPTH, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { y0: true });
           }
         } else {
           if (isoNormalFacesCamera(0, 0, -1)) {
-            faces.push(isoFace([
-              P(originX, 0, originZ), P(originX + DEPTH, 0, originZ),
-              P(originX + DEPTH, HEIGHT, originZ), P(originX, HEIGHT, originZ)
-            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX, originX + DEPTH, 0, HEIGHT, originZ, originZ + tCap, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { z1: true });
           }
           if (isoNormalFacesCamera(0, 0, 1)) {
-            faces.push(isoFace([
-              P(originX, 0, originZ + sizeAlong), P(originX, HEIGHT, originZ + sizeAlong),
-              P(originX + DEPTH, HEIGHT, originZ + sizeAlong), P(originX + DEPTH, 0, originZ + sizeAlong)
-            ], pal.carcassSide, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX, originX + DEPTH, 0, HEIGHT, originZ + sizeAlong - tCap, originZ + sizeAlong, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { z0: true });
           }
           if (isoNormalFacesCamera(-1, 0, 0)) {
-            faces.push(isoFace([
-              P(originX, 0, originZ), P(originX, 0, originZ + sizeAlong),
-              P(originX, HEIGHT, originZ + sizeAlong), P(originX, HEIGHT, originZ)
-            ], pal.carcass, pal.edgeSoft, { depthBias: capBias }));
+            isoPushSolidBox(faces, P, originX, originX + tCap, 0, HEIGHT, originZ, originZ + sizeAlong, pal.carcass, pal.carcassTop, pal.edgeSoft, capBias, { x1: true });
+          }
+          if (isoNormalFacesCamera(0, 1, 0)) {
+            isoPushSolidBox(faces, P, originX, originX + DEPTH, HEIGHT - tCap, HEIGHT, originZ, originZ + sizeAlong, pal.carcassSide, pal.carcassTop, pal.edgeSoft, capBias, { y0: true });
           }
         }
       }
@@ -5569,6 +5713,89 @@
     btn.addEventListener('click', () => setTheme(btn.getAttribute('data-theme-set')));
   });
   syncThemeToggle();
+
+  const SIDEBAR_W_MIN = 260;
+  const SIDEBAR_W_MAX = 500;
+  const SIDEBAR_W_DEFAULT = 320;
+  const SIDEBAR_W_KEY = 'dolapSidebarW';
+  const sidebarResizer = document.getElementById('sidebar-resizer');
+
+  function sidebarResizeMax(){
+    const layoutW = layoutEl ? layoutEl.clientWidth : window.innerWidth;
+    return Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, Math.round(layoutW * 0.42)));
+  }
+  function clampSidebarWidth(px){
+    return Math.round(Math.min(sidebarResizeMax(), Math.max(SIDEBAR_W_MIN, px)));
+  }
+  function currentSidebarWidth(){
+    const raw = getComputedStyle(layoutEl).getPropertyValue('--sidebar-w');
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : SIDEBAR_W_DEFAULT;
+  }
+  function applySidebarWidth(px, persist){
+    const w = clampSidebarWidth(px);
+    layoutEl.style.setProperty('--sidebar-w', w + 'px');
+    document.documentElement.style.setProperty('--sidebar-w', w + 'px');
+    if (sidebarResizer) {
+      sidebarResizer.setAttribute('aria-valuenow', String(w));
+      sidebarResizer.setAttribute('aria-valuemax', String(sidebarResizeMax()));
+    }
+    if (persist) {
+      try { localStorage.setItem(SIDEBAR_W_KEY, String(w)); } catch (e) { /* ignore */ }
+    }
+    return w;
+  }
+  function initSidebarResize(){
+    if (!layoutEl || !sidebarResizer) return;
+    sidebarResizer.setAttribute('role', 'separator');
+    sidebarResizer.setAttribute('aria-orientation', 'vertical');
+    sidebarResizer.setAttribute('aria-valuemin', String(SIDEBAR_W_MIN));
+    applySidebarWidth(currentSidebarWidth(), false);
+
+    let dragging = false;
+    let startX = 0;
+    let startW = SIDEBAR_W_DEFAULT;
+
+    function onPointerMove(e){
+      if (!dragging) return;
+      applySidebarWidth(startW + (e.clientX - startX), false);
+    }
+    function onPointerUp(e){
+      if (!dragging) return;
+      dragging = false;
+      layoutEl.classList.remove('is-resizing');
+      try { sidebarResizer.releasePointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+      applySidebarWidth(currentSidebarWidth(), true);
+    }
+
+    sidebarResizer.addEventListener('pointerdown', (e) => {
+      if (window.matchMedia('(max-width: 760px)').matches) return;
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+      dragging = true;
+      startX = e.clientX;
+      startW = currentSidebarWidth();
+      layoutEl.classList.add('is-resizing');
+      try { sidebarResizer.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointercancel', onPointerUp);
+    });
+    sidebarResizer.addEventListener('dblclick', () => {
+      applySidebarWidth(SIDEBAR_W_DEFAULT, true);
+    });
+    sidebarResizer.addEventListener('keydown', (e) => {
+      const step = e.shiftKey ? 32 : 16;
+      if (e.key === 'ArrowRight') { e.preventDefault(); applySidebarWidth(currentSidebarWidth() + step, true); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); applySidebarWidth(currentSidebarWidth() - step, true); }
+      else if (e.key === 'Home') { e.preventDefault(); applySidebarWidth(SIDEBAR_W_MIN, true); }
+      else if (e.key === 'End') { e.preventDefault(); applySidebarWidth(sidebarResizeMax(), true); }
+    });
+  }
+  initSidebarResize();
 
   async function applyRemotePrices(){
     await refreshRemotePricing({ includeCatalog: true });
