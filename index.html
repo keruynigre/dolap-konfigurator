@@ -3242,10 +3242,10 @@
     }
     const finish = parseDoorRef(ref)?.finishId;
     const map = {
-      ceviz: { fill: '#6b4426', edge: '#3d2614' },
+      ceviz: { fill: '#6b4426', edge: '#3d2614', grain: 'door' },
       aytasi: { fill: '#d4c0a0', edge: '#9a8668' },
       buz_gri: { fill: '#c9c6c1', edge: '#8e8b86' },
-      travent_almond: { fill: '#ebe6dc', edge: '#b8956e', band: '#8f6d4a', bandAt: 0.82 }
+      travent_almond: { fill: '#ebe6dc', edge: '#b8956e', band: '#8f6d4a', bandAt: 0.66, bandGrain: 'stone' }
     };
     return Object.assign({ kind: 'wood', gloss: false }, map[finish] || { fill: '#cfc7ba', edge: '#8a8276' });
   }
@@ -3294,36 +3294,37 @@
   function isoPushSolidBox(faces, P, x0, x1, y0, y1, z0, z1, fillSide, fillFlat, stroke, bias, hide){
     bias = bias || 0;
     hide = hide || {};
-    const opts = { depthBias: bias };
+    const sideOpts = { depthBias: bias, grain: 'v' };
+    const flatOpts = { depthBias: bias, grain: 'h' };
     if (!hide.x0 && isoNormalFacesCamera(-1, 0, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)
-      ], fillSide, stroke, opts));
+      ], fillSide, stroke, sideOpts));
     }
     if (!hide.x1 && isoNormalFacesCamera(1, 0, 0)) {
       faces.push(isoFace([
         P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1)
-      ], fillSide, stroke, opts));
+      ], fillSide, stroke, sideOpts));
     }
     if (!hide.y0 && isoNormalFacesCamera(0, -1, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)
-      ], fillFlat, stroke, opts));
+      ], fillFlat, stroke, flatOpts));
     }
     if (!hide.y1 && isoNormalFacesCamera(0, 1, 0)) {
       faces.push(isoFace([
         P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0)
-      ], fillFlat, stroke, opts));
+      ], fillFlat, stroke, flatOpts));
     }
     if (!hide.z0 && isoNormalFacesCamera(0, 0, -1)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y1, z0), P(x1, y1, z0), P(x1, y0, z0)
-      ], fillSide, stroke, opts));
+      ], fillSide, stroke, sideOpts));
     }
     if (!hide.z1 && isoNormalFacesCamera(0, 0, 1)) {
       faces.push(isoFace([
         P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)
-      ], fillSide, stroke, opts));
+      ], fillSide, stroke, sideOpts));
     }
   }
 
@@ -3345,6 +3346,16 @@
       opts = Object.assign({}, opts || {});
       if (spec.alpha != null) opts.alpha = spec.alpha;
       faces.push(isoFace(pts, fill, style.edge, opts));
+    }
+    function doorFrontOpts(extra){
+      return Object.assign({
+        gloss: !!style.gloss,
+        band: style.band || null,
+        bandAt: style.bandAt,
+        bandGrain: style.bandGrain || null,
+        empty: style.kind === 'empty',
+        grain: style.grain || null
+      }, extra || {});
     }
 
     if (spec.faceAxis === 'z') {
@@ -3377,13 +3388,7 @@
       if (isoNormalFacesCamera(0, 0, 1)) {
         pushFace([
           P(x0, y0, zOut), P(x1, y0, zOut), P(x1, y1, zOut), P(x0, y1, zOut)
-        ], style.fill, {
-          gloss: !!style.gloss,
-          band: style.band || null,
-          bandAt: style.bandAt,
-          empty: style.kind === 'empty',
-          depthBias: frontBias
-        });
+        ], style.fill, doorFrontOpts({ depthBias: frontBias }));
       }
       return;
     }
@@ -3415,13 +3420,7 @@
       if (isoNormalFacesCamera(1, 0, 0)) {
         pushFace([
           P(xOut, y0, z0), P(xOut, y0, z1), P(xOut, y1, z1), P(xOut, y1, z0)
-        ], style.fill, {
-          gloss: !!style.gloss,
-          band: style.band || null,
-          bandAt: style.bandAt,
-          empty: style.kind === 'empty',
-          depthBias: frontBias
-        });
+        ], style.fill, doorFrontOpts({ depthBias: frontBias }));
       }
       return;
     }
@@ -3459,13 +3458,7 @@
     if (isoNormalFacesCamera(nx, 0, nz)) {
       pushFace([
         P(ox0, y0, oz0), P(ox1, y0, oz1), P(ox1, y1, oz1), P(ox0, y1, oz0)
-      ], style.fill, {
-        gloss: !!style.gloss,
-        band: style.band || null,
-        bandAt: style.bandAt,
-        empty: style.kind === 'empty',
-        depthBias: frontBias
-      });
+      ], style.fill, doorFrontOpts({ depthBias: frontBias }));
     }
   }
 
@@ -3501,6 +3494,114 @@
     };
   }
 
+  const ISO_GRAIN_TILE = 128;
+  let isoGrainCache = { theme: '', tiles: {}, patterns: {} };
+
+  function isoGrainHash(n){
+    const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
+
+  function isoBuildGrainTile(kind){
+    const s = ISO_GRAIN_TILE;
+    const c = document.createElement('canvas');
+    c.width = s;
+    c.height = s;
+    const g = c.getContext('2d');
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    const ink = light ? [92, 68, 42] : [38, 30, 22];
+    g.clearRect(0, 0, s, s);
+    if (kind === 'stone') {
+      const stone = light ? [120, 88, 58] : [52, 40, 28];
+      for (let i = 0; i < 28; i++) {
+        const y = (i / 28) * s + isoGrainHash(i + 4) * 5;
+        const a = 0.05 + isoGrainHash(i + 21) * 0.12;
+        g.strokeStyle = 'rgba(' + stone[0] + ',' + stone[1] + ',' + stone[2] + ',' + a.toFixed(3) + ')';
+        g.lineWidth = 1.2 + isoGrainHash(i + 8) * 3.2;
+        g.beginPath();
+        g.moveTo(-4, y);
+        for (let x = 0; x <= s + 4; x += 8) {
+          g.lineTo(x, y + Math.sin(x * 0.045 + i * 1.1) * 3.4 + Math.sin(x * 0.12 + i) * 1.2);
+        }
+        g.stroke();
+      }
+      g.fillStyle = 'rgba(' + stone[0] + ',' + stone[1] + ',' + stone[2] + ',' + (light ? '0.06' : '0.08') + ')';
+      for (let i = 0; i < 70; i++) {
+        const w = 2 + isoGrainHash(i + 50) * 6;
+        g.fillRect((isoGrainHash(i + 3) * s) | 0, (isoGrainHash(i + 33) * s) | 0, w, 1);
+      }
+      return c;
+    }
+    const vertical = kind !== 'h';
+    const streaks = kind === 'door' ? 56 : 40;
+    for (let i = 0; i < streaks; i++) {
+      const u = (i / streaks) * s + isoGrainHash(i + 2) * 4;
+      const a = 0.035 + isoGrainHash(i + 11) * (kind === 'door' ? 0.11 : 0.07);
+      g.strokeStyle = 'rgba(' + ink[0] + ',' + ink[1] + ',' + ink[2] + ',' + a.toFixed(3) + ')';
+      g.lineWidth = 0.55 + isoGrainHash(i + 19) * (kind === 'door' ? 1.8 : 1.25);
+      g.beginPath();
+      if (vertical) {
+        g.moveTo(u, -2);
+        for (let y = 0; y <= s + 2; y += 6) {
+          g.lineTo(u + Math.sin(y * 0.07 + i * 0.6) * 1.7, y);
+        }
+      } else {
+        g.moveTo(-2, u);
+        for (let x = 0; x <= s + 2; x += 6) {
+          g.lineTo(x, u + Math.sin(x * 0.07 + i * 0.6) * 1.7);
+        }
+      }
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(' + ink[0] + ',' + ink[1] + ',' + ink[2] + ',' + (light ? '0.05' : '0.07') + ')';
+    for (let i = 0; i < 90; i++) {
+      g.fillRect(
+        (isoGrainHash(i + 40) * s) | 0,
+        (isoGrainHash(i + 90) * s) | 0,
+        1, kind === 'door' ? 2 : 1
+      );
+    }
+    return c;
+  }
+
+  function isoGrainPattern(ctx, kind){
+    const theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'l' : 'd';
+    if (isoGrainCache.theme !== theme) {
+      isoGrainCache = { theme: theme, tiles: {}, patterns: {} };
+    }
+    const key = kind || 'v';
+    if (!isoGrainCache.patterns[key]) {
+      if (!isoGrainCache.tiles[key]) isoGrainCache.tiles[key] = isoBuildGrainTile(key);
+      isoGrainCache.patterns[key] = ctx.createPattern(isoGrainCache.tiles[key], 'repeat');
+    }
+    return isoGrainCache.patterns[key];
+  }
+
+  function isoPaintGrain(ctx, corners, kind){
+    if (!kind || corners.length < 3) return;
+    const pat = isoGrainPattern(ctx, kind);
+    if (!pat) return;
+    let minX = corners[0].x, maxX = corners[0].x, minY = corners[0].y, maxY = corners[0].y;
+    for (let i = 1; i < corners.length; i++) {
+      const p = corners[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(corners[0].x, corners[0].y);
+    for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
+    ctx.closePath();
+    ctx.clip();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.globalAlpha *= kind === 'door' ? 0.46 : (kind === 'stone' ? 0.4 : 0.32);
+    ctx.fillStyle = pat;
+    ctx.fillRect(minX - 1, minY - 1, maxX - minX + 2, maxY - minY + 2);
+    ctx.restore();
+  }
+
   function isoPoly(ctx, pts, fill, stroke, lineW){
     if (pts.length < 3) return;
     ctx.beginPath();
@@ -3525,6 +3626,24 @@
         const prevAlpha = ctx.globalAlpha;
         if (opts.alpha != null) ctx.globalAlpha = prevAlpha * opts.alpha;
         isoPoly(ctx, corners, fill, stroke, opts.lineW);
+        if (opts.band) {
+          // bandAt: üst krem oranı; traverten/desen kapak ALTINDA kalır (Travina ~%33).
+          const fromTop = opts.bandAt == null ? 0.66 : opts.bandAt;
+          const midY = corners.reduce((s, p) => s + p.y, 0) / corners.length;
+          const top = corners.filter(p => p.y <= midY).slice();
+          const bot = corners.filter(p => p.y > midY).slice();
+          if (top.length === 2 && bot.length === 2) {
+            top.sort((a, b) => a.x - b.x);
+            bot.sort((a, b) => a.x - b.x);
+            const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, depth: a.depth });
+            const a = lerp(top[0], bot[0], fromTop);
+            const b = lerp(top[1], bot[1], fromTop);
+            const bandPts = [a, b, bot[1], bot[0]];
+            isoPoly(ctx, bandPts, opts.band, stroke, opts.lineW);
+            if (opts.bandGrain) isoPaintGrain(ctx, bandPts, opts.bandGrain);
+          }
+        }
+        if (opts.grain) isoPaintGrain(ctx, corners, opts.grain);
         if (opts.gloss) {
           const g = ctx.createLinearGradient(corners[0].x, corners[0].y, corners[2].x, corners[2].y);
           g.addColorStop(0, 'rgba(255,255,255,0.28)');
@@ -3532,16 +3651,7 @@
           g.addColorStop(1, 'rgba(0,0,0,0.12)');
           isoPoly(ctx, corners, g, null);
         }
-        if (opts.band) {
-          // bandAt: krem/desen sınırı (üstten oran); desen kapak ALTINDadır
-          const t0 = opts.bandAt == null ? 0.72 : opts.bandAt;
-          const lerp = (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, depth: a.depth });
-          const a = lerp(corners[0], corners[3], t0);
-          const b = lerp(corners[1], corners[2], t0);
-          isoPoly(ctx, [corners[0], corners[1], b, a], opts.band, stroke, opts.lineW);
-        }
         ctx.globalAlpha = prevAlpha;
-        // Boş kapak: tarama yok — düz dolu yüzey
       }
     };
   }
@@ -3675,8 +3785,8 @@
     const boardBias = bias + 0.05;
     const postBias = bias + 0.24;
 
-    function fillFace(pts, fill, extraBias){
-      faces.push(isoFace(pts, fill, null, { depthBias: extraBias }));
+    function fillFace(pts, fill, extraBias, grain){
+      faces.push(isoFace(pts, fill, null, { depthBias: extraBias, grain: grain || 'v' }));
     }
 
     function drawRod(a, b){
@@ -3780,7 +3890,7 @@
           fillFace([
             P(xL, yTop, zBack), P(xR, yTop, zBack),
             P(xR, yTop, zShelf), P(xL, yTop, zShelf)
-          ], shelf, extraBias);
+          ], shelf, extraBias, 'h');
         }
         if (isoNormalFacesCamera(0, 0, 1)) {
           fillFace([
@@ -3856,7 +3966,7 @@
         fillFace([
           P(xBack, yTop, zL), P(xBack, yTop, zR),
           P(xShelf, yTop, zR), P(xShelf, yTop, zL)
-        ], shelf, extraBias);
+        ], shelf, extraBias, 'h');
       }
       if (isoNormalFacesCamera(1, 0, 0)) {
         fillFace([
@@ -3924,16 +4034,17 @@
     const C = { x: cW, z: depth };
     const D = { x: depth, z: cW };
     function pushLCap(y, fill, bias){
+      const capOpts = { depthBias: bias, grain: 'h' };
       faces.push(isoFace([
         P(0, y, 0), P(cW, y, 0), P(cW, y, depth), P(0, y, depth)
-      ], fill, null, { depthBias: bias }));
+      ], fill, null, capOpts));
       faces.push(isoFace([
         P(0, y, depth), P(depth, y, depth), P(depth, y, cW), P(0, y, cW)
-      ], fill, null, { depthBias: bias }));
+      ], fill, null, capOpts));
       if (cW > depth + 1e-4) {
         faces.push(isoFace([
           P(depth, y, depth), P(C.x, y, C.z), P(D.x, y, D.z)
-        ], fill, null, { depthBias: bias }));
+        ], fill, null, capOpts));
       }
       faces.push({
         depth: (P(0, y, 0).depth + P(cW, y, 0).depth) / 2 + bias + 0.01,
@@ -3970,11 +4081,11 @@
       const fx1 = D.x - nx * t, fz1 = D.z - nz * t;
       faces.push(isoFace([
         P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
-      ], face, stroke, { depthBias: bias }));
+      ], face, stroke, { depthBias: bias, grain: 'v' }));
       if (frontOpen) {
         faces.push(isoFace([
           P(fx0, 0, fz0), P(fx1, 0, fz1), P(fx1, h, fz1), P(fx0, h, fz0)
-        ], side, stroke, { depthBias: bias + 0.02 }));
+        ], side, stroke, { depthBias: bias + 0.02, grain: 'v' }));
       }
     }
 
@@ -3985,8 +4096,8 @@
       const d = depth - pad;
       const extra = 0.18;
       const rodFill = document.documentElement.getAttribute('data-theme') === 'light' ? '#b5aa9a' : '#8a8278';
-      function fill(pts, col, b){
-        faces.push(isoFace(pts, col, null, { depthBias: b }));
+      function fill(pts, col, b, grain){
+        faces.push(isoFace(pts, col, null, { depthBias: b, grain: grain || 'v' }));
       }
       function lShelf(yTop){
         const yBot = yTop - t;
@@ -3994,11 +4105,11 @@
           fill([
             P(pad, yTop, pad), P(xOuter, yTop, pad),
             P(xOuter, yTop, d), P(pad, yTop, d)
-          ], pal.shelf, extra);
+          ], pal.shelf, extra, 'h');
           fill([
             P(pad, yTop, d), P(d, yTop, d),
             P(d, yTop, zOuter), P(pad, yTop, zOuter)
-          ], pal.shelf, extra);
+          ], pal.shelf, extra, 'h');
         }
         if (isoNormalFacesCamera(0, 0, 1)) {
           fill([
@@ -4019,7 +4130,7 @@
           fill([
             P(pad, yTop, d), P(d, yTop, d),
             P(d, yTop, zOuter), P(pad, yTop, zOuter)
-          ], pal.shelf, extra);
+          ], pal.shelf, extra, 'h');
         }
         if (isoNormalFacesCamera(1, 0, 0)) {
           fill([
