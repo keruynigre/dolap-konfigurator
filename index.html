@@ -3283,7 +3283,9 @@
     const z0 = originZ + t0 + (t1 - t0) * 0.015;
     const z1 = originZ + t1 - (t1 - t0) * 0.015;
     const yDrawerTop = withDrawer ? height * 0.38 : 0;
-    const yHangBot = withDrawer ? height * 0.40 : height * 0.04;
+    const yHangBot = withDrawer ? height * 0.40 : height * (1 / 6);
+    const yTopShelf = height * (5 / 6);
+    const yRod = endShelves ? (yTopShelf - t - 0.12) : height * (withDrawer ? 0.78 : 0.88);
     const drawerStyle = { fill: drawerFace, edge: drawerEdge };
     const sideFill = '#d0c8bc';
     const y0b = height * 0.02;
@@ -3444,7 +3446,6 @@
       } else {
         boardZ(yHangBot, boardBias);
       }
-      const yRod = height * (endShelves ? (withDrawer ? 0.70 : 0.72) : (withDrawer ? 0.78 : 0.88));
       drawRod(P(xL + 0.02, yRod, originZ + depth * 0.55), P(xR - 0.02, yRod, originZ + depth * 0.55));
       if (withDrawer) drawDrawersZ(zDrawerIn);
       return;
@@ -3521,7 +3522,6 @@
     } else {
       boardX(yHangBot, boardBias);
     }
-    const yRod = height * (endShelves ? (withDrawer ? 0.70 : 0.72) : (withDrawer ? 0.78 : 0.88));
     drawRod(P(originX + depth * 0.55, yRod, zL + 0.02), P(originX + depth * 0.55, yRod, zR - 0.02));
     if (withDrawer) drawDrawersX(xDrawerIn);
   }
@@ -3598,17 +3598,17 @@
       }
     }
 
-    function pushCornerShelves(){
+    function pushCornerInterior(){
       const pad = t + 0.014;
       const xOuter = cW - pad;
       const zOuter = cW - pad;
       const d = depth - pad;
       const extra = 0.18;
+      const rodFill = document.documentElement.getAttribute('data-theme') === 'light' ? '#b5aa9a' : '#8a8278';
       function fill(pts, col, b){
         faces.push(isoFace(pts, col, null, { depthBias: b }));
       }
-      for (const s of [1, 5]) {
-        const yTop = h * (s / 6);
+      function lShelf(yTop){
         const yBot = yTop - t;
         if (isoNormalFacesCamera(0, 1, 0)) {
           fill([
@@ -3633,6 +3633,47 @@
           ], pal.shelfEdge, extra);
         }
       }
+      function leftArmShelf(yTop){
+        const yBot = yTop - t;
+        if (isoNormalFacesCamera(0, 1, 0)) {
+          fill([
+            P(pad, yTop, d), P(d, yTop, d),
+            P(d, yTop, zOuter), P(pad, yTop, zOuter)
+          ], pal.shelf, extra);
+        }
+        if (isoNormalFacesCamera(1, 0, 0)) {
+          fill([
+            P(d, yBot, d), P(d, yBot, zOuter),
+            P(d, yTop, zOuter), P(d, yTop, d)
+          ], pal.shelfEdge, extra);
+        }
+      }
+
+      lShelf(h * (1 / 6));
+      lShelf(h * (5 / 6));
+      for (const s of [2, 3, 4]) leftArmShelf(h * (s / 6));
+
+      const yRod = h * (5 / 6) - t - 0.04;
+      const zRod = (pad + d) * 0.5;
+      const ra = P(d + 0.02, yRod, zRod);
+      const rb = P(xOuter - 0.02, yRod, zRod);
+      faces.push({
+        depth: (ra.depth + rb.depth) / 2 + extra + 0.08,
+        draw: (ctx) => {
+          ctx.beginPath();
+          ctx.moveTo(ra.x, ra.y);
+          ctx.lineTo(rb.x, rb.y);
+          ctx.strokeStyle = rodFill;
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(ra.x, ra.y, 2.2, 0, Math.PI * 2);
+          ctx.arc(rb.x, rb.y, 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = rodFill;
+          ctx.fill();
+        }
+      });
     }
 
     function pushCornerDoor(){
@@ -3646,7 +3687,7 @@
     }
 
     if (revealInterior && frontOpen) {
-      pushCornerShelves();
+      pushCornerInterior();
       if (doorStyle.kind !== 'empty') pushCornerDoor();
     } else if (doorStyle.kind === 'empty') {
       pushClosedDiagonal(frontOpen ? 0.15 : 0.7);
@@ -3767,7 +3808,7 @@
           isoBayInterior('hang', faceAxis, originX, originZ, h0, h1, DEPTH, HEIGHT, P, faces, {
             withDrawer: showDrawers,
             moduleSpan: sizeAlong,
-            endShelves: mod.type === '2door'
+            endShelves: mod.type === '2door' || mod.type === '3door'
           });
         }
 
