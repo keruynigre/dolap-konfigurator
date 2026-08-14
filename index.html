@@ -63,7 +63,7 @@
     --icon-bg: rgba(32, 31, 29, 0.82);
     --icon-border: rgba(255,255,255,0.35);
     --icon-hover: rgba(50, 48, 44, 0.95);
-    --series-veil: rgba(18,16,14,.78);
+    --series-veil: rgba(18,16,14,.42);
     --radius: 3px;
     --logo-filter: none;
     --sidebar-w: 320px;
@@ -81,9 +81,9 @@
     --brass-ink: #1a1712;
     --title: #1f1a14;
     --scrim: rgba(40, 34, 26, 0.45);
-    --iso-dialog: #faf8f4;
-    --iso-stage-a: #ebe4d8;
-    --iso-stage-b: #f3efe8;
+    --iso-dialog: #f3efe8;
+    --iso-stage-a: #4a4e54;
+    --iso-stage-b: #2a2d32;
     --seam: #c9c0b3;
     --dim: #2a241c;
     --danger-border: #d4a89a;
@@ -92,7 +92,7 @@
     --icon-bg: rgba(255, 255, 255, 0.92);
     --icon-border: rgba(42, 36, 28, 0.22);
     --icon-hover: #fff;
-    --series-veil: rgba(250,248,244,.82);
+    --series-veil: rgba(42,36,28,.28);
     --logo-filter: invert(1) brightness(0.12);
   }
   * { box-sizing: border-box; }
@@ -253,14 +253,20 @@
     transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
   }
   .series-btn::before {
-    content: ''; position: absolute; inset: 0; z-index: 0;
-    background:
-      linear-gradient(180deg, transparent 28%, var(--series-veil) 100%),
-      var(--series-img) center / cover no-repeat;
+    content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(180deg, transparent 62%, var(--series-veil) 100%);
+  }
+  .series-btn .series-photo {
+    position: absolute; inset: 0; z-index: 0;
+    width: 100%; height: 100%; display: block;
+    object-fit: cover; object-position: center 22%;
+    pointer-events: none; user-select: none;
+    filter: contrast(1.12) saturate(1.08);
+    transform: scale(1.01);
     transition: transform 0.35s ease;
   }
   .series-btn:hover { border-color: var(--brass); transform: translateY(-1px); }
-  .series-btn:hover::before { transform: scale(1.04); }
+  .series-btn:hover .series-photo { transform: scale(1.04); }
   .series-btn.active {
     border-color: var(--brass);
     box-shadow: 0 0 0 1px rgba(201,163,90,.45), 0 8px 22px rgba(0,0,0,.35);
@@ -274,7 +280,8 @@
     position: relative; z-index: 2;
     display: flex; align-items: flex-end; justify-content: flex-start;
     width: 100%; height: 100%; padding: 8px 9px;
-    font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
+    font-size: 15px; font-weight: 650; letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: #111; text-shadow: 0 1px 2px rgba(255,255,255,.75);
     text-align: left; line-height: 1.2;
   }
@@ -284,7 +291,7 @@
     color: #f6f1ea; text-shadow: 0 1px 8px rgba(0,0,0,.55);
   }
   .series-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .series-btn:disabled:hover::before { transform: none; }
+  .series-btn:disabled:hover .series-photo { transform: scale(1.01); }
   .series-picker.is-locked { grid-template-columns: 1fr; }
   .series-picker.is-locked .series-btn { aspect-ratio: 16 / 9; min-height: 118px; }
   .series-lock-hint {
@@ -908,8 +915,12 @@
   .iso-close:hover { border-color: var(--ink-dim); color: var(--ink); }
   .iso-stage {
     position: relative; flex: 1; min-height: 420px; background:
-      radial-gradient(ellipse at 50% 30%, var(--iso-stage-a) 0%, var(--iso-stage-b) 70%);
+      radial-gradient(ellipse at 50% 38%, var(--iso-stage-a) 0%, var(--iso-stage-b) 72%);
     cursor: grab; touch-action: none;
+  }
+  html[data-theme="light"] .iso-stage {
+    background:
+      radial-gradient(ellipse at 50% 40%, #5c6168 0%, #3d4147 48%, #23262b 100%);
   }
   .iso-stage.is-dragging { cursor: grabbing; }
   .iso-stage.is-module-hover { cursor: grab; }
@@ -1763,7 +1774,7 @@
   const DOOR_WIDTH_CM = 50;
   const FLUSH_REF_H = 890; // all flush body images share this height
 
-  const ASSET_VERSION = '8';
+  const ASSET_VERSION = '9';
   /** assets/ uzun cache. Görsel değişince ASSET_VERSION artır. */
   function assetUrl(src){
     if (!src || typeof src !== 'string') return src;
@@ -1814,7 +1825,7 @@
       joinTrimLeftDrawer: 0, joinTrimRightDrawer: 0,
       doorInset: { left: 0, right: 0, top: 0, bottom: 0 },
       doorFracs: [[0, 0.5], [0.5, 1]],
-      doors: 2, widthCm: DOOR_WIDTH_CM * 2, heightCm: BODY_HEIGHT_CM, label: '2 Kapaklı Gövde', drawerZone: [0.5, 1]
+      doors: 2, widthCm: DOOR_WIDTH_CM * 2, heightCm: BODY_HEIGHT_CM, label: '2 Kapaklı Gövde', drawerZone: [0, 1]
     },
     '3door': {
       img: ASSETS.body3, imgFile: FLUSH_BODY_IMAGES['3door'], imgDrawer: DRAWER_BODY_IMAGES['3door'],
@@ -3294,37 +3305,36 @@
   function isoPushSolidBox(faces, P, x0, x1, y0, y1, z0, z1, fillSide, fillFlat, stroke, bias, hide){
     bias = bias || 0;
     hide = hide || {};
-    const sideOpts = { depthBias: bias, grain: 'v' };
-    const flatOpts = { depthBias: bias, grain: 'h' };
+    const opts = { depthBias: bias };
     if (!hide.x0 && isoNormalFacesCamera(-1, 0, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y0, z1), P(x0, y1, z1), P(x0, y1, z0)
-      ], fillSide, stroke, sideOpts));
+      ], fillSide, stroke, opts));
     }
     if (!hide.x1 && isoNormalFacesCamera(1, 0, 0)) {
       faces.push(isoFace([
         P(x1, y0, z0), P(x1, y1, z0), P(x1, y1, z1), P(x1, y0, z1)
-      ], fillSide, stroke, sideOpts));
+      ], fillSide, stroke, opts));
     }
     if (!hide.y0 && isoNormalFacesCamera(0, -1, 0)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x1, y0, z0), P(x1, y0, z1), P(x0, y0, z1)
-      ], fillFlat, stroke, flatOpts));
+      ], fillFlat, stroke, opts));
     }
     if (!hide.y1 && isoNormalFacesCamera(0, 1, 0)) {
       faces.push(isoFace([
         P(x0, y1, z0), P(x0, y1, z1), P(x1, y1, z1), P(x1, y1, z0)
-      ], fillFlat, stroke, flatOpts));
+      ], fillFlat, stroke, opts));
     }
     if (!hide.z0 && isoNormalFacesCamera(0, 0, -1)) {
       faces.push(isoFace([
         P(x0, y0, z0), P(x0, y1, z0), P(x1, y1, z0), P(x1, y0, z0)
-      ], fillSide, stroke, sideOpts));
+      ], fillSide, stroke, opts));
     }
     if (!hide.z1 && isoNormalFacesCamera(0, 0, 1)) {
       faces.push(isoFace([
         P(x0, y0, z1), P(x1, y0, z1), P(x1, y1, z1), P(x0, y1, z1)
-      ], fillSide, stroke, sideOpts));
+      ], fillSide, stroke, opts));
     }
   }
 
@@ -3469,8 +3479,8 @@
         carcass: '#ebe4d8',
         carcassSide: '#e0d8cc',
         carcassTop: '#f3eee6',
-        edge: '#cbbfae',
-        edgeSoft: '#d6ccbe',
+        edge: '#b7aa98',
+        edgeSoft: '#a89886',
         back: '#ddd5c8',
         shelf: '#f2ebe1',
         shelfEdge: '#cbbfae',
@@ -3704,7 +3714,7 @@
 
   function bayInteriorKind(mod, doorIdx){
     if (mod.type === 'corner') return 'shelf';
-    if (mod.type === '3door' || mod.type === '2door') {
+    if (mod.type === '3door') {
       // Asset’te raf kolonu kapak 0 (sol); simetri yalnızca mekânsal fraksiyonları çevirir
       return doorIdx === 0 ? 'shelf' : 'hang';
     }
@@ -3785,8 +3795,8 @@
     const boardBias = bias + 0.05;
     const postBias = bias + 0.24;
 
-    function fillFace(pts, fill, extraBias, grain){
-      faces.push(isoFace(pts, fill, null, { depthBias: extraBias, grain: grain || 'v' }));
+    function fillFace(pts, fill, extraBias){
+      faces.push(isoFace(pts, fill, null, { depthBias: extraBias }));
     }
 
     function drawRod(a, b){
@@ -3890,7 +3900,7 @@
           fillFace([
             P(xL, yTop, zBack), P(xR, yTop, zBack),
             P(xR, yTop, zShelf), P(xL, yTop, zShelf)
-          ], shelf, extraBias, 'h');
+          ], shelf, extraBias);
         }
         if (isoNormalFacesCamera(0, 0, 1)) {
           fillFace([
@@ -3966,7 +3976,7 @@
         fillFace([
           P(xBack, yTop, zL), P(xBack, yTop, zR),
           P(xShelf, yTop, zR), P(xShelf, yTop, zL)
-        ], shelf, extraBias, 'h');
+        ], shelf, extraBias);
       }
       if (isoNormalFacesCamera(1, 0, 0)) {
         fillFace([
@@ -4034,17 +4044,16 @@
     const C = { x: cW, z: depth };
     const D = { x: depth, z: cW };
     function pushLCap(y, fill, bias){
-      const capOpts = { depthBias: bias, grain: 'h' };
       faces.push(isoFace([
         P(0, y, 0), P(cW, y, 0), P(cW, y, depth), P(0, y, depth)
-      ], fill, null, capOpts));
+      ], fill, null, { depthBias: bias }));
       faces.push(isoFace([
         P(0, y, depth), P(depth, y, depth), P(depth, y, cW), P(0, y, cW)
-      ], fill, null, capOpts));
+      ], fill, null, { depthBias: bias }));
       if (cW > depth + 1e-4) {
         faces.push(isoFace([
           P(depth, y, depth), P(C.x, y, C.z), P(D.x, y, D.z)
-        ], fill, null, capOpts));
+        ], fill, null, { depthBias: bias }));
       }
       faces.push({
         depth: (P(0, y, 0).depth + P(cW, y, 0).depth) / 2 + bias + 0.01,
@@ -4081,11 +4090,11 @@
       const fx1 = D.x - nx * t, fz1 = D.z - nz * t;
       faces.push(isoFace([
         P(C.x, 0, C.z), P(D.x, 0, D.z), P(D.x, h, D.z), P(C.x, h, C.z)
-      ], face, stroke, { depthBias: bias, grain: 'v' }));
+      ], face, stroke, { depthBias: bias }));
       if (frontOpen) {
         faces.push(isoFace([
           P(fx0, 0, fz0), P(fx1, 0, fz1), P(fx1, h, fz1), P(fx0, h, fz0)
-        ], side, stroke, { depthBias: bias + 0.02, grain: 'v' }));
+        ], side, stroke, { depthBias: bias + 0.02 }));
       }
     }
 
@@ -4096,8 +4105,8 @@
       const d = depth - pad;
       const extra = 0.18;
       const rodFill = document.documentElement.getAttribute('data-theme') === 'light' ? '#b5aa9a' : '#8a8278';
-      function fill(pts, col, b, grain){
-        faces.push(isoFace(pts, col, null, { depthBias: b, grain: grain || 'v' }));
+      function fill(pts, col, b){
+        faces.push(isoFace(pts, col, null, { depthBias: b }));
       }
       function lShelf(yTop){
         const yBot = yTop - t;
@@ -4105,11 +4114,11 @@
           fill([
             P(pad, yTop, pad), P(xOuter, yTop, pad),
             P(xOuter, yTop, d), P(pad, yTop, d)
-          ], pal.shelf, extra, 'h');
+          ], pal.shelf, extra);
           fill([
             P(pad, yTop, d), P(d, yTop, d),
             P(d, yTop, zOuter), P(pad, yTop, zOuter)
-          ], pal.shelf, extra, 'h');
+          ], pal.shelf, extra);
         }
         if (isoNormalFacesCamera(0, 0, 1)) {
           fill([
@@ -4130,7 +4139,7 @@
           fill([
             P(pad, yTop, d), P(d, yTop, d),
             P(d, yTop, zOuter), P(pad, yTop, zOuter)
-          ], pal.shelf, extra, 'h');
+          ], pal.shelf, extra);
         }
         if (isoNormalFacesCamera(1, 0, 0)) {
           fill([
@@ -4583,7 +4592,7 @@
     }
 
     if (opts.showDims !== false) {
-      drawIsoArmDimensions(ctx, ox, oy, scale, layout, isLight);
+      drawIsoArmDimensions(ctx, ox, oy, scale, layout, isLight, !!opts.fill);
     }
   }
 
@@ -4676,7 +4685,7 @@
     ctx.restore();
   }
 
-  function drawIsoArmDimensions(ctx, ox, oy, scale, layout, isLight){
+  function drawIsoArmDimensions(ctx, ox, oy, scale, layout, isLight, onPaper){
     const HEIGHT = BODY_HEIGHT_CM * 0.01;
     const lift = 0.1; // üst çizgiler dolabın biraz üstünde
     const back = -0.14; // arka duvar tarafına kaydır
@@ -4684,7 +4693,9 @@
     const rightM = layout.right * 0.01;
     const totalM = layout.total * 0.01;
     const P = (x, y, z) => isoProject(x, y, z, ox, oy, scale);
-    const color = isLight ? 'rgba(42,36,28,0.92)' : 'rgba(201,163,90,0.95)';
+    const color = onPaper
+      ? 'rgba(42,36,28,0.92)'
+      : 'rgba(201,163,90,0.95)';
 
     if (layout.mode !== 'corner') {
       drawIsoDimSegment(
@@ -5974,11 +5985,14 @@
     seriesPicker.innerHTML = visible.map(id => {
       const s = DOOR_SERIES[id];
       const ready = seriesHasFinishes(id);
-      const img = s.hero ? ' style="--series-img:url(\'' + s.hero + '\')"' : '';
+      const photo = s.hero
+        ? '<img class="series-photo" src="' + assetUrl(s.hero) + '" alt="" draggable="false">'
+        : '';
       return '<button type="button" class="series-btn' + (id === activeDoorSeries ? ' active' : '') +
-        '" data-series="' + id + '"' + img +
+        '" data-series="' + id + '"' +
         (locked ? ' disabled aria-disabled="true"' : '') +
         (ready ? '' : ' title="Kapak görselleri eklenecek"') + '>' +
+        photo +
         '<span class="series-name">' + s.label + '</span></button>';
     }).join('');
 
