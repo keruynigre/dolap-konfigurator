@@ -521,6 +521,11 @@
   }
   .quote-dialog-close:hover { border-color: var(--brass); color: var(--brass); }
   .quote-dialog-close svg { width: 16px; height: 16px; display: block; }
+  .quote-dialog-brand {
+    display: block; height: 42px; width: auto; max-width: 168px;
+    object-fit: contain; margin: 0 42px 12px 0;
+    filter: var(--logo-filter);
+  }
   .quote-dialog h2 {
     margin: 0 0 6px; padding-right: 8px;
     font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
@@ -640,6 +645,19 @@
   .quote-pdf-root * { box-sizing: border-box; }
   .quote-pdf-root h1 { font-size: 20px; margin: 0 0 4px; font-weight: 700; }
   .quote-pdf-root h2 { font-size: 14px; margin: 0 0 6px; font-weight: 600; }
+  .quote-pdf-root table.brandhead {
+    width: 100%; border-collapse: collapse; margin: 0 0 16px;
+  }
+  .quote-pdf-root table.brandhead td {
+    border: none; padding: 0; vertical-align: middle;
+  }
+  .quote-pdf-root table.brandhead td.logo { width: 46%; }
+  .quote-pdf-root table.brandhead img {
+    height: 52px; width: auto; max-width: 220px; display: block;
+  }
+  .quote-pdf-root table.brandhead td.title { text-align: right; }
+  .quote-pdf-root table.brandhead h1 { margin: 0 0 2px; }
+  .quote-pdf-root table.brandhead .muted { margin: 0; }
   .quote-pdf-root .eyebrow {
     font-size: 11px; letter-spacing: .12em; text-transform: uppercase;
     color: #8a7350; margin: 0 0 16px;
@@ -1615,6 +1633,7 @@
     <button type="button" class="quote-dialog-close" id="quote-close" title="Kapat" aria-label="Kapat">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
+    <img class="quote-dialog-brand" src="assets/brand/bambi-logo.png?v=7" alt="bambi — Yatak Sanatı" width="200" height="73">
     <div class="quote-form" id="quote-form-wrap">
       <h2 id="quote-title">Teklif Formu</h2>
       <p class="quote-sub">Düzenlemeniz tamam. Bilgilerinizi bırakın; konfigürasyon özeti ile birlikte teklif talebiniz iletilsin.</p>
@@ -2601,9 +2620,10 @@
     // html2canvas için grid/flex yerine tablo; stil ayrı eklenir (iç style yakalamayı bozar)
     return (
       '<div class="quote-pdf-root">' +
-        '<p class="eyebrow">Bambi Modüler</p>' +
-        '<h1>Teklif Formu</h1>' +
-        '<p class="muted">' + escapeHtml(dateStr) + '</p>' +
+        '<table class="brandhead"><tbody><tr>' +
+          '<td class="logo"><img class="quote-pdf-logo" src="' + escapeHtml(assetUrl('assets/brand/bambi-logo.png')) + '" alt="bambi — Yatak Sanatı" width="200" height="73"></td>' +
+          '<td class="title"><h1>Teklif Formu</h1><p class="muted">' + escapeHtml(dateStr) + '</p></td>' +
+        '</tr></tbody></table>' +
         '<table class="meta"><tbody>' +
           '<tr>' +
             '<td class="box"><div class="lbl">Ad Soyad</div>' + escapeHtml(c.name || '—') + '</td>' +
@@ -2688,6 +2708,13 @@
       '.quote-pdf-root *{box-sizing:border-box;}' +
       '.quote-pdf-root h1{font-size:20px;margin:0 0 4px;font-weight:700;}' +
       '.quote-pdf-root h2{font-size:14px;margin:0 0 6px;font-weight:600;}' +
+      '.quote-pdf-root table.brandhead{width:100%;border-collapse:collapse;margin:0 0 16px;}' +
+      '.quote-pdf-root table.brandhead td{border:none;padding:0;vertical-align:middle;}' +
+      '.quote-pdf-root table.brandhead td.logo{width:46%;}' +
+      '.quote-pdf-root table.brandhead img{height:52px;width:auto;max-width:220px;display:block;}' +
+      '.quote-pdf-root table.brandhead td.title{text-align:right;}' +
+      '.quote-pdf-root table.brandhead h1{margin:0 0 2px;}' +
+      '.quote-pdf-root table.brandhead .muted{margin:0;}' +
       '.quote-pdf-root .eyebrow{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#8a7350;margin:0 0 16px;}' +
       '.quote-pdf-root .muted{color:#7a746a;font-size:11px;margin:0 0 16px;}' +
       '.quote-pdf-root table.meta{width:100%;border-collapse:separate;border-spacing:10px 10px;margin:0 0 12px -10px;}' +
@@ -2715,6 +2742,13 @@
     document.head.appendChild(style);
     document.body.appendChild(root);
     try {
+      const logoImg = sheet.querySelector('img.quote-pdf-logo');
+      if (logoImg && !logoImg.complete) {
+        await new Promise((resolve) => {
+          logoImg.addEventListener('load', resolve, { once: true });
+          logoImg.addEventListener('error', resolve, { once: true });
+        });
+      }
       await waitFrames(3);
       if (!sheet.offsetHeight || !sheet.offsetWidth) throw new Error('pdf_layout_empty');
 
