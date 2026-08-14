@@ -161,11 +161,11 @@
   }
 
   .layout {
-    flex: 1; display: grid; grid-template-columns: 300px 1fr;
+    flex: 1; display: grid; grid-template-columns: 320px 1fr;
     min-height: 0;
     transition: grid-template-columns 0.25s ease;
   }
-  .layout.configure-mode { grid-template-columns: 248px 1fr; }
+  .layout.configure-mode { grid-template-columns: 292px 1fr; }
 
   .sidebar {
     border-right: 1px solid var(--line); padding: 24px;
@@ -221,7 +221,7 @@
     background: var(--panel-2); border: 1px solid var(--line); color: var(--ink);
     border-radius: 6px; padding: 0; cursor: pointer;
     font-family: 'Space Grotesk', sans-serif; font-weight: 500;
-    aspect-ratio: 4 / 3; min-height: 78px;
+    aspect-ratio: 4 / 3; min-height: 100px;
     transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
   }
   .series-btn::before {
@@ -247,14 +247,18 @@
     display: flex; align-items: flex-end; justify-content: flex-start;
     width: 100%; height: 100%; padding: 8px 9px;
     font-size: 12px; font-weight: 600; letter-spacing: 0.01em;
-    color: #f6f1ea; text-shadow: 0 1px 8px rgba(0,0,0,.55);
+    color: #111; text-shadow: 0 1px 2px rgba(255,255,255,.75);
     text-align: left; line-height: 1.2;
   }
-  .series-btn.active .series-name { color: var(--brass); }
+  .series-btn.active .series-name { color: #111; }
+  html[data-theme="dark"] .series-btn .series-name,
+  html[data-theme="dark"] .series-btn.active .series-name {
+    color: #f6f1ea; text-shadow: 0 1px 8px rgba(0,0,0,.55);
+  }
   .series-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .series-btn:disabled:hover::before { transform: none; }
   .series-picker.is-locked { grid-template-columns: 1fr; }
-  .series-picker.is-locked .series-btn { aspect-ratio: 16 / 9; min-height: 96px; }
+  .series-picker.is-locked .series-btn { aspect-ratio: 16 / 9; min-height: 118px; }
   .series-lock-hint {
     margin: 0 0 10px; font-size: 11px; color: var(--brass); line-height: 1.4;
   }
@@ -444,9 +448,6 @@
     font-family: 'Space Mono', monospace; font-size: 13px; color: var(--ink);
   }
 
-  #selection-placeholder { color: var(--ink-dim); font-size: 13px; line-height: 1.55; }
-  .sidebar.has-body-selection #selection-placeholder { display: none; }
-
   #selected-options { color: var(--ink-dim); font-size: 13px; line-height: 1.6; }
   .sel-title { font-family: 'Space Grotesk', sans-serif; color: var(--ink); font-size: 15px; margin-bottom: 2px; }
   .sel-meta { font-family: 'Space Mono', monospace; font-size: 11.5px; color: var(--ink-dim); margin-bottom: 14px; }
@@ -470,10 +471,6 @@
   .quote-btn:disabled {
     opacity: 0.38; cursor: not-allowed; filter: none;
   }
-  .quote-hint {
-    margin-top: 8px; font-size: 11px; color: var(--ink-dim); line-height: 1.4; display: none;
-  }
-  .quote-hint.visible { display: block; }
 
   .quote-modal {
     position: fixed; inset: 0; z-index: 80; display: none;
@@ -1413,15 +1410,11 @@
       <section class="control-group door-panel" id="door-panel">
         <h2>Kapak Yerleştir</h2>
         <p class="door-hint" id="door-panel-hint">Önce kapak modelini seçin. Kapak yerleştirmek için gövde üzerindeki kapak alanına tıklayın. Yalnızca ek ürün için model seçip ek ürün ekleyebilirsiniz.</p>
-        <p class="series-label" id="series-label">Kapak modeli</p>
+        <p class="series-label" id="series-label">Modeller</p>
         <div class="series-picker" id="series-picker"></div>
         <p class="series-lock-hint" id="series-lock-hint" hidden></p>
         <div class="material-palette" id="material-palette"></div>
         <div id="selected-options"></div>
-      </section>
-
-      <section class="control-group" id="selection-placeholder">
-        Gövde eklemeden yalnızca ek ürün seçebilirsiniz. Kapak yerleştirmek için bir gövde seçin.
       </section>
 
       <div class="summary">
@@ -1429,7 +1422,6 @@
           <div class="price-total">Toplam <span id="price-total">₺0</span></div>
         </div>
         <button class="quote-btn" id="quote-btn" type="button" disabled>Teklif Formu Gönder</button>
-        <p class="quote-hint visible" id="quote-hint">Set / ek ürün seçerek veya gövdeye kapak yerleştirerek teklif alabilirsiniz.</p>
       </div>
     </aside>
 
@@ -1450,7 +1442,7 @@
       <div class="canvas empty" id="canvas">
         <div class="empty-msg">Henüz gövde eklenmedi.<br>Soldan bir gövde tipi seçerek başlayın.</div>
       </div>
-      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İç yapıyı görmek için kapakları saydam yapabilirsiniz — kapaklar fiyatta kalır. İzometrik görünümü açabilirsiniz.</p>
+      <p class="hint">İpucu: Gövdeleri sürükleyerek sırasını değiştirin. Kapak alanına tıklayınca tutacaklar karşılıklı bakar; çekmece ve silme için gövde simgelerini kullanın. İç yapıyı görmek için kapakları saydam yapabilirsiniz. İzometrik görünümü açabilirsiniz.</p>
     </main>
   </div>
 </div>
@@ -2049,7 +2041,6 @@
   const selectedOptionsEl = document.getElementById('selected-options');
   const priceTotalEl = document.getElementById('price-total');
   const quoteBtn = document.getElementById('quote-btn');
-  const quoteHint = document.getElementById('quote-hint');
   const quoteModal = document.getElementById('quote-modal');
   const quoteForm = document.getElementById('quote-form');
   const quoteFormWrap = document.getElementById('quote-form-wrap');
@@ -2237,18 +2228,7 @@
   }
 
   function updateQuoteButton(){
-    const ready = isQuoteReady();
-    quoteBtn.disabled = !ready;
-    if (ready) {
-      quoteHint.classList.remove('visible');
-      return;
-    }
-    quoteHint.classList.add('visible');
-    if (!modules.length) {
-      quoteHint.textContent = 'Gövde ekleyip kapak yerleştirin veya yalnızca ek ürün seçerek teklif alın.';
-    } else {
-      quoteHint.textContent = 'Tüm kapakları yerleştirince teklif formu açılır.';
-    }
+    quoteBtn.disabled = !isQuoteReady();
   }
 
   function escapeHtml(str){
@@ -5207,7 +5187,6 @@
     // Kapak modeli + ek ürünler gövde seçilmeden de kullanılabilir
     sidebarEl.classList.add('configure-mode');
     layoutEl.classList.add('configure-mode');
-    sidebarEl.classList.toggle('has-body-selection', hasSelection);
 
     if (!hasSelection) {
       selectedOptionsEl.innerHTML = '';
@@ -5249,7 +5228,7 @@
         : 'Önce kapak modelini seçin. Kapak yerleştirmek için gövde üzerindeki kapak alanına tıklayın. Yalnızca ek ürün için model seçip ek ürün ekleyebilirsiniz.';
     }
     if (seriesLabelEl) {
-      seriesLabelEl.textContent = locked ? 'Kapak modeli (kilitli)' : 'Kapak modeli';
+      seriesLabelEl.textContent = locked ? 'Modeller (kilitli)' : 'Modeller';
     }
 
     seriesPicker.innerHTML = visible.map(id => {
