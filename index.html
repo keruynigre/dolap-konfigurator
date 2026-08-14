@@ -1302,6 +1302,7 @@
     color: var(--ink); padding: 9px 12px; cursor: pointer;
     font: inherit; font-size: 13px; margin: 0;
   }
+  .login-combo-row.is-active .login-combo-pick,
   .login-combo-pick:hover { background: rgba(201,163,90,.12); color: var(--brass); }
   .login-combo-del {
     width: 36px; border: none; border-left: 1px solid var(--line);
@@ -5957,14 +5958,53 @@
     const clearBtn = opts.clearBtn;
     const storageKey = opts.storageKey;
     if (!wrap || !input || !menu) return { sync: function(){} };
+    let activeIndex = -1;
 
     function syncClearBtn(){
       if (clearBtn) clearBtn.hidden = !String(input.value || '').length;
     }
 
+    function optionRows(){
+      return Array.from(menu.querySelectorAll('.login-combo-row'));
+    }
+
+    function applyActive(){
+      optionRows().forEach((row, i) => {
+        row.classList.toggle('is-active', i === activeIndex);
+      });
+      const current = optionRows()[activeIndex];
+      if (current) current.scrollIntoView({ block: 'nearest' });
+    }
+
     function hideMenu(){
       menu.hidden = true;
       wrap.classList.remove('is-open');
+      activeIndex = -1;
+    }
+
+    function applySavedValue(value){
+      input.removeAttribute('readonly');
+      input.value = value;
+      if (passInput) passInput.value = '';
+      syncClearBtn();
+      hideMenu();
+      passInput?.focus();
+    }
+
+    function moveActive(delta){
+      if (menu.hidden) showMenu();
+      const rows = optionRows();
+      if (!rows.length) return;
+      if (activeIndex < 0) activeIndex = delta > 0 ? 0 : rows.length - 1;
+      else activeIndex = (activeIndex + delta + rows.length) % rows.length;
+      applyActive();
+    }
+
+    function chooseActive(){
+      const pick = optionRows()[activeIndex] && optionRows()[activeIndex].querySelector('.login-combo-pick');
+      if (!pick) return false;
+      applySavedValue(pick.textContent);
+      return true;
     }
 
     function renderMenu(){
@@ -5982,12 +6022,7 @@
         pick.textContent = value;
         pick.addEventListener('mousedown', (e) => {
           e.preventDefault();
-          input.removeAttribute('readonly');
-          input.value = value;
-          if (passInput) passInput.value = '';
-          syncClearBtn();
-          hideMenu();
-          passInput?.focus();
+          applySavedValue(value);
         });
         const del = document.createElement('button');
         del.type = 'button';
@@ -6001,11 +6036,16 @@
           if (input.value === value) input.value = '';
           if (passInput) passInput.value = '';
           syncClearBtn();
+          activeIndex = -1;
           showMenu();
           input.focus();
         });
         row.appendChild(pick);
         row.appendChild(del);
+        row.addEventListener('mouseenter', () => {
+          activeIndex = optionRows().indexOf(row);
+          applyActive();
+        });
         menu.appendChild(row);
       });
       if (all.length) {
@@ -6034,16 +6074,35 @@
       }
       menu.hidden = false;
       wrap.classList.add('is-open');
+      if (activeIndex >= optionRows().length) activeIndex = -1;
+      applyActive();
     }
 
     input.addEventListener('focus', showMenu);
     input.addEventListener('input', () => {
       syncClearBtn();
+      activeIndex = -1;
       showMenu();
     });
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') hideMenu();
-      if (e.key === 'ArrowDown') showMenu();
+      if (e.key === 'Escape') {
+        hideMenu();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveActive(1);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveActive(-1);
+        return;
+      }
+      if (e.key === 'Enter' && !menu.hidden && activeIndex >= 0) {
+        e.preventDefault();
+        chooseActive();
+      }
     });
     document.addEventListener('mousedown', (e) => {
       if (!wrap.contains(e.target)) hideMenu();
