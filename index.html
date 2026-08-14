@@ -178,13 +178,26 @@
 
   .add-btn {
     width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink);
-    border-radius: var(--radius); padding: 10px 10px; margin: 0;
-    display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px;
+    border-radius: var(--radius); padding: 6px 6px 8px; margin: 0;
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px;
     cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s;
-    font-size: 12px; font-weight: 500; text-align: left; min-height: 52px;
+    font-size: 11.5px; font-weight: 500; text-align: left; min-height: 0;
   }
   .add-btn:hover { border-color: var(--brass); background: var(--panel-hover); }
   .add-btn:active { transform: scale(0.98); }
+  .add-btn-media {
+    display: flex; align-items: center; justify-content: center;
+    height: 92px; overflow: visible;
+    background: transparent;
+  }
+  .add-btn-media img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+    pointer-events: none; user-select: none; display: block;
+  }
+  .add-btn-copy {
+    display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    padding: 0 2px; line-height: 1.25;
+  }
   .add-btn .dim { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--ink-dim); font-weight: 400; }
 
   .body-panel h2 { margin-bottom: 12px; }
@@ -1378,10 +1391,22 @@
       <section class="control-group body-panel" id="body-panel">
         <h2>Gövde Ekle</h2>
         <div class="body-panel-content" id="body-panel-content">
-          <button class="add-btn" data-type="1door">1 Kapaklı Gövde<span class="dim">50 x 230 cm</span></button>
-          <button class="add-btn" data-type="2door">2 Kapaklı Gövde<span class="dim">100 x 230 cm</span></button>
-          <button class="add-btn" data-type="3door">3 Kapaklı Gövde<span class="dim">150 x 230 cm</span></button>
-          <button class="add-btn" data-type="corner">Köşe Gövde<span class="dim">95 x 230 cm</span></button>
+          <button class="add-btn" data-type="1door">
+            <span class="add-btn-media"><img src="assets/ui/bodies/1door.png?v=2" alt=""></span>
+            <span class="add-btn-copy">1 Kapaklı Gövde<span class="dim">50 x 230 cm</span></span>
+          </button>
+          <button class="add-btn" data-type="2door">
+            <span class="add-btn-media"><img src="assets/ui/bodies/2door.png?v=2" alt=""></span>
+            <span class="add-btn-copy">2 Kapaklı Gövde<span class="dim">100 x 230 cm</span></span>
+          </button>
+          <button class="add-btn" data-type="3door">
+            <span class="add-btn-media"><img src="assets/ui/bodies/3door.png?v=2" alt=""></span>
+            <span class="add-btn-copy">3 Kapaklı Gövde<span class="dim">150 x 230 cm</span></span>
+          </button>
+          <button class="add-btn" data-type="corner">
+            <span class="add-btn-media"><img src="assets/ui/bodies/corner.png?v=2" alt=""></span>
+            <span class="add-btn-copy">Köşe Gövde<span class="dim">95 x 230 cm</span></span>
+          </button>
         </div>
       </section>
 
