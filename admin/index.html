@@ -263,17 +263,43 @@
   }
   .admin-form .full { grid-column: 1 / -1; }
   .admin-form input { margin-bottom: 0; }
+  .saved-logins { margin: 0 0 12px; }
+  .saved-logins-label {
+    font-size: 11px; color: var(--ink-dim); margin: 0 0 6px;
+  }
+  .saved-login-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  .saved-login-pick {
+    flex: 1; text-align: left; border: 1px solid var(--line); background: var(--bg);
+    color: var(--ink); border-radius: var(--radius); padding: 8px 10px;
+    cursor: pointer; font: inherit; font-size: 13px; margin: 0;
+  }
+  .saved-login-pick:hover { border-color: var(--brass); color: var(--brass); }
+  .saved-login-del {
+    flex: 0 0 34px; width: 34px; border: 1px solid var(--line); background: transparent;
+    color: var(--ink-dim); border-radius: var(--radius); cursor: pointer;
+    font-size: 18px; line-height: 1; padding: 6px 0; margin: 0;
+  }
+  .saved-login-del:hover { border-color: var(--danger); color: var(--danger); }
+  .saved-logins-clear {
+    display: inline-block; width: auto; border: none; background: none; color: var(--ink-dim);
+    cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline;
+    padding: 4px 0 2px; margin: 2px 0 0; text-align: left;
+  }
+  .saved-logins-clear:hover { color: var(--brass); }
 </style>
 </head>
 <body>
   <div id="login-view">
-    <form class="login-card" id="login-form">
+    <form class="login-card" id="login-form" autocomplete="off">
       <h1>Üretici paneli</h1>
       <p>Mağaza kullanım istatistikleri ve Excel ile fiyat güncelleme.</p>
       <label for="email">Kullanıcı adı</label>
-      <input id="email" type="text" required autocomplete="username" value="sezerginyurek@gmail.com">
+      <input id="email" type="text" required autocomplete="off" spellcheck="false" readonly>
+      <div id="admin-saved-logins" class="saved-logins" hidden></div>
       <label for="password">Şifre</label>
-      <input id="password" type="password" required autocomplete="current-password">
+      <input id="password" type="password" required autocomplete="off" readonly>
       <p class="err" id="login-err"></p>
       <button class="btn btn-primary" type="submit">Giriş yap</button>
     </form>
@@ -811,6 +837,97 @@
     if (emailEl) emailEl.textContent = email || '';
   }
 
+  const ADMIN_SAVED_LOGINS_KEY = 'dolapAdminSavedLogins';
+
+  function loadSavedLogins(key) {
+    try {
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(raw)) return [];
+      return [...new Set(raw.map((s) => String(s || '').trim()).filter(Boolean))].slice(0, 8);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function persistSavedLogins(key, list) {
+    try { localStorage.setItem(key, JSON.stringify(list.slice(0, 8))); } catch (_) { /* ignore */ }
+  }
+
+  function rememberSavedLogin(key, value) {
+    const v = String(value || '').trim();
+    if (!v) return;
+    const list = loadSavedLogins(key).filter((x) => x.toLowerCase() !== v.toLowerCase());
+    list.unshift(v);
+    persistSavedLogins(key, list);
+  }
+
+  function forgetSavedLogin(key, value) {
+    persistSavedLogins(key, loadSavedLogins(key).filter((x) => x.toLowerCase() !== String(value || '').toLowerCase()));
+  }
+
+  function renderAdminSavedLogins() {
+    const box = document.getElementById('admin-saved-logins');
+    const userEl = document.getElementById('email');
+    const passEl = document.getElementById('password');
+    if (!box) return;
+    const list = loadSavedLogins(ADMIN_SAVED_LOGINS_KEY);
+    box.hidden = false;
+    box.innerHTML = '';
+    if (list.length) {
+      const label = document.createElement('div');
+      label.className = 'saved-logins-label';
+      label.textContent = 'Bu cihazda kayıtlı kullanıcılar';
+      box.appendChild(label);
+      list.forEach((value) => {
+        const row = document.createElement('div');
+        row.className = 'saved-login-row';
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'saved-login-pick';
+        pick.textContent = value;
+        pick.addEventListener('click', () => {
+          if (userEl) userEl.value = value;
+          if (passEl) passEl.value = '';
+          passEl?.focus();
+        });
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'saved-login-del';
+        del.setAttribute('aria-label', value + ' kaydını sil');
+        del.textContent = '×';
+        del.addEventListener('click', () => {
+          forgetSavedLogin(ADMIN_SAVED_LOGINS_KEY, value);
+          if (userEl && userEl.value === value) userEl.value = '';
+          if (passEl) passEl.value = '';
+          renderAdminSavedLogins();
+        });
+        row.appendChild(pick);
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+    }
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'saved-logins-clear';
+    clear.textContent = list.length ? 'Kayıtlı kullanıcıları sil' : 'Alanın kullanıcı adını sil';
+    clear.addEventListener('click', () => {
+      try { localStorage.removeItem(ADMIN_SAVED_LOGINS_KEY); } catch (_) { /* ignore */ }
+      if (userEl) userEl.value = '';
+      if (passEl) passEl.value = '';
+      renderAdminSavedLogins();
+      userEl?.focus();
+    });
+    box.appendChild(clear);
+  }
+
+  ['email', 'password'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const unlock = () => el.removeAttribute('readonly');
+    el.addEventListener('focus', unlock);
+    el.addEventListener('pointerdown', unlock);
+  });
+
   function showLogin() {
     stopAdminTouch();
     document.documentElement.classList.remove('has-admin-session');
@@ -821,12 +938,16 @@
       const card = document.getElementById('invite-set-pass');
       if (card) card.classList.add('hidden');
     }
+    const passEl = document.getElementById('password');
+    if (passEl) passEl.value = '';
+    renderAdminSavedLogins();
   }
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginErr.textContent = '';
-    const email = toAuthEmail(document.getElementById('email').value);
+    const typedLogin = String(document.getElementById('email').value || '').trim();
+    const email = toAuthEmail(typedLogin);
     const password = document.getElementById('password').value;
     if (!email) {
       loginErr.textContent = 'Kullanıcı adı en az 3 karakter olmalı (harf, rakam, nokta, _ veya -).';
@@ -845,15 +966,18 @@
       if (!loginErr.textContent) loginErr.textContent = 'Bu hesap üretici admin değil.';
       return;
     }
+    rememberSavedLogin(ADMIN_SAVED_LOGINS_KEY, typedLogin);
+    const passEl = document.getElementById('password');
+    if (passEl) passEl.value = '';
     await showApp();
   });
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
+    stopAdminTouch();
     try {
       await sb.rpc('admin_release_session', { p_device_id: getAdminDeviceId() });
     } catch (_) { /* ignore */ }
     pendingPasswordSetup = false;
-    stopAdminTouch();
     await sb.auth.signOut();
     showLogin();
   });
@@ -1977,6 +2101,8 @@
       return '';
     }
   }
+
+  renderAdminSavedLogins();
 
   (async function boot() {
     const linkType = peekAuthLinkType();

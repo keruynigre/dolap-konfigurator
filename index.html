@@ -1276,6 +1276,31 @@
     background: var(--brass); color: var(--brass-ink); cursor: pointer;
     font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px;
   }
+  .saved-logins { margin: 0 0 12px; }
+  .saved-logins-label {
+    font-size: 11px; color: var(--ink-dim); margin: 0 0 6px;
+  }
+  .saved-login-row {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  }
+  .saved-login-pick {
+    flex: 1; text-align: left; border: 1px solid var(--line); background: var(--bg);
+    color: var(--ink); border-radius: var(--radius); padding: 8px 10px;
+    cursor: pointer; font: inherit; font-size: 13px; margin: 0;
+  }
+  .saved-login-pick:hover { border-color: var(--brass); color: var(--brass); }
+  .saved-login-del {
+    flex: 0 0 34px; width: 34px; border: 1px solid var(--line); background: transparent;
+    color: var(--ink-dim); border-radius: var(--radius); cursor: pointer;
+    font-size: 18px; line-height: 1; padding: 6px 0; margin: 0;
+  }
+  .saved-login-del:hover { border-color: var(--danger-text); color: var(--danger-text); }
+  .saved-logins-clear {
+    display: inline-block; border: none; background: none; color: var(--ink-dim);
+    cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline;
+    padding: 4px 0 2px; margin: 2px 0 0; text-align: left;
+  }
+  .saved-logins-clear:hover { color: var(--brass); }
   .dealer-chip {
     display: none; align-items: center; gap: 8px; margin-top: 8px;
     font-size: 12px; color: var(--ink-dim);
@@ -1366,13 +1391,14 @@
 </head>
 <body>
 <div id="dealer-gate" class="dealer-gate" aria-modal="true" role="dialog" aria-labelledby="dealer-gate-title">
-  <form class="dealer-card" id="dealer-login-form">
+  <form class="dealer-card" id="dealer-login-form" autocomplete="off">
     <h2 id="dealer-gate-title">Mağaza girişi</h2>
     <p>Size verilen e-posta ve şifre ile giriş yapın. Yeni üyelik alınmaz; hesaplar yalnızca üretici tarafından tanımlanır.</p>
     <label for="dealer-email">E-posta</label>
-    <input id="dealer-email" name="email" type="email" required autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="ornek@bambi.com" autofocus>
+    <input id="dealer-email" name="email" type="email" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ornek@bambi.com" readonly>
+    <div id="dealer-saved-logins" class="saved-logins" hidden></div>
     <label for="dealer-password">Şifre</label>
-    <input id="dealer-password" name="password" type="password" required autocomplete="current-password" placeholder="Şifre">
+    <input id="dealer-password" name="password" type="password" required autocomplete="off" placeholder="Şifre" readonly>
     <p class="dealer-err" id="dealer-err"></p>
     <button type="submit">Giriş yap</button>
   </form>
@@ -1616,7 +1642,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=17"></script>
+<script src="js/dealer-session.js?v=18"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -5875,7 +5901,99 @@
     const setForm = document.getElementById('dealer-set-password-form');
     if (loginForm) loginForm.hidden = false;
     if (setForm) setForm.hidden = true;
+    renderDealerSavedLogins();
   }
+
+  const DEALER_SAVED_LOGINS_KEY = 'dolapDealerSavedLogins';
+
+  function loadSavedLogins(key){
+    try {
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(raw)) return [];
+      return [...new Set(raw.map((s) => String(s || '').trim()).filter(Boolean))].slice(0, 8);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function persistSavedLogins(key, list){
+    try { localStorage.setItem(key, JSON.stringify(list.slice(0, 8))); } catch (_) { /* ignore */ }
+  }
+
+  function rememberSavedLogin(key, value){
+    const v = String(value || '').trim();
+    if (!v) return;
+    const list = loadSavedLogins(key).filter((x) => x.toLowerCase() !== v.toLowerCase());
+    list.unshift(v);
+    persistSavedLogins(key, list);
+  }
+
+  function forgetSavedLogin(key, value){
+    persistSavedLogins(key, loadSavedLogins(key).filter((x) => x.toLowerCase() !== String(value || '').toLowerCase()));
+  }
+
+  function renderDealerSavedLogins(){
+    const box = document.getElementById('dealer-saved-logins');
+    const emailEl = document.getElementById('dealer-email');
+    const passEl = document.getElementById('dealer-password');
+    if (!box) return;
+    const list = loadSavedLogins(DEALER_SAVED_LOGINS_KEY);
+    box.hidden = false;
+    box.innerHTML = '';
+    if (list.length) {
+      const label = document.createElement('div');
+      label.className = 'saved-logins-label';
+      label.textContent = 'Bu cihazda kayıtlı e-postalar';
+      box.appendChild(label);
+      list.forEach((value) => {
+        const row = document.createElement('div');
+        row.className = 'saved-login-row';
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'saved-login-pick';
+        pick.textContent = value;
+        pick.addEventListener('click', () => {
+          if (emailEl) emailEl.value = value;
+          if (passEl) passEl.value = '';
+          passEl?.focus();
+        });
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'saved-login-del';
+        del.setAttribute('aria-label', value + ' kaydını sil');
+        del.textContent = '×';
+        del.addEventListener('click', () => {
+          forgetSavedLogin(DEALER_SAVED_LOGINS_KEY, value);
+          if (emailEl && emailEl.value === value) emailEl.value = '';
+          if (passEl) passEl.value = '';
+          renderDealerSavedLogins();
+        });
+        row.appendChild(pick);
+        row.appendChild(del);
+        box.appendChild(row);
+      });
+    }
+    const clear = document.createElement('button');
+    clear.type = 'button';
+    clear.className = 'saved-logins-clear';
+    clear.textContent = list.length ? 'Kayıtlı e-postaları sil' : 'Alanın e-postasını sil';
+    clear.addEventListener('click', () => {
+      try { localStorage.removeItem(DEALER_SAVED_LOGINS_KEY); } catch (_) { /* ignore */ }
+      if (emailEl) emailEl.value = '';
+      if (passEl) passEl.value = '';
+      renderDealerSavedLogins();
+      emailEl?.focus();
+    });
+    box.appendChild(clear);
+  }
+
+  ['dealer-email', 'dealer-password'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const unlock = () => el.removeAttribute('readonly');
+    el.addEventListener('focus', unlock);
+    el.addEventListener('pointerdown', unlock);
+  });
 
   function lockAppForDealer(){
     const gate = document.getElementById('dealer-gate');
@@ -5886,6 +6004,8 @@
     document.documentElement.classList.remove('has-dealer-session');
     if (chip) chip.classList.remove('visible');
     updateOpenLeadsBadge(0);
+    const passEl = document.getElementById('dealer-password');
+    if (passEl) passEl.value = '';
     showLoginForm();
     document.getElementById('dealer-email')?.focus();
   }
@@ -5917,6 +6037,7 @@
         if (err) err.textContent = dealerLoginErrorText(res.error);
         return;
       }
+      rememberSavedLogin(DEALER_SAVED_LOGINS_KEY, emailEl && emailEl.value);
       if (passEl) passEl.value = '';
       unlockAppForDealer(res.session);
       applyRemotePrices();
@@ -6183,6 +6304,7 @@
     }
   }
 
+  renderDealerSavedLogins();
   bootDealerGate();
 })();
 </script>

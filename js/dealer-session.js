@@ -242,6 +242,7 @@
   }
 
   async function logout() {
+    stopHeartbeat();
     const s = loadSession();
     const sb = getClient();
     if (s && sb) {
