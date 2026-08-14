@@ -20,7 +20,7 @@
   }
   try {
     var w = parseInt(localStorage.getItem('dolapSidebarW'), 10);
-    if (w >= 260 && w <= 500) {
+    if (w >= 300 && w <= 500) {
       document.documentElement.style.setProperty('--sidebar-w', w + 'px');
     }
   } catch (e) { /* ignore */ }
@@ -209,17 +209,17 @@
     border-radius: var(--radius); padding: 6px 6px 8px; margin: 0;
     display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px;
     cursor: pointer; transition: border-color 0.15s, background 0.15s, transform 0.1s;
-    font-size: 11.5px; font-weight: 500; text-align: left; min-height: 0;
+    font-size: 11.5px; font-weight: 500; text-align: left; min-width: 0; min-height: 0;
   }
   .add-btn:hover { border-color: var(--brass); background: var(--panel-hover); }
   .add-btn:active { transform: scale(0.98); }
   .add-btn-media {
     display: flex; align-items: center; justify-content: center;
-    height: 92px; overflow: visible;
+    width: 100%; height: 92px; min-width: 0; overflow: hidden;
     background: transparent;
   }
   .add-btn-media img {
-    max-width: 100%; max-height: 100%; object-fit: contain;
+    max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;
     pointer-events: none; user-select: none; display: block;
   }
   .add-btn-copy {
@@ -249,7 +249,7 @@
     background: var(--panel-2); border: 1px solid var(--line); color: var(--ink);
     border-radius: 6px; padding: 0; cursor: pointer;
     font-family: 'Space Grotesk', sans-serif; font-weight: 500;
-    aspect-ratio: 4 / 3; min-height: 100px;
+    aspect-ratio: 4 / 3; min-width: 0; min-height: 0;
     transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
   }
   .series-btn::before {
@@ -824,6 +824,16 @@
   .sets-row {
     display: flex; align-items: flex-end; gap: 32px;
     padding-left: 44px; width: max-content; margin-top: 8px;
+  }
+  .accessory-stage.is-rug { min-width: min(240px, 42vw); }
+  .accessory-stage.is-rug img {
+    max-width: min(280px, 48vw); max-height: 160px; width: auto; height: auto;
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.28));
+  }
+  html[data-theme="light"] .accessory-stage.is-rug img {
+    filter:
+      drop-shadow(0 8px 12px rgba(42, 36, 28, 0.16))
+      drop-shadow(0 16px 22px rgba(42, 36, 28, 0.12));
   }
   .accessory-stage.is-bed-set { min-width: min(312px, 52vw); }
   .accessory-stage.is-bed-set img {
@@ -1547,6 +1557,9 @@
           <button type="button" class="sets-open-btn" id="acc-open-btn">
             Ek ürünler<span class="sets-badge hidden" id="acc-badge">0</span>
           </button>
+          <button type="button" class="sets-open-btn" id="rugs-open-btn">
+            Halılar<span class="sets-badge hidden" id="rugs-badge">0</span>
+          </button>
         </div>
         <span class="canvas-toolbar-spacer" aria-hidden="true"></span>
         <button type="button" class="iso-btn" id="ghost-doors-btn" hidden aria-pressed="false" title="Kapakları saydam yap — iç yapı görünür, kapaklar fiyatta kalır">İç yapıyı göster</button>
@@ -1586,6 +1599,21 @@
     </div>
     <div class="sets-sheet-body">
       <div class="sets-grid" id="accessory-palette"></div>
+    </div>
+  </div>
+</div>
+
+<div class="sets-modal" id="rugs-modal" aria-hidden="true">
+  <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="rugs-title">
+    <div class="sets-sheet-head">
+      <div>
+        <h2 id="rugs-title">Halılar</h2>
+        <p id="rugs-sub">Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.</p>
+      </div>
+      <button type="button" class="sets-sheet-close" id="rugs-close">Kapat</button>
+    </div>
+    <div class="sets-sheet-body">
+      <div class="sets-grid" id="rug-palette"></div>
     </div>
   </div>
 </div>
@@ -1837,6 +1865,10 @@
     travina: ['bohemella', 'borjen'],
     cappadocia: ['cappadocia_natura']
   };
+  /** Halılar kapak modeline bağlı değil. Görsel/fiyat gelince RUGS ve RUG_ORDER doldurulur. */
+  const RUGS = {};
+  const RUG_ORDER = [];
+  const RUG_QTY_MAX = 10;
 
   const MODELS_IMG = 'assets/models/';
 
@@ -2071,13 +2103,15 @@
   /** Yatak seti seçimleri: ref -> { size, qty } */
   let selectedSets = new Map();
   const SET_QTY_MAX = 10;
+  /** Halı seçimleri: key -> adet */
+  let selectedRugs = new Map();
   /** Kapaklar dolapta ve fiyatta kalır; yalnızca görsel saydamlık. */
   let doorsGhost = false;
   const DOORS_GHOST_ALPHA = 0.34;
   let remoteQuote = {
     pricing: { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 },
     lineItems: [],
-    catalog: { accessories: {}, sets: {} },
+    catalog: { accessories: {}, sets: {}, rugs: {} },
     catalogLoaded: false
   };
   let remoteQuoteSeq = 0;
@@ -2138,6 +2172,49 @@
     return false;
   }
 
+  function getRug(key){
+    return RUGS[key] || null;
+  }
+  function getRugUnitPrice(key){
+    const cat = remoteQuote.catalog && remoteQuote.catalog.rugs;
+    if (cat && cat[key] != null && !Number.isNaN(Number(cat[key]))) return Number(cat[key]);
+    const rug = getRug(key);
+    if (rug && rug.price != null && !Number.isNaN(Number(rug.price))) return Number(rug.price);
+    return null;
+  }
+  function getRugQty(key){
+    return selectedRugs.get(key) || 0;
+  }
+  function setRugQty(key, qty){
+    if (!getRug(key)) return 0;
+    const n = Math.max(0, Math.min(RUG_QTY_MAX, Math.round(Number(qty) || 0)));
+    if (n <= 0) selectedRugs.delete(key);
+    else selectedRugs.set(key, n);
+    return n;
+  }
+  function bumpRugQty(key, delta){
+    return setRugQty(key, getRugQty(key) + delta);
+  }
+  function listSelectedRugs(){
+    const out = [];
+    selectedRugs.forEach((qty, key) => {
+      if (!qty) return;
+      const rug = getRug(key);
+      if (!rug) return;
+      out.push({
+        key, label: rug.label, qty,
+        price: getRugUnitPrice(key), img: rug.img || null
+      });
+    });
+    return out;
+  }
+  function hasSelectedRugs(){
+    for (const qty of selectedRugs.values()) {
+      if (qty > 0) return true;
+    }
+    return false;
+  }
+
   function getAccessoryQty(ref){
     return selectedAccessories.get(ref) || 0;
   }
@@ -2194,7 +2271,7 @@
 
   /** Teklif: tüm gövdelerin kapakları dolu olmalı; gövde yoksa set/ek ürün yeterli. */
   function isQuoteReady(){
-    if (!modules.length) return hasSelectedAccessories() || hasSelectedSets();
+    if (!modules.length) return hasSelectedAccessories() || hasSelectedSets() || hasSelectedRugs();
     return modules.every(mod => mod.doors.every(d => !!d.material));
   }
 
@@ -2222,7 +2299,7 @@
   }
 
   function formatLayoutDimLabel(t){
-    if (!modules.length) return (hasSelectedAccessories() || hasSelectedSets()) ? 'Yalnızca ek ürün / set' : '0 cm';
+    if (!modules.length) return (hasSelectedAccessories() || hasSelectedSets() || hasSelectedRugs()) ? 'Yalnızca ek ürün / set / halı' : '0 cm';
     if (t.mode === 'corner') {
       return 'Sol ' + t.left + ' cm · Sağ ' + t.right + ' cm';
     }
@@ -2230,7 +2307,19 @@
   }
 
   function buildQuoteLineItems(){
-    return (remoteQuote.lineItems || []).slice();
+    const items = (remoteQuote.lineItems || []).filter(it =>
+      !String(it.label || '').startsWith('Halı · ')
+    );
+    listSelectedRugs().forEach(r => {
+      if (r.price == null || !r.qty) return;
+      items.push({
+        label: 'Halı · ' + r.label,
+        qty: r.qty,
+        unitPrice: r.price,
+        lineTotal: r.price * r.qty
+      });
+    });
+    return items;
   }
 
   function roundQuoteMoney(n){
@@ -2320,7 +2409,7 @@
   }
 
   function pricingWithDiscount(){
-    const catalog = calculatePricing() || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 };
+    const catalog = calculatePricing() || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, rugs: 0, total: 0 };
     const d = getQuoteDiscount();
     return Object.assign({}, catalog, {
       listTotal: d.list,
@@ -2345,7 +2434,7 @@
       : '<div>Ürün seçilmedi</div>';
 
     const dimLine = !modules.length
-      ? (items.length ? 'Yalnızca ek ürün / set siparişi' : '—')
+      ? (items.length ? 'Yalnızca ek ürün / set / halı siparişi' : '—')
       : (t.mode === 'corner'
         ? 'Sol: ' + t.left + ' cm · Sağ: ' + t.right + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm'
         : 'Toplam ölçü: ' + t.total + ' cm · Yükseklik: ' + BODY_HEIGHT_CM + ' cm');
@@ -2576,6 +2665,13 @@
         price: a.price,
         lineTotal: a.price * a.qty
       })),
+      rugs: listSelectedRugs().map(r => ({
+        key: r.key,
+        label: r.label,
+        qty: r.qty,
+        unitPrice: r.price,
+        lineTotal: (r.price == null ? 0 : r.price) * r.qty
+      })),
       totals: {
         ...getLayoutTotals(),
         heightCm: BODY_HEIGHT_CM,
@@ -2647,6 +2743,9 @@
           '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
           ((pricing.sets)
             ? '<tr><td>Yatak seti</td><td class="num">' + escapeHtml(priceFmt.format(pricing.sets || 0)) + '</td></tr>'
+            : '') +
+          ((pricing.rugs)
+            ? '<tr><td>Halı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.rugs || 0)) + '</td></tr>'
             : '') +
           ((pricing.discountAmount > 0.005)
             ? '<tr><td>Katalog tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.listTotal != null ? pricing.listTotal : (pricing.total || 0) + (pricing.discountAmount || 0))) + '</td></tr>' +
@@ -3014,6 +3113,8 @@
         payload: {
           config: payload.config,
           accessories: payload.accessories,
+          sets: payload.sets,
+          rugs: payload.rugs,
           totals: payload.totals,
           lineItems: payload.lineItems,
           discount: {
@@ -4825,8 +4926,23 @@
     }
   }
 
+  function remotePricingHasRugs(){
+    return !!(remoteQuote.pricing && Object.prototype.hasOwnProperty.call(remoteQuote.pricing, 'rugs'));
+  }
+
   function calculatePricing(){
-    return remoteQuote.pricing || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 };
+    const base = remoteQuote.pricing || { body: 0, doors: 0, drawer: 0, accessories: 0, sets: 0, total: 0 };
+    let rugTotal = 0;
+    listSelectedRugs().forEach(r => {
+      if (r.price != null) rugTotal += r.price * r.qty;
+    });
+    const remoteRugs = remotePricingHasRugs() ? (Number(base.rugs) || 0) : 0;
+    if (!rugTotal && remotePricingHasRugs()) return base;
+    if (!rugTotal) return base;
+    return Object.assign({}, base, {
+      rugs: rugTotal,
+      total: (Number(base.total) || 0) - remoteRugs + rugTotal
+    });
   }
 
   function getQuoteConfig(){
@@ -4842,6 +4958,11 @@
         key: s.key,
         size: s.size,
         qty: s.qty
+      })),
+      rugs: listSelectedRugs().map(r => ({
+        key: r.key,
+        label: r.label,
+        qty: r.qty
       }))
     };
   }
@@ -4860,14 +4981,21 @@
       remoteQuote.pricing = res.pricing || remoteQuote.pricing;
       remoteQuote.lineItems = res.lineItems || [];
       if (res.catalog) {
-        remoteQuote.catalog = res.catalog;
+        remoteQuote.catalog = Object.assign(
+          { accessories: {}, sets: {}, rugs: {} },
+          remoteQuote.catalog,
+          res.catalog
+        );
         remoteQuote.catalogLoaded = true;
         const setsEl = document.getElementById('sets-modal');
         const accEl = document.getElementById('acc-modal');
+        const rugsEl = document.getElementById('rugs-modal');
         if (setsEl && setsEl.classList.contains('open')) renderSetPalette();
         if (accEl && accEl.classList.contains('open')) renderAccessoryPalette();
+        if (rugsEl && rugsEl.classList.contains('open')) renderRugPalette();
       }
-      if (priceTotalEl) priceTotalEl.textContent = priceFmt.format(remoteQuote.pricing.total || 0);
+      const priced = calculatePricing();
+      if (priceTotalEl) priceTotalEl.textContent = priceFmt.format((priced && priced.total) || 0);
       updateQuoteButton();
       return remoteQuote;
     } catch (e) {
@@ -5052,6 +5180,7 @@
     renderMaterialPalette();
     renderAccessoryPalette();
     renderSetPalette();
+    if (typeof renderRugPalette === 'function') renderRugPalette();
   }
 
   function applyDoorMaterial(modId, doorIdx, materialRef){
@@ -5567,6 +5696,39 @@
     return row.children.length ? row : null;
   }
 
+  function buildRugsRow(){
+    const rugs = listSelectedRugs();
+    if (!rugs.length) return null;
+    const row = document.createElement('div');
+    row.className = 'sets-row';
+    rugs.forEach(r => {
+      for (let i = 0; i < r.qty; i++) {
+        const priceHtml = r.price == null
+          ? '<span class="set-price-pending">Fiyat bekleniyor</span>'
+          : '<span style="color:var(--brass)">' + priceFmt.format(r.price) + '</span>';
+        row.appendChild(buildAccessoryStage({
+          key: r.key,
+          ref: r.key,
+          extraClass: 'is-rug',
+          title: r.label + ' — bir adet azaltmak için tıklayın',
+          captionHtml: r.label +
+            (r.qty > 1 ? ' (' + (i + 1) + '/' + r.qty + ')' : '') +
+            '<br>' + priceHtml,
+          onRemove: () => bumpRugQty(r.key, -1),
+          buildContent: stage => {
+            if (r.img) {
+              const img = document.createElement('img');
+              img.src = assetUrl(r.img);
+              img.alt = r.label;
+              stage.appendChild(img);
+            }
+          }
+        }));
+      }
+    });
+    return row.children.length ? row : null;
+  }
+
   function render(opts){
     opts = opts || {};
     closeDoorPicker();
@@ -5575,15 +5737,17 @@
 
     const accRow = buildAccessoriesRow();
     const setsRow = buildSetsRow();
+    const rugsRow = buildRugsRow();
     const hasMods = modules.length > 0;
     const hasAcc = !!accRow;
     const hasSets = !!setsRow;
+    const hasRugs = !!rugsRow;
 
-    if (!hasMods && !hasAcc && !hasSets) {
+    if (!hasMods && !hasAcc && !hasSets && !hasRugs) {
       canvas.classList.add('empty');
       const msg = document.createElement('div');
       msg.className = 'empty-msg';
-      msg.innerHTML = 'Henüz ürün eklenmedi.<br>Soldan gövde ekleyin veya yalnızca ek ürün / set seçerek fiyat çıkarın.';
+      msg.innerHTML = 'Henüz ürün eklenmedi.<br>Soldan gövde ekleyin veya yalnızca ek ürün / set / halı seçerek fiyat çıkarın.';
       canvas.appendChild(msg);
     } else {
       canvas.classList.remove('empty');
@@ -5619,6 +5783,7 @@
 
       if (hasAcc) stack.appendChild(accRow);
       if (hasSets) stack.appendChild(setsRow);
+      if (hasRugs) stack.appendChild(rugsRow);
       canvas.appendChild(stack);
 
       // Köşe Sol/Sağ ölçüleri DOM'a eklendikten sonra hizala
@@ -5724,6 +5889,12 @@
   const accCloseBtn = document.getElementById('acc-close');
   const accBadge = document.getElementById('acc-badge');
   const accSub = document.getElementById('acc-sub');
+  const rugsModal = document.getElementById('rugs-modal');
+  const rugsOpenBtn = document.getElementById('rugs-open-btn');
+  const rugsCloseBtn = document.getElementById('rugs-close');
+  const rugsBadge = document.getElementById('rugs-badge');
+  const rugsSub = document.getElementById('rugs-sub');
+  const rugPalette = document.getElementById('rug-palette');
   let setPickerSize = {};
 
   function updateSetsOpenBadge(){
@@ -5745,6 +5916,14 @@
     accOpenBtn.hidden = !hasAcc;
   }
 
+  function updateRugsOpenBadge(){
+    const n = listSelectedRugs().reduce((sum, r) => sum + r.qty, 0);
+    if (!rugsBadge || !rugsOpenBtn) return;
+    if (n > 0) { rugsBadge.textContent = String(n); rugsBadge.classList.remove('hidden'); }
+    else rugsBadge.classList.add('hidden');
+    rugsOpenBtn.hidden = false;
+  }
+
   function closeSetsModal(){
     if (!setsModal) return;
     setsModal.classList.remove('open');
@@ -5755,9 +5934,15 @@
     accModal.classList.remove('open');
     accModal.setAttribute('aria-hidden', 'true');
   }
+  function closeRugsModal(){
+    if (!rugsModal) return;
+    rugsModal.classList.remove('open');
+    rugsModal.setAttribute('aria-hidden', 'true');
+  }
   function openSetsModal(){
     if (!setsModal) return;
     closeAccModal();
+    closeRugsModal();
     renderSetPalette();
     setsModal.classList.add('open');
     setsModal.setAttribute('aria-hidden', 'false');
@@ -5765,9 +5950,18 @@
   function openAccModal(){
     if (!accModal) return;
     closeSetsModal();
+    closeRugsModal();
     renderAccessoryPalette();
     accModal.classList.add('open');
     accModal.setAttribute('aria-hidden', 'false');
+  }
+  function openRugsModal(){
+    if (!rugsModal) return;
+    closeSetsModal();
+    closeAccModal();
+    renderRugPalette();
+    rugsModal.classList.add('open');
+    rugsModal.setAttribute('aria-hidden', 'false');
   }
 
   function renderSetPalette(){
@@ -5933,11 +6127,85 @@
     });
   }
 
+  function renderRugPalette(){
+    updateRugsOpenBadge();
+    if (!rugPalette) return;
+    if (rugsSub) {
+      rugsSub.textContent = RUG_ORDER.length
+        ? 'Halıyı seçip teklife ekleyin.'
+        : 'Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.';
+    }
+    if (!RUG_ORDER.length) {
+      rugPalette.innerHTML = '<p class="sets-empty">Görsel ve fiyatlar eklendikçe burada görünür.</p>';
+      return;
+    }
+    const cards = RUG_ORDER.map(key => {
+      const rug = getRug(key);
+      if (!rug) return '';
+      const qty = getRugQty(key);
+      const selected = qty > 0;
+      const mediaStyle = rug.img ? 'background-image:url(\'' + assetUrl(rug.img) + '\')' : '';
+      const unit = getRugUnitPrice(key);
+      const priceLine = unit == null
+        ? '<span class="set-price-pending">Fiyat bekleniyor</span>'
+        : (selected && qty > 1
+          ? priceFmt.format(unit) + ' · ' + qty + ' adet'
+          : priceFmt.format(unit));
+      return '<article class="set-card' + (selected ? ' selected' : '') + '" data-rug="' + key + '">' +
+        '<span class="set-card-check" aria-hidden="true">✓</span>' +
+        '<div class="set-card-media contain" style="' + mediaStyle + '">' +
+          (rug.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>') +
+        '</div>' +
+        '<div class="set-card-body">' +
+          '<h3 class="set-card-name">' + rug.label + '</h3>' +
+          '<div class="set-card-price">' + priceLine + '</div>' +
+          '<div class="set-card-actions">' +
+            (selected
+              ? '<div class="acc-qty-row">' +
+                  '<button type="button" class="acc-qty-btn" data-qty="-1" aria-label="Azalt">−</button>' +
+                  '<span class="acc-qty-val">' + qty + '</span>' +
+                  '<button type="button" class="acc-qty-btn" data-qty="1" aria-label="Artır"' +
+                    (qty >= RUG_QTY_MAX ? ' disabled' : '') + '>+</button>' +
+                '</div>' +
+                '<button type="button" class="set-card-cta is-remove" data-action="remove">Kaldır</button>'
+              : '<span></span><button type="button" class="set-card-cta" data-action="add">Teklife ekle</button>') +
+          '</div></div></article>';
+    }).filter(Boolean).join('');
+    rugPalette.innerHTML = cards || '<p class="sets-empty">Görsel ve fiyatlar eklendikçe burada görünür.</p>';
+
+    rugPalette.querySelectorAll('.set-card').forEach(card => {
+      const key = card.dataset.rug;
+      card.querySelectorAll('.acc-qty-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          bumpRugQty(key, Number(btn.dataset.qty));
+          render(); renderRugPalette();
+        });
+      });
+      card.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          if (btn.dataset.action === 'remove') setRugQty(key, 0);
+          else setRugQty(key, 1);
+          render(); renderRugPalette();
+        });
+      });
+      card.addEventListener('click', e => {
+        if (e.target.closest('.acc-qty-btn, .set-card-cta')) return;
+        if (getRugQty(key) === 0) {
+          setRugQty(key, 1);
+          render(); renderRugPalette();
+        }
+      });
+    });
+  }
+
   function initMaterialPalette(){
     renderSeriesPicker();
     renderMaterialPalette();
     renderAccessoryPalette();
     renderSetPalette();
+    renderRugPalette();
   }
 
   document.querySelectorAll('.add-btn').forEach(btn => {
@@ -5997,6 +6265,9 @@
   accOpenBtn?.addEventListener('click', openAccModal);
   accCloseBtn?.addEventListener('click', closeAccModal);
   accModal?.addEventListener('click', (e) => { if (e.target === accModal) closeAccModal(); });
+  rugsOpenBtn?.addEventListener('click', openRugsModal);
+  rugsCloseBtn?.addEventListener('click', closeRugsModal);
+  rugsModal?.addEventListener('click', (e) => { if (e.target === rugsModal) closeRugsModal(); });
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
@@ -6004,6 +6275,7 @@
     else if (leadsModal?.classList.contains('open')) closeLeadsModal();
     else if (setsModal?.classList.contains('open')) closeSetsModal();
     else if (accModal?.classList.contains('open')) closeAccModal();
+    else if (rugsModal?.classList.contains('open')) closeRugsModal();
     else if (isoModal.classList.contains('open')) closeIsoModal();
     else if (quoteModal.classList.contains('open')) closeQuoteModal();
   });
@@ -6030,7 +6302,7 @@
   });
   syncThemeToggle();
 
-  const SIDEBAR_W_MIN = 260;
+  const SIDEBAR_W_MIN = 300;
   const SIDEBAR_W_MAX = 500;
   const SIDEBAR_W_DEFAULT = 320;
   const SIDEBAR_W_KEY = 'dolapSidebarW';

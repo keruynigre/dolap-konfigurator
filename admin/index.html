@@ -547,11 +547,12 @@
     <section class="panel hidden" id="tab-prices">
       <div class="price-box">
         <p class="hint">
-          Excel ile gövde, kapak (tekli/çiftli), ek ürün ve yatak seti fiyatlarını güncelleyin.
+          Excel ile gövde, kapak (tekli/çiftli), ek ürün, yatak seti ve halı fiyatlarını güncelleyin.
           Şablonu indirip doldurun; Excel yükleme <strong>taslak</strong> olur, canlı site değişmez.
           Local konfigüratörde deneyin, sonra logdaki <strong>Canlıya al</strong> ile yayınlayın.
           İstemediğiniz yüklemeyi <strong>Sil</strong> ile kaldırın.
           Yatak seti satırında item_type=set, accessory_key=set kodu, size=ölçü (140x200 … 200x200), price=tutar.
+          Halı satırında item_type=rug, accessory_key=halı kodu, price=tutar; series_id boş kalır.
         </p>
         <div class="row-actions">
           <button class="btn btn-ghost" type="button" id="dl-template">Şablon indir (.xlsx)</button>
@@ -605,6 +606,7 @@
                 <tr><td>door</td><td>welldora</td><td></td><td>ceviz</td><td></td><td></td><td>Rubens</td><td></td><td>4528.64</td><td>8036.08</td></tr>
                 <tr><td>accessory</td><td>welldora</td><td></td><td></td><td>sifonyer</td><td></td><td>Yüksek Şifonyer</td><td>14870.94</td><td></td><td></td></tr>
                 <tr><td>set</td><td>welldora</td><td></td><td></td><td>magnasand</td><td>160x200</td><td>Magnasand Therapy</td><td>52676.83</td><td></td><td></td></tr>
+                <tr><td>rug</td><td></td><td></td><td></td><td>hali_kodu</td><td></td><td>Halı adı</td><td></td><td></td><td></td></tr>
               </tbody>
             </table>
           </div>
@@ -1862,11 +1864,14 @@
     ['door','travina','','travent_almond','','','Travent-Almond','','2475.36','4679.02'],
     ['door','cappadocia','','aytasi','','','Aytaşı','','6756.09','12872.13'],
     ['accessory','welldora','','','sifonyer','','Yüksek Şifonyer','14870.94','',''],
-    ['accessory','welldora','','','komodin','','Komodin','5486.40','',''],
+    ['accessory','welldora','','','komodin','','Komodin','8827.50','',''],
     ['accessory','welldora','','','makyajMasasi','','Makyaj Masası','16242.26','',''],
     ['accessory','welldora','','','makyajAynasi','','Makyaj Aynası','3881.78','',''],
     ['accessory','welldora','','','puf','','Cario Puf','4455.79','',''],
+    ['accessory','monerra','','','komodin','','Komodin','8239.01','',''],
+    ['accessory','travina','','','komodin','','Komodin','7650.50','',''],
     ['accessory','cappadocia','','','makyajMasasi','','Makyaj Masası','18986.68','',''],
+    ['accessory','cappadocia','','','komodin','','Komodin','9056.25','',''],
     ['accessory','cappadocia','','','sifonyer3','','3\'lü Şifonyer','11577.23','','']
   ].concat(SET_TEMPLATE_PRICES.flatMap(row =>
     SET_SIZE_ORDER.map(size =>
@@ -1898,7 +1903,7 @@
       const items = [];
       for (const r of rows) {
         const item_type = String(r.item_type || '').trim().toLowerCase();
-        if (!item_type || !['body', 'door', 'accessory', 'set'].includes(item_type)) continue;
+        if (!item_type || !['body', 'door', 'accessory', 'set', 'rug'].includes(item_type)) continue;
         items.push({
           item_type,
           series_id: String(r.series_id || '').trim(),
@@ -2027,7 +2032,7 @@
       price: r[7] === '' || r[7] == null ? '' : String(r[7]),
       price_single: r[8] === '' || r[8] == null ? '' : String(r[8]),
       price_pair: r[9] === '' || r[9] == null ? '' : String(r[9])
-    })).filter(it => ['body', 'door', 'accessory', 'set'].includes(it.item_type));
+    })).filter(it => ['body', 'door', 'accessory', 'set', 'rug'].includes(it.item_type));
   }
 
   async function restoreTemplatePrices() {

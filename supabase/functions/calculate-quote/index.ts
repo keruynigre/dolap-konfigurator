@@ -71,6 +71,7 @@ type Catalog = {
   doors: Record<string, DoorPrice>;
   accessories: Record<string, number>;
   sets: Record<string, Record<string, number>>;
+  rugs: Record<string, number>;
 };
 
 function fallbackCatalog(): Catalog {
@@ -99,23 +100,23 @@ function fallbackCatalog(): Catalog {
     },
     accessories: {
       "welldora:sifonyer": 14870.94,
-      "welldora:komodin": 6894.50,
+      "welldora:komodin": 8827.50,
       "welldora:makyajMasasi": 18728.25,
       "welldora:makyajAynasi": 3497.11,
       "welldora:puf": 4455.79,
       "monerra:sifonyer": 11516.75,
-      "monerra:komodin": 5486.40,
+      "monerra:komodin": 8239.01,
       "monerra:makyajMasasi": 16242.26,
       "monerra:makyajAynasi": 3881.78,
       "monerra:puf": 4455.79,
       "travina:sifonyer": 11872.47,
-      "travina:komodin": 5486.40,
+      "travina:komodin": 7650.50,
       "travina:makyajMasasi": 15758.30,
       "travina:makyajAynasi": 3228.23,
       "travina:puf": 4455.79,
       "cappadocia:sifonyer3": 11577.23,
       "cappadocia:sifonyer4": 13268.87,
-      "cappadocia:komodin": 5486.40,
+      "cappadocia:komodin": 9056.25,
       "cappadocia:makyajMasasi": 18986.68,
       "cappadocia:makyajAynasi": 4569.27,
       "cappadocia:puf": 4455.79,
@@ -171,6 +172,7 @@ function fallbackCatalog(): Catalog {
         "200x200": 71203.49,
       },
     },
+    rugs: {},
   };
 }
 
@@ -237,6 +239,12 @@ function overlayDbItems(catalog: Catalog, items: Record<string, unknown>[]) {
       const setKey = seriesId + ":" + key;
       if (!catalog.sets[setKey]) catalog.sets[setKey] = {};
       catalog.sets[setKey][size] = price;
+    } else if (type === "rug") {
+      const key = String(it.accessory_key || "");
+      const price = num(it.price);
+      if (!key || price == null) continue;
+      if (!catalog.rugs) catalog.rugs = {};
+      catalog.rugs[key] = price;
     }
   }
 }
@@ -306,6 +314,7 @@ Deno.serve(async (req) => {
     const modules = Array.isArray(body?.modules) ? body.modules : [];
     const accessories = Array.isArray(body?.accessories) ? body.accessories : [];
     const sets = Array.isArray(body?.sets) ? body.sets : [];
+    const rugs = Array.isArray(body?.rugs) ? body.rugs : [];
 
     const lineItems: Array<{
       label: string;
@@ -430,13 +439,32 @@ Deno.serve(async (req) => {
       });
     }
 
+    let rugTotal = 0;
+    for (const r of rugs) {
+      const key = String(r?.key || "").trim();
+      const qty = Math.max(0, Math.round(Number(r?.qty) || 0));
+      if (!key || !qty) continue;
+      const unit = catalog.rugs[key];
+      if (unit == null) continue;
+      const lineTotal = unit * qty;
+      rugTotal += lineTotal;
+      const label = String(r?.label || "").trim() || key;
+      lineItems.push({
+        label: "Halı · " + label,
+        qty,
+        unitPrice: unit,
+        lineTotal,
+      });
+    }
+
     const pricing = {
       body: bodyTotal,
       doors: doorsTotal,
       drawer: drawerTotal,
       accessories: accTotal,
       sets: setTotal,
-      total: bodyTotal + doorsTotal + drawerTotal + accTotal + setTotal,
+      rugs: rugTotal,
+      total: bodyTotal + doorsTotal + drawerTotal + accTotal + setTotal + rugTotal,
     };
 
     const out: Record<string, unknown> = {
@@ -451,6 +479,7 @@ Deno.serve(async (req) => {
       out.catalog = {
         accessories: catalog.accessories,
         sets: catalog.sets,
+        rugs: catalog.rugs,
       };
     }
 

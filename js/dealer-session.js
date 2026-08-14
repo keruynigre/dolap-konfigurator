@@ -519,6 +519,7 @@
           modules: config.modules || [],
           accessories: config.accessories || [],
           sets: config.sets || [],
+          rugs: config.rugs || [],
           includeCatalog: !!config.includeCatalog,
           preview: preview
         }
