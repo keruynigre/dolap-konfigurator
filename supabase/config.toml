@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.calculate-quote]
 verify_jwt = false
+
+[functions.create-admin]
+verify_jwt = false

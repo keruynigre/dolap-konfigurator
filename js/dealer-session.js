@@ -151,6 +151,26 @@
     } catch (_) { /* ignore */ }
   }
 
+  function waitForAuthInit(sb) {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (session) => {
+        if (done) return;
+        done = true;
+        try { sub.unsubscribe(); } catch (_) { /* ignore */ }
+        resolve(session || null);
+      };
+      const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'INITIAL_SESSION') finish(session);
+      });
+      setTimeout(() => {
+        sb.auth.getSession()
+          .then(({ data }) => finish(data && data.session))
+          .catch(() => finish(null));
+      }, 2500);
+    });
+  }
+
   async function consumeAuthLink() {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
@@ -160,8 +180,7 @@
       clearAuthLinkFromUrl();
       return { ok: false, error: 'auth_link_invalid', message: linkError };
     }
-    const { data } = await sb.auth.getSession();
-    const session = data && data.session;
+    const session = await waitForAuthInit(sb);
     const needsPassword = type === 'invite' || type === 'recovery' || type === 'signup';
     if (needsPassword) {
       if (!session) {
@@ -173,6 +192,14 @@
     return { ok: true, needsPassword: false, type, session: session || null };
   }
 
+  async function isAdminUser(session) {
+    const sb = getClient();
+    const uid = session && session.user && session.user.id;
+    if (!sb || !uid) return false;
+    const { data } = await sb.from('admin_profiles').select('user_id').eq('user_id', uid).maybeSingle();
+    return !!(data && data.user_id);
+  }
+
   async function setPassword(password) {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
@@ -181,7 +208,11 @@
     const { error } = await sb.auth.updateUser({ password: pwd });
     if (error) return { ok: false, error: error.message || 'password_update_failed' };
     clearAuthLinkFromUrl();
-    return startDealerSessionFromAuth();
+    const login = await startDealerSessionFromAuth();
+    if (!login.ok && login.error === 'not_dealer') {
+      return { ok: true, adminRedirect: true };
+    }
+    return login;
   }
 
   async function loginWithPassword(email, password) {
@@ -443,6 +474,34 @@
     }
   }
 
+  function isLocalPreviewHost() {
+    const loc = global.location || {};
+    const h = String(loc.hostname || '');
+    const host = String(loc.host || '');
+    const href = String(loc.href || '');
+    if (/\.vercel\.app$/i.test(h) || /dolap-konfigurator\.vercel\.app/i.test(href)) return false;
+    if (h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '::1') return true;
+    if (host.indexOf('localhost') !== -1 || host.indexOf('127.0.0.1') !== -1) return true;
+    if (String(loc.port) === '5173') return true;
+    return /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(h);
+  }
+
+  function ensureLocalPriceBanner(version) {
+    if (!isLocalPreviewHost() || !global.document) return;
+    let el = document.getElementById('dolap-local-price-banner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'dolap-local-price-banner';
+      el.setAttribute('style',
+        'position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;padding:8px 12px;border-radius:8px;' +
+        'background:#161616;color:#e8d5a3;font:12px/1.4 Inter,sans-serif;border:1px solid #c9a35a;text-align:center;');
+      document.body.appendChild(el);
+    }
+    el.textContent = version
+      ? ('Yerel test: taslak v' + version + '. Canlı site değişmez; adminde Canlıya al ile yayınlanır.')
+      : 'Yerel test: taslak fiyatlar. Canlı site değişmez; adminde Canlıya al ile yayınlanır.';
+  }
+
   async function calculateQuote(config) {
     config = config || {};
     const s = loadSession();
@@ -450,17 +509,22 @@
     if (!s || !s.session_id) return { ok: false, error: 'no_session' };
     if (!sb) return { ok: false, error: 'no_client' };
     try {
+      const preview = isLocalPreviewHost();
+      if (preview) ensureLocalPriceBanner();
       const { data, error } = await sb.functions.invoke('calculate-quote', {
+        headers: preview ? { 'x-dolap-preview': '1' } : {},
         body: {
           session_id: s.session_id,
           modules: config.modules || [],
           accessories: config.accessories || [],
           sets: config.sets || [],
-          includeCatalog: !!config.includeCatalog
+          includeCatalog: !!config.includeCatalog,
+          preview: preview
         }
       });
       if (error) return { ok: false, error: error.message || 'fn_error' };
       if (!data || !data.ok) return data || { ok: false, error: 'unknown' };
+      if (preview) ensureLocalPriceBanner(data.priceVersion);
       return data;
     } catch (e) {
       return { ok: false, error: String(e && e.message || e) };
@@ -471,6 +535,7 @@
     calculateQuote,
     loginWithPassword,
     consumeAuthLink,
+    isAdminUser,
     setPassword,
     resumeAuthSession,
     logout,

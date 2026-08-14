@@ -1616,7 +1616,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=13"></script>
+<script src="js/dealer-session.js?v=17"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -2647,7 +2647,7 @@
   function quoteLeadErrorMessage(code){
     const c = String(code || '');
     if (c === 'no_session' || c === 'session_not_found') {
-      return 'Mağaza oturumu bulunamadı. Sayfayı yenileyip mağaza koduyla tekrar giriş yapın.';
+      return 'Mağaza oturumu bulunamadı. Sayfayı yenileyip e-posta ile tekrar giriş yapın.';
     }
     if (c === 'missing_customer') {
       return 'Ad ve telefon zorunludur.';
@@ -5898,6 +5898,7 @@
     if (code === 'password_too_short') return 'Şifre en az 6 karakter olmalı.';
     if (code === 'password_mismatch') return 'Şifreler eşleşmiyor.';
     if (code === 'inactive') return 'Bu hesap pasif. Üretici ile görüşün.';
+    if (code === 'not_dealer') return 'Bu e-posta davet edilen bir mağaza değil.';
     if (code === 'invalid_credentials') return 'E-posta veya şifre hatalı.';
     return 'Giriş başarısız. E-posta ve şifreyi kontrol edin.';
   }
@@ -5940,6 +5941,10 @@
     if (btn) btn.disabled = true;
     try {
       const res = await window.DolapDealer.setPassword(pwd);
+      if (res && res.adminRedirect) {
+        location.replace('/admin/');
+        return;
+      }
       if (!res.ok) {
         if (err) err.textContent = dealerLoginErrorText(res.error);
         return;
@@ -6147,6 +6152,10 @@
     if (window.DolapDealer.consumeAuthLink) {
       const link = await window.DolapDealer.consumeAuthLink();
       if (link && link.needsPassword) {
+        if (window.DolapDealer.isAdminUser && await window.DolapDealer.isAdminUser(link.session)) {
+          location.replace('/admin/');
+          return;
+        }
         showSetPasswordForm();
         return;
       }

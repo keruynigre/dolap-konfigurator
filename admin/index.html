@@ -7,8 +7,11 @@
 <script>
 (function () {
   try {
+    var hash = String(location.hash || '');
+    var search = String(location.search || '');
+    var isPassLink = /(?:^|[?&#])type=(invite|recovery|signup)\b/i.test(hash + search);
     var raw = localStorage.getItem('sb-flhffroxhewrmyeufcsk-auth-token');
-    if (!raw) return;
+    if (!raw || isPassLink) return;
     var parsed = JSON.parse(raw);
     var token = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
     if (token) document.documentElement.classList.add('has-admin-session');
@@ -68,13 +71,17 @@
   .btn-ghost {
     background: transparent; color: var(--ink-dim); border: 1px solid var(--line);
   }
-  .btn-ghost:hover { border-color: var(--brass); color: var(--brass); }
+  .btn-ghost.btn-compact {
+    width: auto; padding: 6px 10px; font-size: 11px; margin-left: 8px; vertical-align: middle;
+  }
   .btn-danger {
     background: transparent; color: var(--danger); border: 1px solid rgba(201,139,124,.45);
     padding: 6px 10px; width: auto; font-size: 11px;
   }
   .btn-danger:hover { border-color: var(--danger); background: rgba(201,139,124,.12); }
-  .btn-danger:disabled { opacity: 0.55; cursor: wait; }
+  .btn-danger.btn-compact {
+    width: auto; padding: 6px 10px; font-size: 11px; margin-left: 8px; vertical-align: middle;
+  }
   .err { color: var(--danger); font-size: 12px; min-height: 18px; margin: 0 0 8px; }
 
   #app-view { display: none; min-height: 100vh; }
@@ -222,8 +229,8 @@
   }
   .badge.warn { background: rgba(201,139,124,.15); color: var(--danger); }
   .badge.ok { background: rgba(143,191,138,.15); color: #8fbf8a; }
-  .search-row { padding: 10px 14px; border-bottom: 1px solid var(--line); }
-  .search-row input { margin: 0; }
+  .search-row { padding: 10px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
+  .search-row input { margin: 0; flex: 1; }
   .table-wrap { overflow: auto; max-height: 520px; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); }
@@ -247,10 +254,15 @@
   td.num, th.num { text-align: right; font-family: 'Space Mono', monospace; }
   tr:hover td { background: rgba(201,163,90,.04); }
   .muted { color: var(--ink-dim); }
-  .price-box { display: grid; gap: 14px; max-width: 720px; }
+  .price-box { display: grid; gap: 14px; max-width: 1100px; }
+  td.price-actions { white-space: nowrap; }
   .hint { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0; }
   .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .ok { color: #8fbf8a; font-size: 13px; }
+  .admin-form {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; max-width: 640px; margin-bottom: 8px;
+  }
+  .admin-form .full { grid-column: 1 / -1; }
+  .admin-form input { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -259,11 +271,22 @@
       <h1>Üretici paneli</h1>
       <p>Mağaza kullanım istatistikleri ve Excel ile fiyat güncelleme.</p>
       <label for="email">E-posta</label>
-      <input id="email" type="email" required autocomplete="username" value="sezerginyurek@gmail.com">
+      <input id="email" type="email" required autocomplete="username" value="sezer@gmail.com">
       <label for="password">Şifre</label>
       <input id="password" type="password" required autocomplete="current-password">
       <p class="err" id="login-err"></p>
       <button class="btn btn-primary" type="submit">Giriş yap</button>
+    </form>
+    <form class="login-card hidden" id="invite-set-pass">
+      <h1>Şifre belirleyin</h1>
+      <p>E-posta onaylandı. Panele girmek için kendi şifrenizi oluşturun.</p>
+      <p class="hint" id="invite-set-email"></p>
+      <label for="invite-pass">Yeni şifre (en az 8 karakter)</label>
+      <input id="invite-pass" type="password" required minlength="8" autocomplete="new-password">
+      <label for="invite-pass2">Şifre tekrar</label>
+      <input id="invite-pass2" type="password" required minlength="8" autocomplete="new-password">
+      <p class="err" id="invite-pass-err"></p>
+      <button class="btn btn-primary" type="submit">Şifreyi kaydet ve gir</button>
     </form>
   </div>
 
@@ -281,8 +304,8 @@
     <div class="tabs">
       <button type="button" class="tab active" data-tab="stats">İstatistikler</button>
       <button type="button" class="tab" data-tab="leads">Teklifler</button>
-      <button type="button" class="tab" data-tab="stores">Mağazalar (Excel)</button>
       <button type="button" class="tab" data-tab="prices">Fiyatlar (Excel)</button>
+      <button type="button" class="tab" data-tab="admins">Yöneticiler</button>
     </div>
 
     <section class="panel" id="tab-stats">
@@ -348,18 +371,21 @@
         <div class="card">
           <h2>Mağazalar</h2>
           <div class="search-row">
-            <input type="search" id="dealer-search" placeholder="Kod, ad veya şehir ara…">
+            <input type="search" id="dealer-search" placeholder="Ad veya e-posta ara…">
+            <label class="muted" style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+              <input type="checkbox" id="dealer-live-only"> Sadece çevrimiçi
+            </label>
           </div>
           <div class="table-wrap">
             <table>
               <thead>
                 <tr id="dealers-head" data-sort-table="dealers">
-                  <th class="sortable" data-sort="code" title="Sırala">Kod<span class="sort-ind"></span></th>
                   <th class="sortable" data-sort="name" title="Sırala">Mağaza<span class="sort-ind"></span></th>
-                  <th class="sortable" data-sort="city" title="Sırala">Şehir<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="email" title="Sırala">E-posta<span class="sort-ind"></span></th>
+                  <th class="sortable" data-sort="live" title="Sırala">Durum<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="active_seconds" title="Sırala">Süre<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_session_seconds" title="Sırala">Ort.<span class="sort-ind"></span></th>
-                  <th class="sortable num is-desc" data-sort="session_count" title="Sırala">Oturum<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="session_count" title="Sırala">Oturum<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="design_count" title="Sırala">Tasarım<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="quote_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="design_to_quote_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
@@ -470,49 +496,13 @@
       </div>
     </section>
 
-    <section class="panel hidden" id="tab-stores">
-      <div class="price-box">
-        <p class="hint">
-          Mağaza kodlarını Excel ile ekleyin veya güncelleyin. Aynı kod tekrar yüklenirse ad/şehir güncellenir.
-          Şu an test için 10 mağaza tanımlı (<code>BAMBI-001</code> … <code>BAMBI-010</code>).
-        </p>
-        <div class="row-actions">
-          <button class="btn btn-ghost" type="button" id="dl-stores-template">Şablon indir (.xlsx)</button>
-          <a class="btn btn-ghost" href="../assets/admin/magaza-listesi-10.xlsx?v=7" download>Hazır 10 mağaza dosyası</a>
-          <label class="btn btn-primary" style="width:auto; display:inline-block; cursor:pointer;">
-            Excel yükle
-            <input type="file" id="stores-file" accept=".xlsx,.xls,.csv" hidden>
-          </label>
-        </div>
-        <p class="err" id="stores-err"></p>
-        <p class="ok hidden" id="stores-ok"></p>
-        <div class="card">
-          <h2>Şablon sütunları</h2>
-          <div class="table-wrap" style="max-height:none">
-            <table class="dom-sortable">
-              <thead>
-                <tr data-sort-table="dom">
-                  <th class="sortable" data-sort="0" title="Sırala">code<span class="sort-ind"></span></th>
-                  <th class="sortable" data-sort="1" title="Sırala">name<span class="sort-ind"></span></th>
-                  <th class="sortable" data-sort="2" title="Sırala">city<span class="sort-ind"></span></th>
-                  <th class="sortable" data-sort="3" title="Sırala">active<span class="sort-ind"></span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>BAMBI-001</td><td>Bambi Merkez Showroom</td><td>İstanbul</td><td>true</td></tr>
-                <tr><td>BAMBI-004</td><td>Bursa Mağaza</td><td>Bursa</td><td>true</td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <section class="panel hidden" id="tab-prices">
       <div class="price-box">
         <p class="hint">
           Excel ile gövde, kapak (tekli/çiftli), ek ürün ve yatak seti fiyatlarını güncelleyin.
-          Şablonu indirip doldurun; yüklediğiniz liste hemen aktif olur. Uygulama sabit fiyatların üzerine yazar.
+          Şablonu indirip doldurun; Excel yükleme <strong>taslak</strong> olur, canlı site değişmez.
+          Local konfigüratörde deneyin, sonra logdaki <strong>Canlıya al</strong> ile yayınlayın.
+          İstemediğiniz yüklemeyi <strong>Sil</strong> ile kaldırın.
           Yatak seti satırında item_type=set, accessory_key=set kodu, size=ölçü (140x200 … 200x200), price=tutar.
         </p>
         <div class="row-actions">
@@ -537,6 +527,7 @@
                   <th class="sortable num" data-sort="version" title="Sırala">Versiyon<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="item_count" title="Sırala">Satır<span class="sort-ind"></span></th>
                   <th class="sortable" data-sort="active" title="Sırala">Durum<span class="sort-ind"></span></th>
+                  <th>İşlem</th>
                 </tr>
               </thead>
               <tbody id="price-log-rows"></tbody>
@@ -572,12 +563,63 @@
         </div>
       </div>
     </section>
+
+    <section class="panel hidden" id="tab-admins">
+      <div class="price-box">
+        <p class="hint" id="admin-manage-hint">
+          Yeni yöneticiye davet e-postası gider. Rastgele yazılan bir adres panele giremez; kişi gerçek gelen kutusundaki bağlantıya tıklayıp şifre belirlemeden giriş açılmaz.
+          Yetki kaldırmak hesabı silmez; yalnızca admin paneline giremez.
+          Yönetici ekleme ve çıkarma yalnızca ana yöneticide vardır.
+        </p>
+        <div class="card" id="admin-create-card">
+          <h2>Admin davet et</h2>
+          <form id="admin-create-form" class="admin-form">
+            <div>
+              <label for="admin-new-name">Ad</label>
+              <input id="admin-new-name" type="text" required autocomplete="off" placeholder="Ad Soyad">
+            </div>
+            <div>
+              <label for="admin-new-email">E-posta</label>
+              <input id="admin-new-email" type="email" required autocomplete="off" placeholder="george.a@example.org">
+            </div>
+            <div class="full">
+              <button class="btn btn-primary" type="submit" style="width:auto">Davet gönder</button>
+            </div>
+          </form>
+          <p class="err" id="admin-create-err"></p>
+          <p class="ok hidden" id="admin-create-ok"></p>
+        </div>
+        <div class="card">
+          <h2>Yöneticiler</h2>
+          <div class="table-wrap" style="max-height:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ad</th>
+                  <th>E-posta</th>
+                  <th>Durum</th>
+                  <th>Eklenme</th>
+                  <th>İşlem</th>
+                </tr>
+              </thead>
+              <tbody id="admin-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
 <script>
 (function () {
   const cfg = window.DOLAP_SUPABASE;
-  const sb = window.supabase.createClient(cfg.url, cfg.anonKey);
+  const sb = window.supabase.createClient(cfg.url, cfg.anonKey, {
+    auth: {
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit'
+    }
+  });
   const SERIES_LABELS = {
     welldora: 'Welldora',
     monerra: 'Monerra',
@@ -596,7 +638,7 @@
   let trendGrain = 'day';
   let trendActiveKey = '';
   const tableSort = {
-    dealers: { key: 'session_count', dir: 'desc' },
+    dealers: { key: 'live', dir: 'desc' },
     series: { key: 'design_count', dir: 'desc' },
     leadsSeries: { key: 'lead_count', dir: 'desc' },
     leadsDealer: { key: 'lead_count', dir: 'desc' },
@@ -606,9 +648,10 @@
   const numericSortKeys = {
     active_seconds: 1, avg_session_seconds: 1, session_count: 1, design_count: 1,
     quote_count: 1, design_to_quote_pct: 1, lead_count: 1, sold_count: 1,
-    lead_total_price: 1, total_price: 1, version: 1, item_count: 1, created_at: 1, active: 1
+    lead_total_price: 1, total_price: 1, version: 1, item_count: 1, created_at: 1, active: 1, live: 1
   };
   let adminTouchTimer = null;
+  let pendingPasswordSetup = false;
   const ADMIN_DEVICE_KEY = 'dolapAdminDeviceId';
   const ADMIN_TOUCH_MS = 60000;
 
@@ -695,10 +738,17 @@
     }
     const claim = await claimAdminSession();
     if (!claim.ok) {
+      if (claim.error === 'password_required') {
+        pendingPasswordSetup = true;
+        showPasswordSetup(session.user.email);
+        return false;
+      }
       await sb.auth.signOut();
       if (opts.surfaceError) {
         if (claim.error === 'session_active') {
           loginErr.textContent = 'Bu admin hesabı başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+        } else if (claim.error === 'email_not_confirmed') {
+          loginErr.textContent = 'E-posta henüz onaylanmadı. Gelen kutusundaki davet bağlantısına tıklayın.';
         } else {
           loginErr.textContent = 'Oturum doğrulanamadı.';
         }
@@ -722,6 +772,19 @@
     await loadStats();
     await loadLeads();
     await loadPriceLogs();
+    await loadAdmins();
+  }
+
+  function showPasswordSetup(email) {
+    stopAdminTouch();
+    document.documentElement.classList.remove('has-admin-session');
+    appView.classList.remove('open');
+    loginView.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+    const card = document.getElementById('invite-set-pass');
+    if (card) card.classList.remove('hidden');
+    const emailEl = document.getElementById('invite-set-email');
+    if (emailEl) emailEl.textContent = email || '';
   }
 
   function showLogin() {
@@ -729,6 +792,11 @@
     document.documentElement.classList.remove('has-admin-session');
     appView.classList.remove('open');
     loginView.classList.remove('hidden');
+    if (!pendingPasswordSetup) {
+      loginForm.classList.remove('hidden');
+      const card = document.getElementById('invite-set-pass');
+      if (card) card.classList.add('hidden');
+    }
   }
 
   loginForm.addEventListener('submit', async (e) => {
@@ -738,7 +806,10 @@
     const password = document.getElementById('password').value;
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
-      loginErr.textContent = 'Giriş başarısız. E-posta/şifreyi kontrol edin.';
+      const msg = String(error.message || '').toLowerCase();
+      loginErr.textContent = msg.includes('confirm')
+        ? 'E-posta henüz onaylanmadı. Gelen kutusundaki davet bağlantısına tıklayın.'
+        : 'Giriş başarısız. E-posta/şifreyi kontrol edin.';
       return;
     }
     const ok = await requireAdmin({ surfaceError: true });
@@ -753,6 +824,7 @@
     try {
       await sb.rpc('admin_release_session', { p_device_id: getAdminDeviceId() });
     } catch (_) { /* ignore */ }
+    pendingPasswordSetup = false;
     stopAdminTouch();
     await sb.auth.signOut();
     showLogin();
@@ -764,13 +836,14 @@
       const tab = btn.dataset.tab;
       document.getElementById('tab-stats').classList.toggle('hidden', tab !== 'stats');
       document.getElementById('tab-leads').classList.toggle('hidden', tab !== 'leads');
-      document.getElementById('tab-stores').classList.toggle('hidden', tab !== 'stores');
       document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
+      document.getElementById('tab-admins').classList.toggle('hidden', tab !== 'admins');
     });
   });
 
   document.getElementById('refresh-btn').addEventListener('click', loadStats);
   document.getElementById('dealer-search').addEventListener('input', renderDealers);
+  document.getElementById('dealer-live-only')?.addEventListener('change', renderDealers);
   document.getElementById('leads-refresh').addEventListener('click', loadLeads);
   document.getElementById('leads-search').addEventListener('input', renderLeads);
 
@@ -1126,23 +1199,38 @@
   });
 
   function dealerSortValue(d, key) {
-    if (key === 'code' || key === 'name' || key === 'city') {
+    if (key === 'live') {
+      if (d.live) return 2;
+      if (d.email_confirmed) return 1;
+      return 0;
+    }
+    if (key === 'code' || key === 'name' || key === 'city' || key === 'email') {
       return String(d[key] || '').toLocaleLowerCase('tr');
     }
     return Number(d[key]) || 0;
   }
 
+  function dealerStatusHtml(d) {
+    if (d.live) return '<span class="badge ok">Çevrimiçi</span>';
+    if (!d.email_confirmed) return '<span class="badge warn">Davet bekleniyor</span>';
+    return '<span class="badge">Aktif</span>';
+  }
+
   function renderDealers() {
     syncSortHeaders(document.getElementById('dealers-head'), tableSort.dealers);
     const q = (document.getElementById('dealer-search').value || '').trim().toLowerCase();
+    const liveOnly = !!(document.getElementById('dealer-live-only') && document.getElementById('dealer-live-only').checked);
     const filtered = dealersCache.filter(d => {
+      if (liveOnly && !d.live) return false;
       if (!q) return true;
-      return [d.code, d.name, d.city].join(' ').toLowerCase().includes(q);
+      return [d.name, d.email, d.city].join(' ').toLowerCase().includes(q);
     });
     const rows = sortRows(filtered, tableSort.dealers, dealerSortValue);
     const body = document.getElementById('dealer-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="9" class="muted">Kayıt yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="9" class="muted">' +
+        (liveOnly ? 'Şu anda çevrimiçi mağaza yok' : 'Davet edilen mağaza yok') +
+        '</td></tr>';
       return;
     }
     body.innerHTML = rows.map(d => {
@@ -1150,9 +1238,9 @@
       const conv = idle ? '—' : fmtPct(d.design_to_quote_pct);
       const badgeClass = idle ? 'warn' : (Number(d.design_to_quote_pct) >= 20 ? 'ok' : '');
       return '<tr>' +
-        '<td>' + escapeHtml(d.code) + '</td>' +
-        '<td>' + escapeHtml(d.name) + '</td>' +
-        '<td>' + escapeHtml(d.city || '—') + '</td>' +
+        '<td>' + escapeHtml(d.name || '—') + '</td>' +
+        '<td>' + escapeHtml(d.email || '—') + '</td>' +
+        '<td>' + dealerStatusHtml(d) + '</td>' +
         '<td class="num">' + fmtMinutes(d.active_seconds) + '</td>' +
         '<td class="num">' + (idle ? '—' : fmtMinutes(d.avg_session_seconds)) + '</td>' +
         '<td class="num">' + d.session_count + '</td>' +
@@ -1382,70 +1470,6 @@
       .replace(/"/g, '&quot;');
   }
 
-  const STORE_TEMPLATE_ROWS = [
-    ['code', 'name', 'city', 'active'],
-    ['BAMBI-001', 'Bambi Merkez Showroom', 'İstanbul', 'true'],
-    ['BAMBI-002', 'Ankara Mağaza', 'Ankara', 'true'],
-    ['BAMBI-003', 'İzmir Mağaza', 'İzmir', 'true'],
-    ['BAMBI-004', 'Bursa Mağaza', 'Bursa', 'true'],
-    ['BAMBI-005', 'Antalya Mağaza', 'Antalya', 'true'],
-    ['BAMBI-006', 'Adana Mağaza', 'Adana', 'true'],
-    ['BAMBI-007', 'Gaziantep Mağaza', 'Gaziantep', 'true'],
-    ['BAMBI-008', 'Konya Mağaza', 'Konya', 'true'],
-    ['BAMBI-009', 'Trabzon Mağaza', 'Trabzon', 'true'],
-    ['BAMBI-010', 'Eskişehir Mağaza', 'Eskişehir', 'true']
-  ];
-
-  document.getElementById('dl-stores-template').addEventListener('click', () => {
-    const ws = XLSX.utils.aoa_to_sheet(STORE_TEMPLATE_ROWS);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'magazalar');
-    XLSX.writeFile(wb, 'bambi-magaza-sablonu.xlsx');
-  });
-
-  document.getElementById('stores-file').addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    const errEl = document.getElementById('stores-err');
-    const okEl = document.getElementById('stores-ok');
-    errEl.textContent = '';
-    okEl.classList.add('hidden');
-    if (!file) return;
-
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-      const items = [];
-      for (const r of rows) {
-        const code = String(r.code || '').trim();
-        const name = String(r.name || '').trim();
-        if (!code || !name) continue;
-        items.push({
-          code,
-          name,
-          city: String(r.city || '').trim(),
-          active: String(r.active == null ? 'true' : r.active).trim()
-        });
-      }
-      if (!items.length) {
-        errEl.textContent = 'Geçerli mağaza satırı bulunamadı (code + name gerekli).';
-        return;
-      }
-      const { data, error } = await sb.rpc('upsert_dealers', { p_items: items });
-      if (error || !data || !data.ok) {
-        errEl.textContent = (error && error.message) || 'Yükleme başarısız.';
-        return;
-      }
-      okEl.textContent = data.count + ' mağaza eklendi/güncellendi.';
-      okEl.classList.remove('hidden');
-      await loadStats();
-    } catch (err) {
-      errEl.textContent = 'Dosya okunamadı: ' + (err.message || err);
-    }
-  });
-
   const SET_SIZE_ORDER = ['140x200', '150x200', '160x200', '180x200', '200x200'];
   const SET_TEMPLATE_PRICES = [
     ['welldora', 'magnasand', 'Magnasand Therapy', { '140x200': 49428.42, '150x200': 50456.69, '160x200': 52676.83, '180x200': 58270.83, '200x200': 65381.06 }],
@@ -1533,8 +1557,7 @@
         errEl.textContent = (error && error.message) || 'Yayınlama başarısız.';
         return;
       }
-      okEl.textContent = 'Yayınlandı: v' + data.version + ' · ' + data.count + ' satır aktif'
-        + (data.uploaded_by_email ? ' · ' + data.uploaded_by_email : '') + '.';
+      okEl.textContent = 'Taslak kaydedildi: v' + data.version + ' · ' + data.count + ' satır. Canlı fiyatlar değişmedi. Local’de test edin, sonra Canlıya al.';
       okEl.classList.remove('hidden');
       await loadPriceLogs();
     } catch (err) {
@@ -1555,20 +1578,30 @@
     if (!body) return;
     const rows = sortRows(priceLogsCache, tableSort.priceLogs, priceLogSortValue);
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="7" class="muted">Henüz fiyat yüklemesi yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="muted">Henüz fiyat yüklemesi yok</td></tr>';
       return;
     }
-    body.innerHTML = rows.map(l =>
-      '<tr>' +
+    body.innerHTML = rows.map(l => {
+      const delBtn = '<button type="button" class="btn btn-danger btn-compact" data-price-delete="' +
+        escapeHtml(l.id) + '" title="Bu yüklemeyi sil">Sil</button>';
+      let action = delBtn;
+      if (!l.active) {
+        action = '<button type="button" class="btn btn-ghost btn-compact" data-price-restore="' +
+          escapeHtml(l.id) + '" title="Bu sürümü canlıya al">Canlıya al</button>' + delBtn;
+      }
+      return '<tr>' +
         '<td>' + escapeHtml(fmtDateTime(l.created_at)) + '</td>' +
         '<td>' + escapeHtml(l.uploaded_by_name || '—') + '</td>' +
         '<td>' + escapeHtml(l.uploaded_by_email || '—') + '</td>' +
         '<td>' + escapeHtml(l.filename || '—') + '</td>' +
         '<td class="num">v' + escapeHtml(l.version) + '</td>' +
         '<td class="num">' + escapeHtml(l.item_count != null ? l.item_count : '—') + '</td>' +
-        '<td>' + (l.active ? '<strong style="color:var(--brass)">Aktif</strong>' : '<span class="muted">Eski</span>') + '</td>' +
-      '</tr>'
-    ).join('');
+        '<td>' + (l.active
+          ? '<strong style="color:var(--brass)">Aktif (canlı)</strong>'
+          : '<span class="muted">Taslak</span>') + '</td>' +
+        '<td class="price-actions">' + action + '</td>' +
+      '</tr>';
+    }).join('');
   }
 
   async function loadPriceLogs() {
@@ -1577,17 +1610,367 @@
     const { data, error } = await sb.rpc('admin_price_logs', { p_limit: 100 });
     if (error || !data || !data.ok) {
       priceLogsCache = [];
-      body.innerHTML = '<tr><td colspan="7" class="muted">Log yüklenemedi</td></tr>';
+      body.innerHTML = '<tr><td colspan="8" class="muted">Log yüklenemedi</td></tr>';
       return;
     }
     priceLogsCache = data.logs || [];
     renderPriceLogs();
   }
 
+  async function restorePriceList(listId) {
+    const row = priceLogsCache.find(l => l.id === listId);
+    const label = row
+      ? ('v' + row.version + (row.filename ? ' · ' + row.filename : ''))
+      : 'bu liste';
+    if (!window.confirm('Bu fiyat listesi canlıya alınsın mı?\n\n' + label + '\n\nMağazalar bu fiyatları görmeye başlar.')) return;
+
+    const btn = document.querySelector('[data-price-restore="' + listId + '"]');
+    if (btn) btn.disabled = true;
+    const errEl = document.getElementById('price-err');
+    const okEl = document.getElementById('price-ok');
+    if (errEl) errEl.textContent = '';
+    try {
+      const { data, error } = await sb.rpc('activate_price_list', { p_id: listId });
+      if (error || !data || !data.ok) {
+        const msg = (error && error.message) || (data && data.error) || 'Geri alma başarısız.';
+        if (errEl) errEl.textContent = msg;
+        return;
+      }
+      if (okEl) {
+        okEl.textContent = 'Canlıya alındı: v' + data.version + ' aktif'
+          + (data.count != null ? ' · ' + data.count + ' satır' : '') + '.';
+        okEl.classList.remove('hidden');
+      }
+      await loadPriceLogs();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  function templateRowsToItems() {
+    return TEMPLATE_ROWS.slice(1).map(r => ({
+      item_type: String(r[0] || '').trim(),
+      series_id: String(r[1] || '').trim(),
+      body_type: String(r[2] || '').trim(),
+      finish_id: String(r[3] || '').trim(),
+      accessory_key: String(r[4] || '').trim(),
+      size: String(r[5] || '').trim(),
+      label: String(r[6] || '').trim(),
+      price: r[7] === '' || r[7] == null ? '' : String(r[7]),
+      price_single: r[8] === '' || r[8] == null ? '' : String(r[8]),
+      price_pair: r[9] === '' || r[9] == null ? '' : String(r[9])
+    })).filter(it => ['body', 'door', 'accessory', 'set'].includes(it.item_type));
+  }
+
+  async function restoreTemplatePrices() {
+    if (!window.confirm('Şu anki fiyat listesi şablon fiyatlarına dönsün mü?\n\nBu, uygulamanın orijinal fiyatlarını yeni bir versiyon olarak yayınlar. Yüklediğiniz liste eski duruma geçer.')) return;
+    const btn = document.querySelector('[data-price-restore-template]');
+    if (btn) btn.disabled = true;
+    const errEl = document.getElementById('price-err');
+    const okEl = document.getElementById('price-ok');
+    if (errEl) errEl.textContent = '';
+    try {
+      const items = templateRowsToItems();
+      const { data, error } = await sb.rpc('publish_price_list', {
+        p_filename: 'bambi-fiyat-sablonu.xlsx',
+        p_note: 'Şablon fiyatlarına dönüş (Geri al)',
+        p_items: items
+      });
+      if (error || !data || !data.ok) {
+        const msg = (error && error.message) || (data && data.error) || 'Geri alma başarısız.';
+        if (errEl) errEl.textContent = msg;
+        return;
+      }
+      if (okEl) {
+        okEl.textContent = 'Şablon taslağı kaydedildi: v' + data.version + ' · ' + data.count + ' satır. Canlı değişmedi.';
+        okEl.classList.remove('hidden');
+      }
+      await loadPriceLogs();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function deletePriceList(listId) {
+    const row = priceLogsCache.find(l => l.id === listId);
+    const label = row
+      ? ('v' + row.version + (row.filename ? ' · ' + row.filename : ''))
+      : 'bu liste';
+    const extra = row && row.active
+      ? '\n\nBu canlı listedir. Silinince mağazalar şablon fiyatlara döner.'
+      : '';
+    if (!window.confirm('Bu fiyat listesi kalıcı olarak silinsin mi?\n\n' + label + extra)) return;
+
+    const btn = document.querySelector('[data-price-delete="' + listId + '"]');
+    if (btn) btn.disabled = true;
+    const errEl = document.getElementById('price-err');
+    const okEl = document.getElementById('price-ok');
+    if (errEl) errEl.textContent = '';
+    try {
+      const { data, error } = await sb.rpc('delete_price_list', { p_id: listId });
+      if (error || !data || !data.ok) {
+        const msg = (error && error.message) || (data && data.error) || 'Silinemedi.';
+        if (errEl) errEl.textContent = msg;
+        return;
+      }
+      if (okEl) {
+        okEl.textContent = 'Silindi: v' + data.version
+          + (data.was_active ? ' · canlı liste kaldırıldı, şablon fiyatlar geçerli' : '') + '.';
+        okEl.classList.remove('hidden');
+      }
+      await loadPriceLogs();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.getElementById('price-log-rows')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-price-restore-template]')) {
+      restoreTemplatePrices();
+      return;
+    }
+    const del = e.target.closest('[data-price-delete]');
+    if (del) {
+      deletePriceList(del.getAttribute('data-price-delete'));
+      return;
+    }
+    const btn = e.target.closest('[data-price-restore]');
+    if (!btn) return;
+    restorePriceList(btn.getAttribute('data-price-restore'));
+  });
+
+  function adminCreateErrorText(code) {
+    const c = String(code || '');
+    if (c === 'not_manager') return 'Yönetici ekleme/çıkarma yalnızca ana yöneticiye açık.';
+    if (c === 'not_authenticated' || c === 'not_admin') return 'Bu işlem için admin girişi gerekir.';
+    if (c === 'invalid_email') return 'Geçerli bir e-posta girin.';
+    if (c === 'invalid_name') return 'Ad gerekli.';
+    if (c === 'invite_failed') return 'Davet e-postası gönderilemedi. Adresi ve spam klasörünü kontrol edin.';
+    return c || 'Davet gönderilemedi.';
+  }
+
+  function adminRedirectTo() {
+    return 'https://dolap-konfigurator.vercel.app/admin/';
+  }
+
+  function waitForAdminAuth() {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (session) => {
+        if (done) return;
+        done = true;
+        try { sub.unsubscribe(); } catch (_) { /* ignore */ }
+        resolve(session || null);
+      };
+      const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'INITIAL_SESSION') finish(session);
+      });
+      setTimeout(() => {
+        sb.auth.getSession()
+          .then(({ data }) => finish(data && data.session))
+          .catch(() => finish(null));
+      }, 2500);
+    });
+  }
+
+  async function loadAdmins() {
+    const body = document.getElementById('admin-rows');
+    if (!body) return;
+    const { data: sessionWrap } = await sb.auth.getSession();
+    const selfId = sessionWrap && sessionWrap.session && sessionWrap.session.user
+      ? sessionWrap.session.user.id
+      : '';
+    const { data, error } = await sb.rpc('admin_list_admins');
+    if (error || !data || !data.ok) {
+      body.innerHTML = '<tr><td colspan="5" class="muted">Liste yüklenemedi</td></tr>';
+      return;
+    }
+    const canManage = !!data.can_manage;
+    const createCard = document.getElementById('admin-create-card');
+    if (createCard) createCard.classList.toggle('hidden', !canManage);
+    const hint = document.getElementById('admin-manage-hint');
+    if (hint && !canManage) {
+      hint.textContent = 'Yöneticileri görebilirsiniz. Ekleme ve yetki kaldırma yalnızca ana yöneticiye açık.';
+    }
+    const rows = data.admins || [];
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="5" class="muted">Kayıt yok</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(a => {
+      const isSelf = a.user_id === selfId;
+      const isManager = !!a.can_manage_admins;
+      const confirmed = !!a.email_confirmed;
+      const status = confirmed
+        ? 'Onaylandı'
+        : '<span class="muted">Davet bekleniyor</span>';
+      const parts = [];
+      if (isSelf) parts.push('<span class="muted">Siz</span>');
+      else if (isManager) parts.push('<span class="muted">Ana yönetici</span>');
+      if (canManage && !confirmed && a.email) {
+        parts.push(
+          '<button type="button" class="btn btn-ghost btn-compact" data-admin-resend="' +
+          escapeHtml(a.email) + '" data-admin-resend-name="' +
+          escapeHtml(a.display_name || '') + '">Daveti tekrar gönder</button>'
+        );
+      }
+      if (canManage && !isSelf && !isManager) {
+        parts.push(
+          '<button type="button" class="btn btn-danger btn-compact" data-admin-revoke="' +
+          escapeHtml(a.user_id) + '" title="Admin yetkisini kaldır">Yetkiyi kaldır</button>'
+        );
+      }
+      const action = parts.length ? parts.join(' ') : '<span class="muted">—</span>';
+      return '<tr>' +
+        '<td>' + escapeHtml(a.display_name || '—') + (isManager ? ' <span class="muted">(ana)</span>' : '') + '</td>' +
+        '<td>' + escapeHtml(a.email || '—') + '</td>' +
+        '<td>' + status + '</td>' +
+        '<td>' + escapeHtml(fmtDateTime(a.created_at)) + '</td>' +
+        '<td class="price-actions">' + action + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  async function revokeAdmin(userId) {
+    if (!window.confirm('Bu kişinin admin yetkisi kaldırılsın mı?\n\nHesabı silinmez; panele giremez.')) return;
+    const btn = document.querySelector('[data-admin-revoke="' + userId + '"]');
+    if (btn) btn.disabled = true;
+    const errEl = document.getElementById('admin-create-err');
+    const okEl = document.getElementById('admin-create-ok');
+    if (errEl) errEl.textContent = '';
+    try {
+      const { data, error } = await sb.rpc('admin_revoke_admin', { p_user_id: userId });
+      if (error || !data || !data.ok) {
+        const code = (data && data.error) || (error && error.message) || '';
+        if (errEl) {
+          errEl.textContent = code === 'self'
+            ? 'Kendi yetkinizi kaldıramazsınız.'
+            : (code === 'not_manager'
+              ? 'Yönetici ekleme/çıkarma yalnızca ana yöneticiye açık.'
+              : (code === 'last_admin' ? 'Son admin kaldırılamaz.' : 'Yetki kaldırılamadı.'));
+        }
+        return;
+      }
+      if (okEl) {
+        okEl.textContent = 'Admin yetkisi kaldırıldı.';
+        okEl.classList.remove('hidden');
+      }
+      await loadAdmins();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.getElementById('admin-rows')?.addEventListener('click', (e) => {
+    const resend = e.target.closest('[data-admin-resend]');
+    if (resend) {
+      inviteAdmin(
+        resend.getAttribute('data-admin-resend-name') || '',
+        resend.getAttribute('data-admin-resend') || '',
+        resend
+      );
+      return;
+    }
+    const btn = e.target.closest('[data-admin-revoke]');
+    if (!btn) return;
+    revokeAdmin(btn.getAttribute('data-admin-revoke'));
+  });
+
+  async function inviteAdmin(display_name, email, btn) {
+    const errEl = document.getElementById('admin-create-err');
+    const okEl = document.getElementById('admin-create-ok');
+    if (errEl) errEl.textContent = '';
+    if (okEl) okEl.classList.add('hidden');
+    if (btn) btn.disabled = true;
+    try {
+      const { data, error } = await sb.functions.invoke('create-admin', {
+        body: { display_name, email, redirect_to: adminRedirectTo() }
+      });
+      if (error || !data || !data.ok) {
+        if (errEl) errEl.textContent = adminCreateErrorText((data && data.error) || (error && error.message));
+        return false;
+      }
+      if (okEl) {
+        okEl.textContent = (data.invited || data.resent)
+          ? ('Davet gönderildi: ' + email + '. Gerçek gelen kutusundaki bağlantıya tıklamadan giriş açılamaz.')
+          : (data.already_admin
+            ? (display_name + ' zaten onaylı admin; ad güncellendi.')
+            : (display_name + ' eklendi.'));
+        okEl.classList.remove('hidden');
+      }
+      await loadAdmins();
+      return true;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  document.getElementById('admin-create-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const display_name = document.getElementById('admin-new-name').value.trim();
+    const email = document.getElementById('admin-new-email').value.trim();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const ok = await inviteAdmin(display_name, email, btn);
+    if (ok) document.getElementById('admin-create-form').reset();
+  });
+
+  document.getElementById('invite-set-pass')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = document.getElementById('invite-pass-err');
+    if (errEl) errEl.textContent = '';
+    const pass = document.getElementById('invite-pass').value;
+    const pass2 = document.getElementById('invite-pass2').value;
+    if (pass.length < 8) {
+      if (errEl) errEl.textContent = 'Şifre en az 8 karakter olmalı.';
+      return;
+    }
+    if (pass !== pass2) {
+      if (errEl) errEl.textContent = 'Şifreler eşleşmiyor.';
+      return;
+    }
+    const btn = e.target.querySelector('button[type="submit"]');
+    if (btn) btn.disabled = true;
+    try {
+      const { error } = await sb.auth.updateUser({ password: pass });
+      if (error) {
+        if (errEl) errEl.textContent = error.message || 'Şifre kaydedilemedi.';
+        return;
+      }
+      pendingPasswordSetup = false;
+      const ok = await requireAdmin({ surfaceError: true });
+      if (!ok) {
+        if (errEl && !errEl.textContent) errEl.textContent = 'Şifre kaydedildi ama panele girilemedi.';
+        return;
+      }
+      await showApp();
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  function peekAuthLinkType() {
+    try {
+      const hash = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+      const search = new URLSearchParams(location.search || '');
+      return String(hash.get('type') || search.get('type') || '').toLowerCase();
+    } catch (_) {
+      return '';
+    }
+  }
+
   (async function boot() {
+    const linkType = peekAuthLinkType();
+    await waitForAdminAuth();
     const ok = await requireAdmin({ surfaceError: true });
+    if (!ok && pendingPasswordSetup) return;
+    if (ok && (linkType === 'invite' || linkType === 'recovery')) {
+      const { data: { session } } = await sb.auth.getSession();
+      pendingPasswordSetup = true;
+      showPasswordSetup(session && session.user ? session.user.email : '');
+      return;
+    }
     if (ok) await showApp();
-    else showLogin();
+    else if (!pendingPasswordSetup) showLogin();
   })();
 })();
 </script>

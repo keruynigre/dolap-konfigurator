@@ -4,7 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-dolap-preview",
 };
 
 const SERIES_LABEL: Record<string, string> = {
@@ -268,11 +268,31 @@ Deno.serve(async (req) => {
     }
 
     const catalog = fallbackCatalog();
-    const { data: list } = await sb
-      .from("price_lists")
-      .select("id, version")
-      .eq("active", true)
-      .maybeSingle();
+    const origin = String(req.headers.get("origin") || req.headers.get("referer") || "");
+    const previewHeader = String(req.headers.get("x-dolap-preview") || "");
+    const preview =
+      previewHeader === "1" ||
+      body?.preview === true ||
+      body?.preview === "true" ||
+      body?.preview === 1 ||
+      /localhost|127\.0\.0\.1|\[::1\]/.test(origin);
+    let list: { id: string; version: number } | null = null;
+    if (preview) {
+      const { data: latest } = await sb
+        .from("price_lists")
+        .select("id, version")
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const row = Array.isArray(latest) ? latest[0] : latest;
+      list = (row ?? null) as { id: string; version: number } | null;
+    } else {
+      const { data: active } = await sb
+        .from("price_lists")
+        .select("id, version")
+        .eq("active", true)
+        .maybeSingle();
+      list = (active ?? null) as { id: string; version: number } | null;
+    }
     if (list?.id) {
       const { data: items } = await sb
         .from("price_items")
@@ -424,6 +444,7 @@ Deno.serve(async (req) => {
       pricing,
       lineItems,
       priceVersion: list?.version ?? null,
+      pricePreview: preview,
     };
 
     if (body?.includeCatalog) {
