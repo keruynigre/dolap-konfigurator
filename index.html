@@ -404,7 +404,8 @@
   .accessory-stage[data-key="sifonyer3"] img,
   .accessory-stage[data-key="sifonyer4"] img { max-width: 130px; max-height: 300px; }
   .accessory-stage[data-key="komodin"] img { max-width: 150px; max-height: 170px; }
-  .accessory-stage[data-key="puf"] img { max-width: 110px; max-height: 130px; }
+  .accessory-stage[data-key="puf"] img,
+  .accessory-stage[data-key="carioPuf"] img { max-width: 110px; max-height: 130px; }
   .accessory-stage[data-key="makyajMasasi"] img { max-width: 200px; max-height: 160px; }
   .accessory-stage[data-key="makyajAynasi"] img {
     max-width: 160px; max-height: 160px;
@@ -805,6 +806,58 @@
     background-size: contain; background-position: center; background-repeat: no-repeat;
     display: flex; align-items: center; justify-content: center;
   }
+  .set-card-media.has-hover {
+    position: relative; overflow: hidden;
+    background-image: none !important;
+  }
+  .set-card-media.has-hover .rug-shot {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; object-position: center;
+    transition: opacity 0.28s ease;
+    pointer-events: none; user-select: none;
+  }
+  .set-card-media.has-hover .rug-shot.is-alt { opacity: 0; }
+  .set-card:hover .set-card-media.has-hover .rug-shot.is-main { opacity: 0; }
+  .set-card:hover .set-card-media.has-hover .rug-shot.is-alt { opacity: 1; }
+  .set-card-media.has-gallery {
+    position: relative; overflow: hidden;
+    background-image: none !important;
+  }
+  .set-card-media.has-gallery .gallery-shot {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    object-fit: contain; object-position: center;
+    pointer-events: none; user-select: none;
+  }
+  .set-card-media.has-gallery .gallery-dots {
+    position: absolute; left: 0; right: 0; bottom: 8px;
+    display: flex; justify-content: center; gap: 5px;
+    opacity: 0; transition: opacity 0.18s ease;
+    pointer-events: none; z-index: 2;
+  }
+  .set-card:hover .set-card-media.has-gallery .gallery-dots { opacity: 1; }
+  .set-card-media.has-gallery .gallery-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.45);
+    box-shadow: 0 0 0 1px rgba(42,36,28,0.22);
+    transition: background 0.15s, transform 0.15s;
+  }
+  .set-card-media.has-gallery .gallery-dot.is-active {
+    background: var(--brass);
+    transform: scale(1.15);
+    box-shadow: 0 0 0 1px rgba(201,163,90,0.55);
+  }
+  .accessory-stage.is-rug .rug-shot-wrap {
+    position: relative; width: 100%; max-width: 240px;
+  }
+  .accessory-stage.is-rug .rug-shot-wrap img {
+    display: block; width: 100%; height: auto; max-width: 240px;
+    transition: opacity 0.28s ease;
+  }
+  .accessory-stage.is-rug .rug-shot-wrap .rug-shot.is-alt {
+    position: absolute; left: 0; top: 0; opacity: 0;
+  }
+  .accessory-stage.is-rug:hover .rug-shot-wrap .rug-shot.is-main { opacity: 0; }
+  .accessory-stage.is-rug:hover .rug-shot-wrap .rug-shot.is-alt { opacity: 1; }
   .set-card-body { padding: 12px 12px 14px; }
   .set-card-name { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
   .set-card-price { margin: 4px 0 10px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--brass); }
@@ -844,6 +897,12 @@
   .accessory-stage.is-rug img {
     max-width: min(280px, 48vw); max-height: 160px; width: auto; height: auto;
     filter: drop-shadow(0 8px 16px rgba(0,0,0,0.28));
+  }
+  .accessory-stage.is-rug .rug-shot-wrap {
+    max-width: min(280px, 48vw);
+  }
+  .accessory-stage.is-rug .rug-shot-wrap img {
+    max-width: min(280px, 48vw); max-height: 160px;
   }
   html[data-theme="light"] .accessory-stage.is-rug img {
     filter:
@@ -1630,7 +1689,7 @@
     <div class="sets-sheet-head">
       <div>
         <h2 id="rugs-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6.5" y="9" width="11" height="6" rx="1"/><path d="M8 6V4M12 6V4M16 6V4M8 18v2M12 18v2M16 18v2"/></svg>Halılar</h2>
-        <p id="rugs-sub">Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.</p>
+        <p id="rugs-sub">Halıyı seçip teklife ekleyin. Kartın üzerine gelince detay görseli açılır.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="rugs-close">Kapat</button>
     </div>
@@ -1774,7 +1833,7 @@
   const DOOR_WIDTH_CM = 50;
   const FLUSH_REF_H = 890; // all flush body images share this height
 
-  const ASSET_VERSION = '10';
+  const ASSET_VERSION = '22';
   /** assets/ uzun cache. Görsel değişince ASSET_VERSION artır. */
   function assetUrl(src){
     if (!src || typeof src !== 'string') return src;
@@ -1870,12 +1929,36 @@
     }
   };
   const SHARED_FINISH_ORDER = ['ayna', 'cam'];
-  const ACCESSORY_ORDER = ['komodin', 'makyajMasasi', 'makyajAynasi', 'sifonyer', 'sifonyer3', 'sifonyer4', 'puf'];
+  const ACCESSORY_ORDER = ['komodin', 'makyajMasasi', 'makyajAynasi', 'sifonyer', 'sifonyer3', 'sifonyer4', 'puf', 'carioPuf'];
   const WELLDORA_FURNITURE = 'assets/furniture/welldora/';
   const MONERRA_FURNITURE = 'assets/furniture/monerra/';
   const TRAVINA_FURNITURE = 'assets/furniture/travina/';
   const CAPPADOCIA_FURNITURE = 'assets/furniture/cappadocia/';
-  const CARIO_PUF = { label: 'Cario Puf', img: WELLDORA_FURNITURE + 'puf.png' };
+  const ROLI_PUF = {
+    label: 'Roli Puf',
+    lockSeries: false,
+    img: WELLDORA_FURNITURE + 'roli-puf.webp',
+    imgs: [
+      WELLDORA_FURNITURE + 'roli-puf.webp',
+      WELLDORA_FURNITURE + 'roli-puf-2.webp',
+      WELLDORA_FURNITURE + 'roli-puf-3.webp'
+    ]
+  };
+  const CARIO_PUF = {
+    label: 'Cario Puf',
+    lockSeries: false,
+    img: WELLDORA_FURNITURE + 'cario-puf.webp',
+    imgs: [
+      WELLDORA_FURNITURE + 'cario-puf.webp',
+      WELLDORA_FURNITURE + 'cario-puf-2.webp',
+      WELLDORA_FURNITURE + 'cario-puf-3.webp'
+    ]
+  };
+  /** Modele bağlı olmayan ek ürünler (seçilince diğer modelleri kilitlemez). */
+  const SHARED_ACCESSORIES = {
+    puf: ROLI_PUF,
+    carioPuf: CARIO_PUF
+  };
   const WELLDORA_SETS = 'assets/sets/welldora/';
   const MONERRA_SETS = 'assets/sets/monerra/';
   const TRAVINA_SETS = 'assets/sets/travina/';
@@ -1887,9 +1970,46 @@
     travina: ['bohemella', 'borjen'],
     cappadocia: ['cappadocia_natura']
   };
-  /** Halılar kapak modeline bağlı değil. Görsel/fiyat gelince RUGS ve RUG_ORDER doldurulur. */
-  const RUGS = {};
-  const RUG_ORDER = [];
+  /** Halılar kapak modeline bağlı değil. */
+  const RUGS = {
+    welldora_vizon: {
+      label: 'Welldora Vizon',
+      img: 'assets/rugs/welldora/vizon.webp',
+      imgHover: 'assets/rugs/welldora/vizon-hover.webp',
+      price: 4725.12
+    },
+    welldora_brown: {
+      label: 'Welldora Brown',
+      img: 'assets/rugs/welldora/brown.webp',
+      imgHover: 'assets/rugs/welldora/brown-hover.webp',
+      price: 4331.37
+    },
+    travina_light_brown: {
+      label: 'Travina Light Brown',
+      img: 'assets/rugs/travina/light-brown.webp',
+      imgHover: 'assets/rugs/travina/light-brown-hover.webp',
+      price: 4331.37
+    },
+    travina_bej: {
+      label: 'Travina Bej',
+      img: 'assets/rugs/travina/bej.webp',
+      imgHover: 'assets/rugs/travina/bej-hover.webp',
+      price: 4331.37
+    },
+    monerra_grey: {
+      label: 'Monerra Grey',
+      img: 'assets/rugs/monerra/grey.webp',
+      imgHover: 'assets/rugs/monerra/grey-hover.webp',
+      price: 4725.12
+    },
+    monerra_bej: {
+      label: 'Monerra Bej',
+      img: 'assets/rugs/monerra/bej.webp',
+      imgHover: 'assets/rugs/monerra/bej-hover.webp',
+      price: 4331.37
+    }
+  };
+  const RUG_ORDER = ['welldora_vizon', 'welldora_brown', 'travina_light_brown', 'travina_bej', 'monerra_grey', 'monerra_bej'];
   const RUG_QTY_MAX = 10;
 
   const MODELS_IMG = 'assets/models/';
@@ -1917,10 +2037,26 @@
       },
       accessories: {
         sifonyer:     { label: 'Yüksek Şifonyer', img: WELLDORA_FURNITURE + 'sifonyer.png' },
-        komodin:      { label: 'Komodin',         img: WELLDORA_FURNITURE + 'komodin.png' },
-        makyajMasasi: { label: 'Makyaj Masası',   img: WELLDORA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   img: WELLDORA_FURNITURE + 'makyaj-aynasi.png' },
-        puf:          { ...CARIO_PUF }
+        komodin: {
+          label: 'Komodin',
+          img: WELLDORA_FURNITURE + 'komodin.png',
+          imgs: [
+            WELLDORA_FURNITURE + 'komodin.png',
+            WELLDORA_FURNITURE + 'komodin-freshcell.webp',
+            WELLDORA_FURNITURE + 'komodin-biosalt.webp',
+            WELLDORA_FURNITURE + 'komodin-bambo.webp',
+            WELLDORA_FURNITURE + 'komodin-serenity.webp'
+          ]
+        },
+        makyajMasasi: {
+          label: 'Makyaj Masası',
+          img: WELLDORA_FURNITURE + 'makyaj-masasi.png',
+          imgs: [
+            WELLDORA_FURNITURE + 'makyaj-masasi.png',
+            WELLDORA_FURNITURE + 'makyaj-masasi-2.webp'
+          ]
+        },
+        makyajAynasi: { label: 'Makyaj Aynası',   img: WELLDORA_FURNITURE + 'makyaj-aynasi.png' }
       },
       sets: {
         magnasand: {
@@ -1962,8 +2098,7 @@
         sifonyer:     { label: 'Yüksek Şifonyer', img: MONERRA_FURNITURE + 'sifonyer.png' },
         komodin:      { label: 'Komodin',         img: MONERRA_FURNITURE + 'komodin.png' },
         makyajMasasi: { label: 'Makyaj Masası',   img: MONERRA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   img: MONERRA_FURNITURE + 'makyaj-aynasi.png' },
-        puf:          { ...CARIO_PUF }
+        makyajAynasi: { label: 'Makyaj Aynası',   img: MONERRA_FURNITURE + 'makyaj-aynasi.png' }
       },
       sets: {
         climextra: {
@@ -2000,8 +2135,7 @@
         sifonyer:     { label: 'Yüksek Şifonyer', img: TRAVINA_FURNITURE + 'sifonyer.png' },
         komodin:      { label: 'Komodin',         img: TRAVINA_FURNITURE + 'komodin.png' },
         makyajMasasi: { label: 'Makyaj Masası',   img: TRAVINA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Makyaj Aynası',   img: TRAVINA_FURNITURE + 'makyaj-aynasi.png' },
-        puf:          { ...CARIO_PUF }
+        makyajAynasi: { label: 'Makyaj Aynası',   img: TRAVINA_FURNITURE + 'makyaj-aynasi.png' }
       },
       sets: {
         bohemella: {
@@ -2036,8 +2170,7 @@
         sifonyer4:    { label: '4\'lü Şifonyer',  img: CAPPADOCIA_FURNITURE + 'sifonyer-4.png' },
         komodin:      { label: 'Komodin',         img: CAPPADOCIA_FURNITURE + 'komodin.png' },
         makyajMasasi: { label: 'Makyaj Masası',   img: CAPPADOCIA_FURNITURE + 'makyaj-masasi.png' },
-        makyajAynasi: { label: 'Ayna',            img: CAPPADOCIA_FURNITURE + 'makyaj-aynasi.png' },
-        puf:          { ...CARIO_PUF }
+        makyajAynasi: { label: 'Ayna',            img: CAPPADOCIA_FURNITURE + 'makyaj-aynasi.png' }
       },
       sets: {
         cappadocia_natura: {
@@ -2069,7 +2202,10 @@
   }
 
   function doorRef(seriesId, finishId){ return seriesId + ':' + finishId; }
-  function accessoryRef(seriesId, key){ return seriesId + ':' + key; }
+  function accessoryRef(seriesId, key){
+    if (SHARED_ACCESSORIES[key]) return 'shared:' + key;
+    return seriesId + ':' + key;
+  }
   function setRef(seriesId, key){ return seriesId + ':' + key; }
   function getBedSet(seriesId, key){
     return DOOR_SERIES[seriesId]?.sets?.[key] || null;
@@ -2101,7 +2237,32 @@
     return Object.assign({}, shared, own);
   }
   function getAccessory(seriesId, key){
+    if (SHARED_ACCESSORIES[key]) return SHARED_ACCESSORIES[key];
+    if (seriesId === 'shared' && SHARED_ACCESSORIES[key]) return SHARED_ACCESSORIES[key];
     return DOOR_SERIES[seriesId]?.accessories?.[key] || null;
+  }
+  function accessoryLocksSeries(ref){
+    const p = parseDoorRef(ref);
+    if (!p) return true;
+    if (p.seriesId === 'shared' || SHARED_ACCESSORIES[p.finishId]) return false;
+    const acc = getAccessory(p.seriesId, p.finishId);
+    return !(acc && acc.lockSeries === false);
+  }
+  /** Eski seri:puf seçimlerini shared:puf'a taşı (kilitlemesin). */
+  function migrateSharedAccessoryRefs(){
+    const merged = new Map();
+    selectedAccessories.forEach((qty, ref) => {
+      if (!qty) return;
+      const p = parseDoorRef(ref);
+      if (p && SHARED_ACCESSORIES[p.finishId] && p.seriesId !== 'shared') {
+        const sharedRef = 'shared:' + p.finishId;
+        merged.set(sharedRef, (merged.get(sharedRef) || 0) + qty);
+        selectedAccessories.delete(ref);
+      }
+    });
+    merged.forEach((qty, ref) => {
+      selectedAccessories.set(ref, Math.min(ACC_QTY_MAX, qty));
+    });
   }
   function getSeriesFinishOrder(seriesId){
     const s = DOOR_SERIES[seriesId];
@@ -2235,7 +2396,7 @@
       if (!rug) return;
       out.push({
         key, label: rug.label, qty,
-        price: getRugUnitPrice(key), img: rug.img || null
+        price: getRugUnitPrice(key), img: rug.img || null, imgHover: rug.imgHover || null
       });
     });
     return out;
@@ -2254,9 +2415,12 @@
     const n = Math.max(0, Math.min(ACC_QTY_MAX, Math.round(Number(qty) || 0)));
     if (n > 0) {
       const p = parseDoorRef(ref);
-      const locked = getLockedDoorSeries();
-      if (locked && p?.seriesId && locked !== p.seriesId) return getAccessoryQty(ref);
-      if (p?.seriesId) activeDoorSeries = p.seriesId;
+      const locks = accessoryLocksSeries(ref);
+      if (locks) {
+        const locked = getLockedDoorSeries();
+        if (locked && p?.seriesId && locked !== p.seriesId) return getAccessoryQty(ref);
+        if (p?.seriesId) activeDoorSeries = p.seriesId;
+      }
     }
     if (n <= 0) selectedAccessories.delete(ref);
     else selectedAccessories.set(ref, n);
@@ -2493,19 +2657,29 @@
       const p = parseDoorRef(ref);
       if (!p) return;
       const acc = getAccessory(p.seriesId, p.finishId);
+      if (!acc) return;
       const series = getDoorSeriesMeta(p.seriesId);
-      if (!acc || !series) return;
+      const priceRef = (p.seriesId === 'shared')
+        ? ('welldora:' + p.finishId)
+        : ref;
+      const catPrice = remoteQuote.catalog.accessories && (
+        remoteQuote.catalog.accessories[ref] != null
+          ? remoteQuote.catalog.accessories[ref]
+          : remoteQuote.catalog.accessories[priceRef]
+      );
       out.push({
         ref,
-        seriesId: p.seriesId,
-        seriesLabel: series.label,
+        seriesId: p.seriesId === 'shared' ? null : p.seriesId,
+        seriesLabel: series ? series.label : null,
         key: p.finishId,
         label: acc.label,
-        price: (remoteQuote.catalog.accessories && remoteQuote.catalog.accessories[ref] != null)
-          ? Number(remoteQuote.catalog.accessories[ref])
-          : (acc.price || 0),
+        price: (catPrice != null)
+          ? Number(catPrice)
+          : (acc.price != null ? Number(acc.price) : 0),
         qty,
-        img: acc.img
+        img: acc.img,
+        imgHover: acc.imgHover || null,
+        imgs: acc.imgs || null
       });
     });
     return out;
@@ -5296,6 +5470,7 @@
     }
     for (const [ref, qty] of selectedAccessories) {
       if (!qty) continue;
+      if (!accessoryLocksSeries(ref)) continue;
       const p = parseDoorRef(ref);
       if (p?.seriesId && DOOR_SERIES[p.seriesId]) return p.seriesId;
     }
@@ -5304,6 +5479,7 @@
 
   function pruneAccessoriesToSeries(seriesId){
     [...selectedAccessories.keys()].forEach(ref => {
+      if (!accessoryLocksSeries(ref)) return;
       const p = parseDoorRef(ref);
       if (!p || p.seriesId !== seriesId) selectedAccessories.delete(ref);
     });
@@ -5314,6 +5490,7 @@
   }
 
   function syncDoorSeriesUi(){
+    migrateSharedAccessoryRefs();
     const locked = getLockedDoorSeries();
     if (locked) {
       activeDoorSeries = locked;
@@ -5859,7 +6036,22 @@
             '<br>' + priceHtml,
           onRemove: () => bumpRugQty(r.key, -1),
           buildContent: stage => {
-            if (r.img) {
+            if (r.img && r.imgHover) {
+              const wrap = document.createElement('div');
+              wrap.className = 'rug-shot-wrap';
+              const main = document.createElement('img');
+              main.className = 'rug-shot is-main';
+              main.src = assetUrl(r.img);
+              main.alt = r.label;
+              const alt = document.createElement('img');
+              alt.className = 'rug-shot is-alt';
+              alt.src = assetUrl(r.imgHover);
+              alt.alt = '';
+              alt.setAttribute('aria-hidden', 'true');
+              wrap.appendChild(main);
+              wrap.appendChild(alt);
+              stage.appendChild(wrap);
+            } else if (r.img) {
               const img = document.createElement('img');
               img.src = assetUrl(r.img);
               img.alt = r.label;
@@ -6058,7 +6250,10 @@
     if (n > 0) { accBadge.textContent = String(n); accBadge.classList.remove('hidden'); }
     else accBadge.classList.add('hidden');
     const series = DOOR_SERIES[activeDoorSeries];
-    const hasAcc = !!(series?.accessories && ACCESSORY_ORDER.some(k => series.accessories[k]));
+    const hasAcc = !!(
+      (series?.accessories && ACCESSORY_ORDER.some(k => series.accessories[k] || SHARED_ACCESSORIES[k])) ||
+      ACCESSORY_ORDER.some(k => SHARED_ACCESSORIES[k])
+    );
     accOpenBtn.hidden = !hasAcc;
   }
 
@@ -6207,27 +6402,42 @@
         ? series.label + ' modeline özel ek ürünler. Seçip teklife ekleyin; sahneye de yansır.'
         : 'Modele uygun ek ürünü seçip teklife ekleyin.';
     }
-    if (!series?.accessories) {
+    if (!series?.accessories && !ACCESSORY_ORDER.some(k => SHARED_ACCESSORIES[k])) {
       accessoryPalette.innerHTML = '<p class="sets-empty">Bu modelde ek ürün yok. Önce bir kapak modeli seçin.</p>';
       return;
     }
     const cards = ACCESSORY_ORDER.map(key => {
-      const acc = series.accessories[key];
+      const acc = SHARED_ACCESSORIES[key] || series?.accessories?.[key];
       if (!acc) return '';
       const ref = accessoryRef(activeDoorSeries, key);
       const qty = getAccessoryQty(ref);
       const selected = qty > 0;
-      const mediaStyle = acc.img ? 'background-image:url(\'' + assetUrl(acc.img) + '\')' : '';
-      const accPrice = remoteQuote.catalog.accessories && remoteQuote.catalog.accessories[ref];
-      const priceLine = accPrice == null
+      const gallery = (acc.imgs && acc.imgs.length > 1) ? acc.imgs : null;
+      const mediaClass = 'set-card-media contain' + (gallery ? ' has-gallery' : '');
+      const mediaStyle = (!gallery && acc.img) ? 'background-image:url(\'' + assetUrl(acc.img) + '\')' : '';
+      const mediaInner = gallery
+        ? '<img class="gallery-shot" src="' + assetUrl(gallery[0]) + '" alt="" data-gallery-src="0">' +
+          '<div class="gallery-dots" aria-hidden="true">' +
+            gallery.map((_, i) => '<span class="gallery-dot' + (i === 0 ? ' is-active' : '') + '" data-i="' + i + '"></span>').join('') +
+          '</div>'
+        : (acc.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>');
+      const accCat = remoteQuote.catalog.accessories;
+      const accPrice = accCat && (
+        accCat[ref] != null
+          ? Number(accCat[ref])
+          : (ref.indexOf('shared:') === 0 ? Number(accCat['welldora:' + ref.slice(7)]) : null)
+      );
+      const priceLine = (accPrice == null || Number.isNaN(accPrice))
         ? '<span class="set-price-pending">Fiyat yükleniyor</span>'
         : (selected && qty > 1
           ? priceFmt.format(accPrice) + ' · ' + qty + ' adet'
           : priceFmt.format(accPrice));
       return '<article class="set-card' + (selected ? ' selected' : '') + '" data-acc="' + ref + '">' +
         '<span class="set-card-check" aria-hidden="true">✓</span>' +
-        '<div class="set-card-media contain" style="' + mediaStyle + '">' +
-          (acc.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>') +
+        '<div class="' + mediaClass + '"' +
+          (mediaStyle ? ' style="' + mediaStyle + '"' : '') +
+          (gallery ? ' data-gallery="' + gallery.map(assetUrl).join('|') + '"' : '') + '>' +
+          mediaInner +
         '</div>' +
         '<div class="set-card-body">' +
           '<h3 class="set-card-name">' + acc.label + '</h3>' +
@@ -6248,6 +6458,10 @@
 
     accessoryPalette.querySelectorAll('.set-card').forEach(card => {
       const ref = card.dataset.acc;
+      const media = card.querySelector('.set-card-media.has-gallery');
+      if (media && media.dataset.gallery) {
+        bindCardImageGallery(media);
+      }
       card.querySelectorAll('.acc-qty-btn').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
@@ -6273,12 +6487,32 @@
     });
   }
 
+  function bindCardImageGallery(media){
+    const urls = String(media.dataset.gallery || '').split('|').filter(Boolean);
+    if (urls.length < 2) return;
+    const img = media.querySelector('.gallery-shot');
+    const dots = [...media.querySelectorAll('.gallery-dot')];
+    let idx = 0;
+    function show(i){
+      idx = Math.max(0, Math.min(urls.length - 1, i));
+      if (img) img.src = urls[idx];
+      dots.forEach((d, di) => d.classList.toggle('is-active', di === idx));
+    }
+    media.addEventListener('mousemove', e => {
+      const rect = media.getBoundingClientRect();
+      if (!rect.width) return;
+      const t = Math.min(0.999, Math.max(0, (e.clientX - rect.left) / rect.width));
+      show(Math.floor(t * urls.length));
+    });
+    media.addEventListener('mouseleave', () => show(0));
+  }
+
   function renderRugPalette(){
     updateRugsOpenBadge();
     if (!rugPalette) return;
     if (rugsSub) {
       rugsSub.textContent = RUG_ORDER.length
-        ? 'Halıyı seçip teklife ekleyin.'
+        ? 'Halıyı seçip teklife ekleyin. Kartın üzerine gelince detay görseli açılır.'
         : 'Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.';
     }
     if (!RUG_ORDER.length) {
@@ -6290,7 +6524,13 @@
       if (!rug) return '';
       const qty = getRugQty(key);
       const selected = qty > 0;
-      const mediaStyle = rug.img ? 'background-image:url(\'' + assetUrl(rug.img) + '\')' : '';
+      const hasHover = !!(rug.img && rug.imgHover);
+      const mediaClass = 'set-card-media contain' + (hasHover ? ' has-hover' : '');
+      const mediaStyle = (!hasHover && rug.img) ? 'background-image:url(\'' + assetUrl(rug.img) + '\')' : '';
+      const mediaInner = hasHover
+        ? '<img class="rug-shot is-main" src="' + assetUrl(rug.img) + '" alt="">' +
+          '<img class="rug-shot is-alt" src="' + assetUrl(rug.imgHover) + '" alt="" aria-hidden="true">'
+        : (rug.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>');
       const unit = getRugUnitPrice(key);
       const priceLine = unit == null
         ? '<span class="set-price-pending">Fiyat bekleniyor</span>'
@@ -6299,8 +6539,8 @@
           : priceFmt.format(unit));
       return '<article class="set-card' + (selected ? ' selected' : '') + '" data-rug="' + key + '">' +
         '<span class="set-card-check" aria-hidden="true">✓</span>' +
-        '<div class="set-card-media contain" style="' + mediaStyle + '">' +
-          (rug.img ? '' : '<span class="sets-empty" style="margin:0;padding:12px">Görsel bekleniyor</span>') +
+        '<div class="' + mediaClass + '"' + (mediaStyle ? ' style="' + mediaStyle + '"' : '') + '>' +
+          mediaInner +
         '</div>' +
         '<div class="set-card-body">' +
           '<h3 class="set-card-name">' + rug.label + '</h3>' +

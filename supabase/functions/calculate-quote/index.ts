@@ -35,23 +35,29 @@ const ACC_LABEL: Record<string, string> = {
   "welldora:komodin": "Komodin",
   "welldora:makyajMasasi": "Makyaj Masası",
   "welldora:makyajAynasi": "Makyaj Aynası",
-  "welldora:puf": "Cario Puf",
+  "welldora:puf": "Roli Puf",
+  "shared:puf": "Roli Puf",
+  "welldora:carioPuf": "Cario Puf",
+  "shared:carioPuf": "Cario Puf",
   "monerra:sifonyer": "Yüksek Şifonyer",
   "monerra:komodin": "Komodin",
   "monerra:makyajMasasi": "Makyaj Masası",
   "monerra:makyajAynasi": "Makyaj Aynası",
-  "monerra:puf": "Cario Puf",
+  "monerra:puf": "Roli Puf",
+  "monerra:carioPuf": "Cario Puf",
   "travina:sifonyer": "Yüksek Şifonyer",
   "travina:komodin": "Komodin",
   "travina:makyajMasasi": "Makyaj Masası",
   "travina:makyajAynasi": "Makyaj Aynası",
-  "travina:puf": "Cario Puf",
+  "travina:puf": "Roli Puf",
+  "travina:carioPuf": "Cario Puf",
   "cappadocia:sifonyer3": "3'lü Şifonyer",
   "cappadocia:sifonyer4": "4'lü Şifonyer",
   "cappadocia:komodin": "Komodin",
   "cappadocia:makyajMasasi": "Makyaj Masası",
   "cappadocia:makyajAynasi": "Ayna",
-  "cappadocia:puf": "Cario Puf",
+  "cappadocia:puf": "Roli Puf",
+  "cappadocia:carioPuf": "Cario Puf",
 };
 
 const SET_LABEL: Record<string, string> = {
@@ -103,23 +109,29 @@ function fallbackCatalog(): Catalog {
       "welldora:komodin": 8827.50,
       "welldora:makyajMasasi": 18728.25,
       "welldora:makyajAynasi": 3497.11,
-      "welldora:puf": 4455.79,
+      "welldora:puf": 4725.12,
+      "shared:puf": 4725.12,
+      "welldora:carioPuf": 4455.79,
+      "shared:carioPuf": 4455.79,
       "monerra:sifonyer": 11516.75,
       "monerra:komodin": 8239.01,
       "monerra:makyajMasasi": 16242.26,
       "monerra:makyajAynasi": 3881.78,
-      "monerra:puf": 4455.79,
+      "monerra:puf": 4725.12,
+      "monerra:carioPuf": 4455.79,
       "travina:sifonyer": 11872.47,
       "travina:komodin": 7650.50,
       "travina:makyajMasasi": 15758.30,
       "travina:makyajAynasi": 3228.23,
-      "travina:puf": 4455.79,
+      "travina:puf": 4725.12,
+      "travina:carioPuf": 4455.79,
       "cappadocia:sifonyer3": 11577.23,
       "cappadocia:sifonyer4": 13268.87,
       "cappadocia:komodin": 9056.25,
       "cappadocia:makyajMasasi": 18986.68,
       "cappadocia:makyajAynasi": 4569.27,
-      "cappadocia:puf": 4455.79,
+      "cappadocia:puf": 4725.12,
+      "cappadocia:carioPuf": 4455.79,
     },
     sets: {
       "welldora:magnasand": {
@@ -228,8 +240,9 @@ function overlayDbItems(catalog: Catalog, items: Record<string, unknown>[]) {
       const seriesId = String(it.series_id || "");
       const key = String(it.accessory_key || "");
       const price = num(it.price);
-      if (!seriesId || !key || price == null) continue;
-      catalog.accessories[seriesId + ":" + key] = price;
+      if (!key || price == null) continue;
+      // series_id boş = tüm modellere ortak (kilitlemeyen) aksesuar
+      catalog.accessories[(seriesId || "shared") + ":" + key] = price;
     } else if (type === "set") {
       const seriesId = String(it.series_id || "");
       const key = String(it.accessory_key || "");
@@ -403,14 +416,17 @@ Deno.serve(async (req) => {
       const qty = Math.max(0, Math.round(Number(a?.qty) || 0));
       if (!parsed || !qty) continue;
       const key = parsed.seriesId + ":" + parsed.finishId;
-      const unit = catalog.accessories[key];
+      let unit = catalog.accessories[key];
+      if (unit == null && parsed.seriesId === "shared") {
+        unit = catalog.accessories["welldora:" + parsed.finishId];
+      }
       if (unit == null) continue;
       const lineTotal = unit * qty;
       accTotal += lineTotal;
-      const seriesLabel = SERIES_LABEL[parsed.seriesId] || parsed.seriesId;
-      const label = ACC_LABEL[key] || parsed.finishId;
+      const seriesLabel = SERIES_LABEL[parsed.seriesId] || "";
+      const label = ACC_LABEL[key] || ACC_LABEL["welldora:" + parsed.finishId] || parsed.finishId;
       lineItems.push({
-        label: seriesLabel + " · " + label,
+        label: seriesLabel ? (seriesLabel + " · " + label) : label,
         qty,
         unitPrice: unit,
         lineTotal,
