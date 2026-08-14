@@ -270,8 +270,8 @@
     <form class="login-card" id="login-form">
       <h1>Üretici paneli</h1>
       <p>Mağaza kullanım istatistikleri ve Excel ile fiyat güncelleme.</p>
-      <label for="email">E-posta</label>
-      <input id="email" type="email" required autocomplete="username" value="sezer@gmail.com">
+      <label for="email">Kullanıcı adı</label>
+      <input id="email" type="email" required autocomplete="username" value="sezerginyurek@gmail.com">
       <label for="password">Şifre</label>
       <input id="password" type="password" required autocomplete="current-password">
       <p class="err" id="login-err"></p>
@@ -567,23 +567,32 @@
     <section class="panel hidden" id="tab-admins">
       <div class="price-box">
         <p class="hint" id="admin-manage-hint">
-          Yeni yöneticiye davet e-postası gider. Rastgele yazılan bir adres panele giremez; kişi gerçek gelen kutusundaki bağlantıya tıklayıp şifre belirlemeden giriş açılmaz.
+          Yeni yöneticiyi burada kullanıcı adı ve şifre ile siz oluşturursunuz. Mail gitmez; kişi bu bilgilerle panele girer.
+          Aynı kullanıcı adı ile tekrar kaydetmek şifreyi günceller.
           Yetki kaldırmak hesabı silmez; yalnızca admin paneline giremez.
-          Yönetici ekleme ve çıkarma yalnızca ana yöneticide vardır.
+          Yönetici ekleme ve çıkarma yalnızca ana yöneticiye açıktır.
         </p>
         <div class="card" id="admin-create-card">
-          <h2>Admin davet et</h2>
+          <h2>Yönetici ekle</h2>
           <form id="admin-create-form" class="admin-form">
             <div>
               <label for="admin-new-name">Ad</label>
               <input id="admin-new-name" type="text" required autocomplete="off" placeholder="Ad Soyad">
             </div>
             <div>
-              <label for="admin-new-email">E-posta</label>
+              <label for="admin-new-email">Kullanıcı adı (e-posta)</label>
               <input id="admin-new-email" type="email" required autocomplete="off" placeholder="george.a@example.org">
             </div>
+            <div>
+              <label for="admin-new-pass">Şifre (en az 8 karakter)</label>
+              <input id="admin-new-pass" type="password" required minlength="8" autocomplete="new-password">
+            </div>
+            <div>
+              <label for="admin-new-pass2">Şifre tekrar</label>
+              <input id="admin-new-pass2" type="password" required minlength="8" autocomplete="new-password">
+            </div>
             <div class="full">
-              <button class="btn btn-primary" type="submit" style="width:auto">Davet gönder</button>
+              <button class="btn btn-primary" type="submit" style="width:auto">Yönetici ekle</button>
             </div>
           </form>
           <p class="err" id="admin-create-err"></p>
@@ -1743,14 +1752,15 @@
     const c = String(code || '');
     if (c === 'not_manager') return 'Yönetici ekleme/çıkarma yalnızca ana yöneticiye açık.';
     if (c === 'not_authenticated' || c === 'not_admin') return 'Bu işlem için admin girişi gerekir.';
-    if (c === 'invalid_email') return 'Geçerli bir e-posta girin.';
+    if (c === 'invalid_email') return 'Geçerli bir kullanıcı adı (e-posta) girin.';
     if (c === 'invalid_name') return 'Ad gerekli.';
-    if (c === 'invite_failed') return 'Davet e-postası gönderilemedi. Adresi ve spam klasörünü kontrol edin.';
-    return c || 'Davet gönderilemedi.';
-  }
-
-  function adminRedirectTo() {
-    return 'https://dolap-konfigurator.vercel.app/admin/';
+    if (c === 'invalid_password') return 'Şifre en az 8 karakter olmalı.';
+    if (c === 'create_failed' || c === 'password_update_failed') return 'Hesap oluşturulamadı. Kullanıcı adı ve şifreyi kontrol edin.';
+    if (c === 'invite_failed') return 'Yönetici eklenemedi.';
+    if (c === 'email_rate_limit' || /rate limit|non-2xx/i.test(c)) {
+      return 'İşlem tamamlanamadı. Birkaç dakika sonra tekrar deneyin.';
+    }
+    return c || 'Yönetici eklenemedi.';
   }
 
   function waitForAdminAuth() {
@@ -1801,19 +1811,10 @@
       const isSelf = a.user_id === selfId;
       const isManager = !!a.can_manage_admins;
       const confirmed = !!a.email_confirmed;
-      const status = confirmed
-        ? 'Onaylandı'
-        : '<span class="muted">Davet bekleniyor</span>';
+      const status = confirmed ? 'Aktif' : '<span class="muted">Şifre yok</span>';
       const parts = [];
       if (isSelf) parts.push('<span class="muted">Siz</span>');
       else if (isManager) parts.push('<span class="muted">Ana yönetici</span>');
-      if (canManage && !confirmed && a.email) {
-        parts.push(
-          '<button type="button" class="btn btn-ghost btn-compact" data-admin-resend="' +
-          escapeHtml(a.email) + '" data-admin-resend-name="' +
-          escapeHtml(a.display_name || '') + '">Daveti tekrar gönder</button>'
-        );
-      }
       if (canManage && !isSelf && !isManager) {
         parts.push(
           '<button type="button" class="btn btn-danger btn-compact" data-admin-revoke="' +
@@ -1862,21 +1863,12 @@
   }
 
   document.getElementById('admin-rows')?.addEventListener('click', (e) => {
-    const resend = e.target.closest('[data-admin-resend]');
-    if (resend) {
-      inviteAdmin(
-        resend.getAttribute('data-admin-resend-name') || '',
-        resend.getAttribute('data-admin-resend') || '',
-        resend
-      );
-      return;
-    }
     const btn = e.target.closest('[data-admin-revoke]');
     if (!btn) return;
     revokeAdmin(btn.getAttribute('data-admin-revoke'));
   });
 
-  async function inviteAdmin(display_name, email, btn) {
+  async function createAdmin(display_name, email, password, btn) {
     const errEl = document.getElementById('admin-create-err');
     const okEl = document.getElementById('admin-create-ok');
     if (errEl) errEl.textContent = '';
@@ -1884,18 +1876,16 @@
     if (btn) btn.disabled = true;
     try {
       const { data, error } = await sb.functions.invoke('create-admin', {
-        body: { display_name, email, redirect_to: adminRedirectTo() }
+        body: { display_name, email, password }
       });
       if (error || !data || !data.ok) {
         if (errEl) errEl.textContent = adminCreateErrorText((data && data.error) || (error && error.message));
         return false;
       }
       if (okEl) {
-        okEl.textContent = (data.invited || data.resent)
-          ? ('Davet gönderildi: ' + email + '. Gerçek gelen kutusundaki bağlantıya tıklamadan giriş açılamaz.')
-          : (data.already_admin
-            ? (display_name + ' zaten onaylı admin; ad güncellendi.')
-            : (display_name + ' eklendi.'));
+        okEl.textContent = data.already_admin
+          ? (display_name + ' zaten yönetici; şifre güncellendi. Kullanıcı adı ve şifre ile girebilir.')
+          : (display_name + ' eklendi. Kullanıcı adı ve şifre ile panele girebilir.');
         okEl.classList.remove('hidden');
       }
       await loadAdmins();
@@ -1907,10 +1897,21 @@
 
   document.getElementById('admin-create-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const errEl = document.getElementById('admin-create-err');
     const display_name = document.getElementById('admin-new-name').value.trim();
     const email = document.getElementById('admin-new-email').value.trim();
+    const pass = document.getElementById('admin-new-pass').value;
+    const pass2 = document.getElementById('admin-new-pass2').value;
+    if (pass.length < 8) {
+      if (errEl) errEl.textContent = 'Şifre en az 8 karakter olmalı.';
+      return;
+    }
+    if (pass !== pass2) {
+      if (errEl) errEl.textContent = 'Şifreler eşleşmiyor.';
+      return;
+    }
     const btn = e.target.querySelector('button[type="submit"]');
-    const ok = await inviteAdmin(display_name, email, btn);
+    const ok = await createAdmin(display_name, email, pass, btn);
     if (ok) document.getElementById('admin-create-form').reset();
   });
 

@@ -7,17 +7,11 @@ const cors = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const DEFAULT_REDIRECT = "https://dolap-konfigurator.vercel.app/admin/";
-
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...cors, "Content-Type": "application/json" },
   });
-}
-
-function adminRedirect(_raw: unknown) {
-  return DEFAULT_REDIRECT;
 }
 
 Deno.serve(async (req) => {
@@ -60,61 +54,54 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const email = String(body?.email || "").trim().toLowerCase();
     const displayName = String(body?.display_name || "").trim();
-    const redirectTo = adminRedirect(body?.redirect_to);
+    const password = String(body?.password || "");
 
     if (!email || !email.includes("@")) {
-      return json({ ok: false, error: "invalid_email" }, 400);
+      return json({ ok: false, error: "invalid_email" });
     }
     if (!displayName) {
-      return json({ ok: false, error: "invalid_name" }, 400);
+      return json({ ok: false, error: "invalid_name" });
+    }
+    if (password.length < 8) {
+      return json({ ok: false, error: "invalid_password" });
     }
 
     const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
     if (listed.error) {
-      return json({ ok: false, error: listed.error.message || "lookup_failed" }, 400);
+      return json({ ok: false, error: listed.error.message || "lookup_failed" });
     }
-    let existing = (listed.data?.users || []).find(
+    const existing = (listed.data?.users || []).find(
       (u) => String(u.email || "").toLowerCase() === email,
     );
 
     let userId = existing?.id || "";
-    let invited = false;
-    let resent = false;
 
-    if (!existing || !existing.email_confirmed_at) {
-      const invitedRes = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { display_name: displayName },
-        redirectTo,
+    if (!existing) {
+      const created = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { display_name: displayName },
       });
-      if (invitedRes.data?.user?.id) {
-        userId = invitedRes.data.user.id;
-        invited = true;
-        resent = !!existing;
-      } else {
-        const msg = String(invitedRes.error?.message || "").toLowerCase();
-        if (existing && (msg.includes("already") || msg.includes("registered"))) {
-          const link = await admin.auth.admin.generateLink({
-            type: "invite",
-            email,
-            options: { data: { display_name: displayName }, redirectTo },
-          });
-          if (link.error) {
-            return json({
-              ok: false,
-              error: link.error.message || invitedRes.error?.message || "invite_failed",
-            }, 400);
-          }
-          userId = existing.id;
-          invited = true;
-          resent = true;
-        } else {
-          return json({
-            ok: false,
-            error: invitedRes.error?.message || "invite_failed",
-          }, 400);
-        }
+      if (created.error || !created.data?.user?.id) {
+        return json({
+          ok: false,
+          error: created.error?.message || "create_failed",
+        });
       }
+      userId = created.data.user.id;
     } else {
+      const updated = await admin.auth.admin.updateUserById(existing.id, {
+        password,
+        email_confirm: true,
+        user_metadata: { display_name: displayName },
+      });
+      if (updated.error) {
+        return json({
+          ok: false,
+          error: updated.error.message || "password_update_failed",
+        });
+      }
       userId = existing.id;
     }
 
@@ -131,8 +118,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         already_admin: true,
-        invited,
-        resent,
+        password_set: true,
         email,
         display_name: displayName,
       });
@@ -144,18 +130,17 @@ Deno.serve(async (req) => {
       can_manage_admins: false,
     });
     if (insErr) {
-      return json({ ok: false, error: insErr.message || "profile_failed" }, 400);
+      return json({ ok: false, error: insErr.message || "profile_failed" });
     }
 
     return json({
       ok: true,
       already_admin: false,
-      invited,
-      resent,
+      password_set: true,
       email,
       display_name: displayName,
     });
   } catch (e) {
-    return json({ ok: false, error: String((e as Error)?.message || e) }, 500);
+    return json({ ok: false, error: String((e as Error)?.message || e) });
   }
 });
