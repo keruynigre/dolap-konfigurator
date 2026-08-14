@@ -271,7 +271,7 @@
       <h1>Üretici paneli</h1>
       <p>Mağaza kullanım istatistikleri ve Excel ile fiyat güncelleme.</p>
       <label for="email">Kullanıcı adı</label>
-      <input id="email" type="email" required autocomplete="username" value="sezerginyurek@gmail.com">
+      <input id="email" type="text" required autocomplete="username" value="sezerginyurek@gmail.com">
       <label for="password">Şifre</label>
       <input id="password" type="password" required autocomplete="current-password">
       <p class="err" id="login-err"></p>
@@ -567,7 +567,7 @@
     <section class="panel hidden" id="tab-admins">
       <div class="price-box">
         <p class="hint" id="admin-manage-hint">
-          Yeni yöneticiyi burada kullanıcı adı ve şifre ile siz oluşturursunuz. Mail gitmez; kişi bu bilgilerle panele girer.
+          Yeni yöneticiyi burada kullanıcı adı ve şifre ile siz oluşturursunuz. Kullanıcı adı e-posta olmak zorunda değil (ör. sezer). Mail gitmez.
           Aynı kullanıcı adı ile tekrar kaydetmek şifreyi günceller.
           Yetki kaldırmak hesabı silmez; yalnızca admin paneline giremez.
           Yönetici ekleme ve çıkarma yalnızca ana yöneticiye açıktır.
@@ -580,8 +580,8 @@
               <input id="admin-new-name" type="text" required autocomplete="off" placeholder="Ad Soyad">
             </div>
             <div>
-              <label for="admin-new-email">Kullanıcı adı (e-posta)</label>
-              <input id="admin-new-email" type="email" required autocomplete="off" placeholder="george.a@example.org">
+              <label for="admin-new-email">Kullanıcı adı</label>
+              <input id="admin-new-email" type="text" required minlength="3" autocomplete="off" placeholder="sezer">
             </div>
             <div>
               <label for="admin-new-pass">Şifre (en az 8 karakter)</label>
@@ -605,7 +605,7 @@
               <thead>
                 <tr>
                   <th>Ad</th>
-                  <th>E-posta</th>
+                  <th>Kullanıcı adı</th>
                   <th>Durum</th>
                   <th>Eklenme</th>
                   <th>İşlem</th>
@@ -629,6 +629,21 @@
       flowType: 'implicit'
     }
   });
+  const ADMIN_LOGIN_DOMAIN = 'admin.dolap.internal';
+  function toAuthEmail(login) {
+    const s = String(login || '').trim().toLowerCase();
+    if (!s) return '';
+    if (s.indexOf('@') !== -1) return s.indexOf('.') !== -1 ? s : '';
+    const user = s.replace(/[^a-z0-9._-]/g, '');
+    if (user.length < 3 || user.length > 32) return '';
+    return user + '@' + ADMIN_LOGIN_DOMAIN;
+  }
+  function toDisplayLogin(email) {
+    const s = String(email || '');
+    const suffix = '@' + ADMIN_LOGIN_DOMAIN;
+    if (s.toLowerCase().slice(-suffix.length) === suffix) return s.slice(0, -suffix.length);
+    return s;
+  }
   const SERIES_LABELS = {
     welldora: 'Welldora',
     monerra: 'Monerra',
@@ -757,7 +772,7 @@
         if (claim.error === 'session_active') {
           loginErr.textContent = 'Bu admin hesabı başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
         } else if (claim.error === 'email_not_confirmed') {
-          loginErr.textContent = 'E-posta henüz onaylanmadı. Gelen kutusundaki davet bağlantısına tıklayın.';
+          loginErr.textContent = 'Hesap henüz aktif değil. Ana yöneticiden şifreyi yeniden kaydetmesini isteyin.';
         } else {
           loginErr.textContent = 'Oturum doğrulanamadı.';
         }
@@ -811,14 +826,18 @@
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     loginErr.textContent = '';
-    const email = document.getElementById('email').value.trim();
+    const email = toAuthEmail(document.getElementById('email').value);
     const password = document.getElementById('password').value;
+    if (!email) {
+      loginErr.textContent = 'Kullanıcı adı en az 3 karakter olmalı (harf, rakam, nokta, _ veya -).';
+      return;
+    }
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) {
       const msg = String(error.message || '').toLowerCase();
       loginErr.textContent = msg.includes('confirm')
-        ? 'E-posta henüz onaylanmadı. Gelen kutusundaki davet bağlantısına tıklayın.'
-        : 'Giriş başarısız. E-posta/şifreyi kontrol edin.';
+        ? 'Hesap henüz aktif değil. Ana yöneticiden şifreyi yeniden kaydetmesini isteyin.'
+        : 'Giriş başarısız. Kullanıcı adı/şifreyi kontrol edin.';
       return;
     }
     const ok = await requireAdmin({ surfaceError: true });
@@ -1752,7 +1771,7 @@
     const c = String(code || '');
     if (c === 'not_manager') return 'Yönetici ekleme/çıkarma yalnızca ana yöneticiye açık.';
     if (c === 'not_authenticated' || c === 'not_admin') return 'Bu işlem için admin girişi gerekir.';
-    if (c === 'invalid_email') return 'Geçerli bir kullanıcı adı (e-posta) girin.';
+    if (c === 'invalid_username' || c === 'invalid_email') return 'Kullanıcı adı en az 3 karakter olmalı (harf, rakam, nokta, _ veya -). E-posta da yazılabilir.';
     if (c === 'invalid_name') return 'Ad gerekli.';
     if (c === 'invalid_password') return 'Şifre en az 8 karakter olmalı.';
     if (c === 'create_failed' || c === 'password_update_failed') return 'Hesap oluşturulamadı. Kullanıcı adı ve şifreyi kontrol edin.';
@@ -1824,7 +1843,7 @@
       const action = parts.length ? parts.join(' ') : '<span class="muted">—</span>';
       return '<tr>' +
         '<td>' + escapeHtml(a.display_name || '—') + (isManager ? ' <span class="muted">(ana)</span>' : '') + '</td>' +
-        '<td>' + escapeHtml(a.email || '—') + '</td>' +
+        '<td>' + escapeHtml(toDisplayLogin(a.email || '')) + '</td>' +
         '<td>' + status + '</td>' +
         '<td>' + escapeHtml(fmtDateTime(a.created_at)) + '</td>' +
         '<td class="price-actions">' + action + '</td>' +
@@ -1876,7 +1895,7 @@
     if (btn) btn.disabled = true;
     try {
       const { data, error } = await sb.functions.invoke('create-admin', {
-        body: { display_name, email, password }
+        body: { display_name, username: email, password }
       });
       if (error || !data || !data.ok) {
         if (errEl) errEl.textContent = adminCreateErrorText((data && data.error) || (error && error.message));

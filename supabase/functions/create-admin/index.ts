@@ -14,6 +14,17 @@ function json(body: unknown, status = 200) {
   });
 }
 
+const ADMIN_LOGIN_DOMAIN = "admin.dolap.internal";
+
+function toAuthEmail(login: string) {
+  const s = String(login || "").trim().toLowerCase();
+  if (!s) return "";
+  if (s.includes("@")) return s.includes(".") ? s : "";
+  const user = s.replace(/[^a-z0-9._-]/g, "");
+  if (user.length < 3 || user.length > 32) return "";
+  return user + "@" + ADMIN_LOGIN_DOMAIN;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: cors });
@@ -52,12 +63,13 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const email = String(body?.email || "").trim().toLowerCase();
+    const login = String(body?.username || body?.email || "").trim().toLowerCase();
+    const email = toAuthEmail(login);
     const displayName = String(body?.display_name || "").trim();
     const password = String(body?.password || "");
 
-    if (!email || !email.includes("@")) {
-      return json({ ok: false, error: "invalid_email" });
+    if (!email) {
+      return json({ ok: false, error: "invalid_username" });
     }
     if (!displayName) {
       return json({ ok: false, error: "invalid_name" });
@@ -81,7 +93,7 @@ Deno.serve(async (req) => {
         email,
         password,
         email_confirm: true,
-        user_metadata: { display_name: displayName },
+        user_metadata: { display_name: displayName, username: login },
       });
       if (created.error || !created.data?.user?.id) {
         return json({
@@ -94,7 +106,7 @@ Deno.serve(async (req) => {
       const updated = await admin.auth.admin.updateUserById(existing.id, {
         password,
         email_confirm: true,
-        user_metadata: { display_name: displayName },
+        user_metadata: { display_name: displayName, username: login },
       });
       if (updated.error) {
         return json({
