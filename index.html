@@ -1276,31 +1276,45 @@
     background: var(--brass); color: var(--brass-ink); cursor: pointer;
     font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 13px;
   }
-  .saved-logins { margin: 0 0 12px; }
-  .saved-logins-label {
-    font-size: 11px; color: var(--ink-dim); margin: 0 0 6px;
+  .login-combo { position: relative; margin-bottom: 10px; }
+  .login-combo input {
+    margin-bottom: 0; padding-right: 36px;
   }
-  .saved-login-row {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  .login-combo.is-open input {
+    border-radius: var(--radius) var(--radius) 0 0;
   }
-  .saved-login-pick {
-    flex: 1; text-align: left; border: 1px solid var(--line); background: var(--bg);
-    color: var(--ink); border-radius: var(--radius); padding: 8px 10px;
-    cursor: pointer; font: inherit; font-size: 13px; margin: 0;
+  .login-combo-clear {
+    position: absolute; top: 0; right: 0; width: 36px; height: 42px;
+    border: none; background: transparent; color: var(--ink-dim);
+    cursor: pointer; font-size: 18px; line-height: 1; margin: 0; padding: 0;
   }
-  .saved-login-pick:hover { border-color: var(--brass); color: var(--brass); }
-  .saved-login-del {
-    flex: 0 0 34px; width: 34px; border: 1px solid var(--line); background: transparent;
-    color: var(--ink-dim); border-radius: var(--radius); cursor: pointer;
-    font-size: 18px; line-height: 1; padding: 6px 0; margin: 0;
+  .login-combo-clear:hover { color: var(--danger-text); }
+  .login-combo-menu {
+    position: absolute; left: 0; right: 0; top: calc(100% - 1px); z-index: 8;
+    background: var(--bg); border: 1px solid var(--line); border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: 0 12px 24px rgba(0,0,0,.28); overflow: hidden;
   }
-  .saved-login-del:hover { border-color: var(--danger-text); color: var(--danger-text); }
-  .saved-logins-clear {
-    display: inline-block; border: none; background: none; color: var(--ink-dim);
-    cursor: pointer; font: inherit; font-size: 12px; text-decoration: underline;
-    padding: 4px 0 2px; margin: 2px 0 0; text-align: left;
+  .login-combo-row { display: flex; align-items: stretch; }
+  .login-combo-row + .login-combo-row { border-top: 1px solid var(--line); }
+  .login-combo-pick {
+    flex: 1; text-align: left; border: none; background: transparent;
+    color: var(--ink); padding: 9px 12px; cursor: pointer;
+    font: inherit; font-size: 13px; margin: 0;
   }
-  .saved-logins-clear:hover { color: var(--brass); }
+  .login-combo-pick:hover { background: rgba(201,163,90,.12); color: var(--brass); }
+  .login-combo-del {
+    width: 36px; border: none; border-left: 1px solid var(--line);
+    background: transparent; color: var(--ink-dim); cursor: pointer;
+    font-size: 16px; margin: 0;
+  }
+  .login-combo-del:hover { color: var(--danger-text); background: rgba(201,139,124,.12); }
+  .login-combo-wipe {
+    display: block; width: 100%; border: none; border-top: 1px solid var(--line);
+    background: var(--panel); color: var(--ink-dim); cursor: pointer;
+    font: inherit; font-size: 11px; padding: 8px 12px; text-align: left; margin: 0;
+  }
+  .login-combo-wipe:hover { color: var(--brass); }
   .dealer-chip {
     display: none; align-items: center; gap: 8px; margin-top: 8px;
     font-size: 12px; color: var(--ink-dim);
@@ -1395,8 +1409,11 @@
     <h2 id="dealer-gate-title">Mağaza girişi</h2>
     <p>Size verilen e-posta ve şifre ile giriş yapın. Yeni üyelik alınmaz; hesaplar yalnızca üretici tarafından tanımlanır.</p>
     <label for="dealer-email">E-posta</label>
-    <input id="dealer-email" name="email" type="email" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ornek@bambi.com" readonly>
-    <div id="dealer-saved-logins" class="saved-logins" hidden></div>
+    <div class="login-combo" id="dealer-email-combo">
+      <input id="dealer-email" name="email" type="email" required autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="ornek@bambi.com" readonly>
+      <button type="button" class="login-combo-clear" id="dealer-email-clear" aria-label="E-postayı sil" hidden>×</button>
+      <div class="login-combo-menu" id="dealer-saved-logins" hidden role="listbox"></div>
+    </div>
     <label for="dealer-password">Şifre</label>
     <input id="dealer-password" name="password" type="password" required autocomplete="off" placeholder="Şifre" readonly>
     <p class="dealer-err" id="dealer-err"></p>
@@ -5901,7 +5918,7 @@
     const setForm = document.getElementById('dealer-set-password-form');
     if (loginForm) loginForm.hidden = false;
     if (setForm) setForm.hidden = true;
-    renderDealerSavedLogins();
+    if (dealerLoginCombo) dealerLoginCombo.sync();
   }
 
   const DEALER_SAVED_LOGINS_KEY = 'dolapDealerSavedLogins';
@@ -5932,60 +5949,129 @@
     persistSavedLogins(key, loadSavedLogins(key).filter((x) => x.toLowerCase() !== String(value || '').toLowerCase()));
   }
 
-  function renderDealerSavedLogins(){
-    const box = document.getElementById('dealer-saved-logins');
-    const emailEl = document.getElementById('dealer-email');
-    const passEl = document.getElementById('dealer-password');
-    if (!box) return;
-    const list = loadSavedLogins(DEALER_SAVED_LOGINS_KEY);
-    box.hidden = false;
-    box.innerHTML = '';
-    if (list.length) {
-      const label = document.createElement('div');
-      label.className = 'saved-logins-label';
-      label.textContent = 'Bu cihazda kayıtlı e-postalar';
-      box.appendChild(label);
+  function bindLoginCombo(opts){
+    const wrap = opts.wrap;
+    const input = opts.input;
+    const passInput = opts.passInput;
+    const menu = opts.menu;
+    const clearBtn = opts.clearBtn;
+    const storageKey = opts.storageKey;
+    if (!wrap || !input || !menu) return { sync: function(){} };
+
+    function syncClearBtn(){
+      if (clearBtn) clearBtn.hidden = !String(input.value || '').length;
+    }
+
+    function hideMenu(){
+      menu.hidden = true;
+      wrap.classList.remove('is-open');
+    }
+
+    function renderMenu(){
+      const q = String(input.value || '').trim().toLowerCase();
+      const all = loadSavedLogins(storageKey);
+      const list = q ? all.filter((v) => v.toLowerCase().includes(q)) : all;
+      menu.innerHTML = '';
       list.forEach((value) => {
         const row = document.createElement('div');
-        row.className = 'saved-login-row';
+        row.className = 'login-combo-row';
         const pick = document.createElement('button');
         pick.type = 'button';
-        pick.className = 'saved-login-pick';
+        pick.className = 'login-combo-pick';
+        pick.setAttribute('role', 'option');
         pick.textContent = value;
-        pick.addEventListener('click', () => {
-          if (emailEl) emailEl.value = value;
-          if (passEl) passEl.value = '';
-          passEl?.focus();
+        pick.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          input.removeAttribute('readonly');
+          input.value = value;
+          if (passInput) passInput.value = '';
+          syncClearBtn();
+          hideMenu();
+          passInput?.focus();
         });
         const del = document.createElement('button');
         del.type = 'button';
-        del.className = 'saved-login-del';
+        del.className = 'login-combo-del';
         del.setAttribute('aria-label', value + ' kaydını sil');
         del.textContent = '×';
-        del.addEventListener('click', () => {
-          forgetSavedLogin(DEALER_SAVED_LOGINS_KEY, value);
-          if (emailEl && emailEl.value === value) emailEl.value = '';
-          if (passEl) passEl.value = '';
-          renderDealerSavedLogins();
+        del.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          forgetSavedLogin(storageKey, value);
+          if (input.value === value) input.value = '';
+          if (passInput) passInput.value = '';
+          syncClearBtn();
+          showMenu();
+          input.focus();
         });
         row.appendChild(pick);
         row.appendChild(del);
-        box.appendChild(row);
+        menu.appendChild(row);
+      });
+      if (all.length) {
+        const wipe = document.createElement('button');
+        wipe.type = 'button';
+        wipe.className = 'login-combo-wipe';
+        wipe.textContent = opts.clearAllLabel || 'Kayıtlı hesapları sil';
+        wipe.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          try { localStorage.removeItem(storageKey); } catch (_) { /* ignore */ }
+          input.value = '';
+          if (passInput) passInput.value = '';
+          syncClearBtn();
+          hideMenu();
+          input.focus();
+        });
+        menu.appendChild(wipe);
+      }
+    }
+
+    function showMenu(){
+      renderMenu();
+      if (!menu.childNodes.length) {
+        hideMenu();
+        return;
+      }
+      menu.hidden = false;
+      wrap.classList.add('is-open');
+    }
+
+    input.addEventListener('focus', showMenu);
+    input.addEventListener('input', () => {
+      syncClearBtn();
+      showMenu();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') hideMenu();
+      if (e.key === 'ArrowDown') showMenu();
+    });
+    document.addEventListener('mousedown', (e) => {
+      if (!wrap.contains(e.target)) hideMenu();
+    });
+    if (clearBtn) {
+      clearBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        input.removeAttribute('readonly');
+        input.value = '';
+        if (passInput) passInput.value = '';
+        syncClearBtn();
+        showMenu();
+        input.focus();
       });
     }
-    const clear = document.createElement('button');
-    clear.type = 'button';
-    clear.className = 'saved-logins-clear';
-    clear.textContent = list.length ? 'Kayıtlı e-postaları sil' : 'Alanın e-postasını sil';
-    clear.addEventListener('click', () => {
-      try { localStorage.removeItem(DEALER_SAVED_LOGINS_KEY); } catch (_) { /* ignore */ }
-      if (emailEl) emailEl.value = '';
-      if (passEl) passEl.value = '';
-      renderDealerSavedLogins();
-      emailEl?.focus();
-    });
-    box.appendChild(clear);
+    syncClearBtn();
+    return { sync: syncClearBtn, hide: hideMenu };
   }
+
+  const dealerLoginCombo = bindLoginCombo({
+    wrap: document.getElementById('dealer-email-combo'),
+    input: document.getElementById('dealer-email'),
+    passInput: document.getElementById('dealer-password'),
+    menu: document.getElementById('dealer-saved-logins'),
+    clearBtn: document.getElementById('dealer-email-clear'),
+    storageKey: DEALER_SAVED_LOGINS_KEY,
+    clearAllLabel: 'Kayıtlı e-postaları sil'
+  });
 
   ['dealer-email', 'dealer-password'].forEach((id) => {
     const el = document.getElementById(id);
@@ -6304,7 +6390,7 @@
     }
   }
 
-  renderDealerSavedLogins();
+  dealerLoginCombo.sync();
   bootDealerGate();
 })();
 </script>
