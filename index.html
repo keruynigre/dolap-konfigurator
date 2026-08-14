@@ -725,13 +725,17 @@
 
   .set-price-pending { color: var(--ink-dim); font-size: 10px; }
   .sets-open-btn {
+    display: inline-flex; align-items: center; gap: 8px;
     border: 1px solid var(--brass); background: rgba(201,163,90,.1); color: var(--brass);
     border-radius: var(--radius); padding: 8px 12px; cursor: pointer;
     font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
   }
   .sets-open-btn:hover { background: rgba(201,163,90,.18); }
+  .sets-open-btn .sets-open-icon {
+    width: 16px; height: 16px; flex-shrink: 0; display: block;
+  }
   .sets-open-btn .sets-badge {
-    display: inline-block; margin-left: 6px; min-width: 18px; padding: 1px 6px;
+    display: inline-block; margin-left: 2px; min-width: 18px; padding: 1px 6px;
     border-radius: 999px; background: var(--brass); color: var(--brass-ink);
     font-family: 'Space Mono', monospace; font-size: 10px;
   }
@@ -763,6 +767,10 @@
   }
   .sets-sheet-head h2 {
     margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sets-sheet-head h2 svg {
+    width: 20px; height: 20px; flex-shrink: 0; color: var(--brass);
   }
   .sets-sheet-head p { margin: 4px 0 0; color: var(--ink-dim); font-size: 13px; line-height: 1.4; }
   .sets-sheet-close {
@@ -1552,12 +1560,15 @@
       <div class="canvas-toolbar">
         <div class="canvas-toolbar-actions">
           <button type="button" class="sets-open-btn" id="sets-open-btn">
+            <svg class="sets-open-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18V10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8"/><path d="M3 14h18"/><path d="M5 8V6.5A2.5 2.5 0 0 1 7.5 4h3A2.5 2.5 0 0 1 13 6.5V8"/><path d="M13 8V6.5A2.5 2.5 0 0 1 15.5 4h1A2.5 2.5 0 0 1 19 6.5V8"/><path d="M3 18h18"/></svg>
             Yatak setleri<span class="sets-badge hidden" id="sets-badge">0</span>
           </button>
           <button type="button" class="sets-open-btn" id="acc-open-btn">
+            <svg class="sets-open-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 6h4"/><path d="M10 12h4"/><path d="M10 18h4"/></svg>
             Ek ürünler<span class="sets-badge hidden" id="acc-badge">0</span>
           </button>
           <button type="button" class="sets-open-btn" id="rugs-open-btn">
+            <svg class="sets-open-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6.5" y="9" width="11" height="6" rx="1"/><path d="M8 6V4M12 6V4M16 6V4M8 18v2M12 18v2M16 18v2"/></svg>
             Halılar<span class="sets-badge hidden" id="rugs-badge">0</span>
           </button>
         </div>
@@ -1577,7 +1588,7 @@
   <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="sets-title">
     <div class="sets-sheet-head">
       <div>
-        <h2 id="sets-title">Yatak setleri</h2>
+        <h2 id="sets-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18V10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v8"/><path d="M3 14h18"/><path d="M5 8V6.5A2.5 2.5 0 0 1 7.5 4h3A2.5 2.5 0 0 1 13 6.5V8"/><path d="M13 8V6.5A2.5 2.5 0 0 1 15.5 4h1A2.5 2.5 0 0 1 19 6.5V8"/><path d="M3 18h18"/></svg>Yatak setleri</h2>
         <p id="sets-sub">Modele uygun seti seçin, ölçüyü belirleyin ve teklife ekleyin.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="sets-close">Kapat</button>
@@ -1592,7 +1603,7 @@
   <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="acc-title">
     <div class="sets-sheet-head">
       <div>
-        <h2 id="acc-title">Ek ürünler</h2>
+        <h2 id="acc-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16"/><path d="M4 15h16"/><path d="M10 6h4"/><path d="M10 12h4"/><path d="M10 18h4"/></svg>Ek ürünler</h2>
         <p id="acc-sub">Modele uygun ek ürünü seçip teklife ekleyin.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="acc-close">Kapat</button>
@@ -1607,7 +1618,7 @@
   <div class="sets-sheet" role="dialog" aria-modal="true" aria-labelledby="rugs-title">
     <div class="sets-sheet-head">
       <div>
-        <h2 id="rugs-title">Halılar</h2>
+        <h2 id="rugs-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6.5" y="9" width="11" height="6" rx="1"/><path d="M8 6V4M12 6V4M16 6V4M8 18v2M12 18v2M16 18v2"/></svg>Halılar</h2>
         <p id="rugs-sub">Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="rugs-close">Kapat</button>
@@ -4022,7 +4033,7 @@
       lShelf(h * (5 / 6));
       for (const s of [2, 3, 4]) leftArmShelf(h * (s / 6));
 
-      const yRod = h * (5 / 6) - t - 0.04;
+      const yRod = h * (5 / 6) - t - 0.12;
       const zRod = (pad + d) * 0.5;
       const ra = P(d + 0.02, yRod, zRod);
       const rb = P(xOuter - 0.02, yRod, zRod);
