@@ -305,6 +305,14 @@
     track('design', seriesId);
   }
 
+  /** Teklif formu açıldı (gönderim değil). */
+  function trackQuoteOpen(seriesId) {
+    const sid = seriesId || lastTrackedSeries;
+    if (sid) lastTrackedSeries = sid;
+    track('quote_open', sid || null);
+  }
+
+  /** Eski yardımcı: form gönderimi artık submit_quote_lead ile sayılır. */
   function trackQuote(seriesId) {
     track('quote', seriesId || lastTrackedSeries);
   }
@@ -543,6 +551,7 @@
     logout,
     getSession,
     trackDesign,
+    trackQuoteOpen,
     trackQuote,
     submitQuoteLead,
     listQuoteLeads,

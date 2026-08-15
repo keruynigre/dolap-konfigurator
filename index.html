@@ -3225,6 +3225,9 @@
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
+    if (window.DolapDealer && window.DolapDealer.trackQuoteOpen) {
+      window.DolapDealer.trackQuoteOpen(getLockedDoorSeries() || activeDoorSeries || null);
+    }
   }
 
   function closeQuoteModal(){
