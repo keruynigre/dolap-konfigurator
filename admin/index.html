@@ -1014,10 +1014,35 @@
     document.getElementById('leads-from').value = daysAgoISO(30);
     document.getElementById('leads-to').value = todayISO();
     startAdminTouch();
+    setActiveTab(loadSavedAdminTab());
     await loadStats();
     await loadLeads();
     await loadPriceLogs();
     await loadAdmins();
+  }
+
+  const ADMIN_TAB_KEY = 'dolapAdminActiveTab';
+  const ADMIN_TABS = ['stats', 'leads', 'prices', 'admins'];
+
+  function loadSavedAdminTab() {
+    try {
+      const tab = localStorage.getItem(ADMIN_TAB_KEY);
+      if (ADMIN_TABS.indexOf(tab) !== -1) return tab;
+    } catch (_) { /* ignore */ }
+    return 'stats';
+  }
+
+  function setActiveTab(tab) {
+    const id = ADMIN_TABS.indexOf(tab) !== -1 ? tab : 'stats';
+    try { localStorage.setItem(ADMIN_TAB_KEY, id); } catch (_) { /* ignore */ }
+    document.querySelectorAll('.tab').forEach(b => {
+      b.classList.toggle('active', b.dataset.tab === id);
+    });
+    document.getElementById('tab-stats')?.classList.toggle('hidden', id !== 'stats');
+    document.getElementById('tab-leads')?.classList.toggle('hidden', id !== 'leads');
+    document.getElementById('tab-prices')?.classList.toggle('hidden', id !== 'prices');
+    document.getElementById('tab-admins')?.classList.toggle('hidden', id !== 'admins');
+    if (id === 'admins') loadAdmins();
   }
 
   function showPasswordSetup(email) {
@@ -1307,13 +1332,7 @@
 
   document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b === btn));
-      const tab = btn.dataset.tab;
-      document.getElementById('tab-stats').classList.toggle('hidden', tab !== 'stats');
-      document.getElementById('tab-leads').classList.toggle('hidden', tab !== 'leads');
-      document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
-      document.getElementById('tab-admins').classList.toggle('hidden', tab !== 'admins');
-      if (tab === 'admins') loadAdmins();
+      setActiveTab(btn.dataset.tab);
     });
   });
 
