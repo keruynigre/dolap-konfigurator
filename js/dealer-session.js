@@ -298,9 +298,9 @@
     } catch (_) { /* ignore */ }
   }
 
+  /** Tasarım: çağıran taraf (tüm kapaklar dolunca) bir kez tetikler. */
   function trackDesign(seriesId) {
     if (!seriesId) return;
-    if (seriesId === lastTrackedSeries) return;
     lastTrackedSeries = seriesId;
     track('design', seriesId);
   }

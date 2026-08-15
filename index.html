@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hayalindeki dolabı kur</title>
+<title>Hayalindeki Odayı Kur</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -292,10 +292,24 @@
   }
   .series-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
   .series-btn:disabled:hover .series-photo { transform: scale(1.01); }
-  .series-picker.is-locked { grid-template-columns: 1fr; }
-  .series-picker.is-locked .series-btn { aspect-ratio: 16 / 9; min-height: 118px; }
+  .series-picker.is-locked { grid-template-columns: 1fr; margin-bottom: 10px; }
+  .series-picker.is-locked .series-btn {
+    aspect-ratio: auto;
+    height: 52px;
+    min-height: 52px;
+    max-height: 52px;
+  }
+  .series-picker.is-locked .series-btn .series-name {
+    font-size: 12px; letter-spacing: 0.05em; padding: 6px 8px;
+  }
+  .series-picker.is-locked .series-btn .series-photo {
+    object-position: center 28%;
+  }
   .series-lock-hint {
     margin: 0 0 10px; font-size: 11px; color: var(--brass); line-height: 1.4;
+  }
+  .sidebar.models-locked .series-lock-hint {
+    margin-bottom: 8px; font-size: 10.5px;
   }
   .series-empty {
     margin: 0 0 16px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
@@ -386,6 +400,31 @@
   .canvas-stack {
     display: flex; flex-direction: column; align-items: flex-start; gap: 22px; width: max-content;
   }
+  /* Dar dolap + yatak: yan yana, taban hizası */
+  .canvas-main-row {
+    display: flex; flex-direction: row; align-items: flex-end; gap: 28px;
+    width: max-content; max-width: none;
+  }
+  .canvas-main-row .sets-row.is-beside-wardrobe {
+    margin-top: 0; padding-left: 0;
+    /* PNG alt boşluğu + gölge; dolap tabanı ile görsel hiza */
+    transform: translateY(-28px);
+  }
+  .canvas-main-row .sets-row.is-beside-wardrobe .accessory-stage {
+    position: relative;
+  }
+  .canvas-main-row .sets-row.is-beside-wardrobe .acc-cap {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    margin-top: 10px; white-space: nowrap; width: max-content;
+  }
+  @media (max-width: 700px) {
+    .canvas-main-row {
+      flex-direction: column; align-items: flex-start; gap: 18px;
+    }
+    .canvas-main-row .sets-row.is-beside-wardrobe .acc-cap {
+      position: static; transform: none; margin-top: 8px; left: auto;
+    }
+  }
   .accessories-row {
     display: flex; align-items: flex-end; gap: 18px;
     padding-left: 44px; width: max-content;
@@ -403,7 +442,7 @@
   .accessory-stage[data-key="sifonyer"] img,
   .accessory-stage[data-key="sifonyer3"] img,
   .accessory-stage[data-key="sifonyer4"] img { max-width: 130px; max-height: 300px; }
-  .accessory-stage[data-key="komodin"] img { max-width: 150px; max-height: 170px; }
+  .accessory-stage[data-key="komodin"] img { max-width: 110px; max-height: 125px; }
   .accessory-stage[data-key="puf"] img,
   .accessory-stage[data-key="carioPuf"] img { max-width: 110px; max-height: 130px; }
   .accessory-stage[data-key="makyajMasasi"] img { max-width: 200px; max-height: 160px; }
@@ -819,6 +858,9 @@
   .set-card-media.has-hover .rug-shot.is-alt { opacity: 0; }
   .set-card:hover .set-card-media.has-hover .rug-shot.is-main { opacity: 0; }
   .set-card:hover .set-card-media.has-hover .rug-shot.is-alt { opacity: 1; }
+  /* Seçili halıda detay (2.) görsel ön planda */
+  .set-card.selected .set-card-media.has-hover .rug-shot.is-main { opacity: 0; }
+  .set-card.selected .set-card-media.has-hover .rug-shot.is-alt { opacity: 1; }
   .set-card-media.has-gallery {
     position: relative; overflow: hidden;
     background-image: none !important;
@@ -846,18 +888,6 @@
     transform: scale(1.15);
     box-shadow: 0 0 0 1px rgba(201,163,90,0.55);
   }
-  .accessory-stage.is-rug .rug-shot-wrap {
-    position: relative; width: 100%; max-width: 240px;
-  }
-  .accessory-stage.is-rug .rug-shot-wrap img {
-    display: block; width: 100%; height: auto; max-width: 240px;
-    transition: opacity 0.28s ease;
-  }
-  .accessory-stage.is-rug .rug-shot-wrap .rug-shot.is-alt {
-    position: absolute; left: 0; top: 0; opacity: 0;
-  }
-  .accessory-stage.is-rug:hover .rug-shot-wrap .rug-shot.is-main { opacity: 0; }
-  .accessory-stage.is-rug:hover .rug-shot-wrap .rug-shot.is-alt { opacity: 1; }
   .set-card-body { padding: 12px 12px 14px; }
   .set-card-name { margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 600; }
   .set-card-price { margin: 4px 0 10px; font-family: 'Space Mono', monospace; font-size: 12px; color: var(--brass); }
@@ -898,20 +928,14 @@
     max-width: min(280px, 48vw); max-height: 160px; width: auto; height: auto;
     filter: drop-shadow(0 8px 16px rgba(0,0,0,0.28));
   }
-  .accessory-stage.is-rug .rug-shot-wrap {
-    max-width: min(280px, 48vw);
-  }
-  .accessory-stage.is-rug .rug-shot-wrap img {
-    max-width: min(280px, 48vw); max-height: 160px;
-  }
   html[data-theme="light"] .accessory-stage.is-rug img {
     filter:
       drop-shadow(0 8px 12px rgba(42, 36, 28, 0.16))
       drop-shadow(0 16px 22px rgba(42, 36, 28, 0.12));
   }
-  .accessory-stage.is-bed-set { min-width: min(312px, 52vw); }
+  .accessory-stage.is-bed-set { min-width: min(281px, 47vw); }
   .accessory-stage.is-bed-set img {
-    max-width: min(416px, 55vw); max-height: 325px; width: auto; height: auto;
+    max-width: min(374px, 50vw); max-height: 293px; width: auto; height: auto;
     filter: drop-shadow(0 10px 22px rgba(0,0,0,0.32));
   }
   html[data-theme="light"] .accessory-stage.is-bed-set img {
@@ -1563,7 +1587,7 @@
   <header>
     <div class="header-bar">
       <div class="header-lead">
-        <h1>Hayalindeki dolabı kur</h1>
+        <h1>Hayalindeki Odayı Kur</h1>
         <div class="dealer-chip" id="dealer-chip">
           <span>Mağaza: <strong id="dealer-chip-name">—</strong></span>
           <button type="button" class="dealer-leads-btn" id="dealer-leads-btn" title="İşaret bekleyen teklifler">
@@ -1689,7 +1713,7 @@
     <div class="sets-sheet-head">
       <div>
         <h2 id="rugs-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><rect x="6.5" y="9" width="11" height="6" rx="1"/><path d="M8 6V4M12 6V4M16 6V4M8 18v2M12 18v2M16 18v2"/></svg>Halılar</h2>
-        <p id="rugs-sub">Halıyı seçip teklife ekleyin. Kartın üzerine gelince detay görseli açılır.</p>
+        <p id="rugs-sub">Halıyı seçip teklife ekleyin. Seçilince detay görseli öne gelir.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="rugs-close">Kapat</button>
     </div>
@@ -2309,6 +2333,8 @@
   };
   let remoteQuoteSeq = 0;
   let remoteQuoteTimer = null;
+  /** Admin hunisi: tüm kapaklar dolu iken bir kez say; eksik olunca sıfırlanır. */
+  let wardrobeDesignWasComplete = false;
   const els = new Map();
 
   function getSelectedSet(ref){
@@ -2468,7 +2494,21 @@
   /** Teklif: tüm gövdelerin kapakları dolu olmalı; gövde yoksa set/ek ürün yeterli. */
   function isQuoteReady(){
     if (!modules.length) return hasSelectedAccessories() || hasSelectedSets() || hasSelectedRugs();
-    return modules.every(mod => mod.doors.every(d => !!d.material));
+    return isWardrobeDesignComplete();
+  }
+
+  /** Admin “Tasarım”: sahnedeki her gövdenin tüm kapakları dolu. */
+  function isWardrobeDesignComplete(){
+    return modules.length > 0 && modules.every(mod => mod.doors.every(d => !!d.material));
+  }
+
+  /** Eksik → tam geçişinde design_count +1 (aynı tamamlanmış halde kapak değiştirmek sayılmaz). */
+  function maybeTrackWardrobeDesign(seriesId){
+    const complete = isWardrobeDesignComplete();
+    if (complete && !wardrobeDesignWasComplete && seriesId && window.DolapDealer) {
+      window.DolapDealer.trackDesign(seriesId);
+    }
+    wardrobeDesignWasComplete = complete;
   }
 
   function moduleWidth(mod){
@@ -5228,6 +5268,7 @@
     const mod = makeModule(type, mirrored);
     modules.push(mod);
     selectedId = mod.id;
+    maybeTrackWardrobeDesign(null);
     render({ enterId: mod.id, pulseSeams: true });
   }
 
@@ -5238,6 +5279,7 @@
       setTimeout(() => {
         modules = modules.filter(m => m.id !== id);
         if (selectedId === id) selectedId = null;
+        maybeTrackWardrobeDesign(null);
         render({ pulseSeams: true });
       }, 220);
     }
@@ -5527,7 +5569,7 @@
     syncDoorSeriesUi();
     renderSidebar();
     updatePricingDisplay();
-    if (refSeries && window.DolapDealer) window.DolapDealer.trackDesign(refSeries);
+    maybeTrackWardrobeDesign(refSeries);
   }
 
   function toggleDrawer(modId, on){
@@ -5552,6 +5594,7 @@
     if (!mod?.doors?.[doorIdx]) return;
     mod.doors[doorIdx].material = null;
     selectedId = modId;
+    maybeTrackWardrobeDesign(null);
     render();
   }
 
@@ -6036,32 +6079,26 @@
             '<br>' + priceHtml,
           onRemove: () => bumpRugQty(r.key, -1),
           buildContent: stage => {
-            if (r.img && r.imgHover) {
-              const wrap = document.createElement('div');
-              wrap.className = 'rug-shot-wrap';
-              const main = document.createElement('img');
-              main.className = 'rug-shot is-main';
-              main.src = assetUrl(r.img);
-              main.alt = r.label;
-              const alt = document.createElement('img');
-              alt.className = 'rug-shot is-alt';
-              alt.src = assetUrl(r.imgHover);
-              alt.alt = '';
-              alt.setAttribute('aria-hidden', 'true');
-              wrap.appendChild(main);
-              wrap.appendChild(alt);
-              stage.appendChild(wrap);
-            } else if (r.img) {
-              const img = document.createElement('img');
-              img.src = assetUrl(r.img);
-              img.alt = r.label;
-              stage.appendChild(img);
-            }
+            const src = r.imgHover || r.img;
+            if (!src) return;
+            const img = document.createElement('img');
+            img.src = assetUrl(src);
+            img.alt = r.label;
+            stage.appendChild(img);
           }
         }));
       }
     });
     return row.children.length ? row : null;
+  }
+
+  function canPlaceBedSetsBesideWardrobe(){
+    if (!modules.length) return false;
+    const t = getLayoutTotals();
+    // Köşe düzeni görsel olarak geniş → yatak altta kalsın
+    if (t.mode === 'corner') return false;
+    const doorSlots = modules.reduce((n, m) => n + (BODIES[m.type]?.doors || 0), 0);
+    return doorSlots <= 8;
   }
 
   function render(opts){
@@ -6077,6 +6114,7 @@
     const hasAcc = !!accRow;
     const hasSets = !!setsRow;
     const hasRugs = !!rugsRow;
+    const setsBeside = hasMods && hasSets && canPlaceBedSetsBesideWardrobe();
 
     if (!hasMods && !hasAcc && !hasSets && !hasRugs) {
       canvas.classList.add('empty');
@@ -6089,8 +6127,9 @@
       const stack = document.createElement('div');
       stack.className = 'canvas-stack';
 
+      let composition = null;
       if (hasMods) {
-        const composition = document.createElement('div');
+        composition = document.createElement('div');
         composition.className = 'composition';
 
         const layout = getLayoutTotals();
@@ -6113,12 +6152,28 @@
 
         const dimTotal = buildDimTotalEl(layout);
         composition.insertBefore(dimTotal, row);
-        stack.appendChild(composition);
+
+        if (setsBeside) {
+          const mainRow = document.createElement('div');
+          mainRow.className = 'canvas-main-row';
+          mainRow.appendChild(composition);
+          setsRow.classList.add('is-beside-wardrobe');
+          mainRow.appendChild(setsRow);
+          stack.appendChild(mainRow);
+        } else {
+          stack.appendChild(composition);
+        }
       }
 
-      if (hasAcc) stack.appendChild(accRow);
-      if (hasSets) stack.appendChild(setsRow);
-      if (hasRugs) stack.appendChild(rugsRow);
+      if (hasAcc && hasRugs) {
+        while (rugsRow.firstChild) accRow.appendChild(rugsRow.firstChild);
+        stack.appendChild(accRow);
+      } else if (hasAcc) {
+        stack.appendChild(accRow);
+      } else if (hasRugs) {
+        stack.appendChild(rugsRow);
+      }
+      if (hasSets && !setsBeside) stack.appendChild(setsRow);
       canvas.appendChild(stack);
 
       // Köşe Sol/Sağ ölçüleri DOM'a eklendikten sonra hizala
@@ -6164,6 +6219,7 @@
     const locked = getLockedDoorSeries();
     const visible = locked ? [locked] : DOOR_SERIES_ORDER;
     seriesPicker.classList.toggle('is-locked', !!locked);
+    syncSidebarForSeriesLock(locked);
 
     if (seriesLockHint) {
       if (locked) {
@@ -6512,7 +6568,7 @@
     if (!rugPalette) return;
     if (rugsSub) {
       rugsSub.textContent = RUG_ORDER.length
-        ? 'Halıyı seçip teklife ekleyin. Kartın üzerine gelince detay görseli açılır.'
+        ? 'Halıyı seçip teklife ekleyin. Seçilince detay görseli öne gelir; üzerine gelince genel bakış açılır.'
         : 'Halıyı seçip teklife ekleyin. Görsel ve fiyatlar eklendikçe burada görünür.';
     }
     if (!RUG_ORDER.length) {
@@ -6689,17 +6745,24 @@
   syncThemeToggle();
 
   const SIDEBAR_W_MIN = 300;
+  const SIDEBAR_W_MIN_LOCKED = 200;
+  const SIDEBAR_W_LOCKED = 212;
   const SIDEBAR_W_MAX = 500;
   const SIDEBAR_W_DEFAULT = 320;
   const SIDEBAR_W_KEY = 'dolapSidebarW';
   const sidebarResizer = document.getElementById('sidebar-resizer');
+  let seriesLockSidebarActive = false;
+  let sidebarWidthBeforeLock = null;
 
+  function sidebarMinWidth(){
+    return seriesLockSidebarActive ? SIDEBAR_W_MIN_LOCKED : SIDEBAR_W_MIN;
+  }
   function sidebarResizeMax(){
     const layoutW = layoutEl ? layoutEl.clientWidth : window.innerWidth;
-    return Math.min(SIDEBAR_W_MAX, Math.max(SIDEBAR_W_MIN, Math.round(layoutW * 0.42)));
+    return Math.min(SIDEBAR_W_MAX, Math.max(sidebarMinWidth(), Math.round(layoutW * 0.42)));
   }
   function clampSidebarWidth(px){
-    return Math.round(Math.min(sidebarResizeMax(), Math.max(SIDEBAR_W_MIN, px)));
+    return Math.round(Math.min(sidebarResizeMax(), Math.max(sidebarMinWidth(), px)));
   }
   function currentSidebarWidth(){
     const raw = getComputedStyle(layoutEl).getPropertyValue('--sidebar-w');
@@ -6712,12 +6775,32 @@
     document.documentElement.style.setProperty('--sidebar-w', w + 'px');
     if (sidebarResizer) {
       sidebarResizer.setAttribute('aria-valuenow', String(w));
+      sidebarResizer.setAttribute('aria-valuemin', String(sidebarMinWidth()));
       sidebarResizer.setAttribute('aria-valuemax', String(sidebarResizeMax()));
     }
-    if (persist) {
+    if (persist && !seriesLockSidebarActive) {
       try { localStorage.setItem(SIDEBAR_W_KEY, String(w)); } catch (e) { /* ignore */ }
     }
     return w;
+  }
+  /** Model kilitliyken menüyü daralt; kilit kalkınca önceki genişliğe dön. */
+  function syncSidebarForSeriesLock(locked){
+    if (!layoutEl || !sidebarEl) return;
+    const on = !!locked;
+    layoutEl.classList.toggle('models-locked', on);
+    sidebarEl.classList.toggle('models-locked', on);
+    if (on && !seriesLockSidebarActive) {
+      seriesLockSidebarActive = true;
+      sidebarWidthBeforeLock = currentSidebarWidth();
+      applySidebarWidth(Math.min(sidebarWidthBeforeLock, SIDEBAR_W_LOCKED), false);
+    } else if (!on && seriesLockSidebarActive) {
+      seriesLockSidebarActive = false;
+      const restore = sidebarWidthBeforeLock != null ? sidebarWidthBeforeLock : SIDEBAR_W_DEFAULT;
+      sidebarWidthBeforeLock = null;
+      applySidebarWidth(Math.max(SIDEBAR_W_MIN, restore), true);
+    } else if (sidebarResizer) {
+      sidebarResizer.setAttribute('aria-valuemin', String(sidebarMinWidth()));
+    }
   }
   function initSidebarResize(){
     if (!layoutEl || !sidebarResizer) return;
@@ -6759,13 +6842,13 @@
       window.addEventListener('pointercancel', onPointerUp);
     });
     sidebarResizer.addEventListener('dblclick', () => {
-      applySidebarWidth(SIDEBAR_W_DEFAULT, true);
+      applySidebarWidth(seriesLockSidebarActive ? SIDEBAR_W_LOCKED : SIDEBAR_W_DEFAULT, true);
     });
     sidebarResizer.addEventListener('keydown', (e) => {
       const step = e.shiftKey ? 32 : 16;
       if (e.key === 'ArrowRight') { e.preventDefault(); applySidebarWidth(currentSidebarWidth() + step, true); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); applySidebarWidth(currentSidebarWidth() - step, true); }
-      else if (e.key === 'Home') { e.preventDefault(); applySidebarWidth(SIDEBAR_W_MIN, true); }
+      else if (e.key === 'Home') { e.preventDefault(); applySidebarWidth(sidebarMinWidth(), true); }
       else if (e.key === 'End') { e.preventDefault(); applySidebarWidth(sidebarResizeMax(), true); }
     });
   }
