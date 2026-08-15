@@ -16,6 +16,13 @@
     var token = parsed && (parsed.access_token || (parsed.currentSession && parsed.currentSession.access_token));
     if (token) document.documentElement.classList.add('has-admin-session');
   } catch (e) { /* ignore */ }
+  try {
+    var tab = localStorage.getItem('dolapAdminActiveTab');
+    if (tab !== 'stats' && tab !== 'leads' && tab !== 'prices' && tab !== 'admins') tab = 'stats';
+    document.documentElement.setAttribute('data-admin-tab', tab);
+  } catch (e2) {
+    document.documentElement.setAttribute('data-admin-tab', 'stats');
+  }
 })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -101,6 +108,21 @@
     font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
   }
   .tab.active { color: var(--brass); border-color: var(--line); background: var(--panel-2); }
+  /* İlk boyamada kayıtlı sekme (FOUC yok) */
+  html[data-admin-tab="leads"] .tab[data-tab="stats"],
+  html[data-admin-tab="prices"] .tab[data-tab="stats"],
+  html[data-admin-tab="admins"] .tab[data-tab="stats"] {
+    color: var(--ink-dim); border-color: transparent; background: transparent;
+  }
+  html[data-admin-tab="leads"] .tab[data-tab="leads"],
+  html[data-admin-tab="prices"] .tab[data-tab="prices"],
+  html[data-admin-tab="admins"] .tab[data-tab="admins"] {
+    color: var(--brass); border-color: var(--line); background: var(--panel-2);
+  }
+  html[data-admin-tab]:not([data-admin-tab="stats"]) #tab-stats { display: none !important; }
+  html[data-admin-tab="leads"] #tab-leads { display: block !important; }
+  html[data-admin-tab="prices"] #tab-prices { display: block !important; }
+  html[data-admin-tab="admins"] #tab-admins { display: block !important; }
   .panel { padding: 16px 20px 28px; }
   .filters {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-bottom: 16px;
@@ -1035,6 +1057,7 @@
   function setActiveTab(tab) {
     const id = ADMIN_TABS.indexOf(tab) !== -1 ? tab : 'stats';
     try { localStorage.setItem(ADMIN_TAB_KEY, id); } catch (_) { /* ignore */ }
+    document.documentElement.setAttribute('data-admin-tab', id);
     document.querySelectorAll('.tab').forEach(b => {
       b.classList.toggle('active', b.dataset.tab === id);
     });
