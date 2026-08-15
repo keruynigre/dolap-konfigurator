@@ -1261,6 +1261,33 @@
   .door-picker-hint {
     font-size: 10.5px; color: var(--ink-dim); line-height: 1.35;
   }
+  .door-fill-offer {
+    position: fixed; z-index: 90; left: 50%; bottom: 28px; transform: translateX(-50%);
+    display: none; align-items: center; gap: 10px; flex-wrap: wrap;
+    max-width: min(520px, calc(100vw - 24px));
+    padding: 10px 12px; border-radius: 8px;
+    background: var(--panel); border: 1px solid var(--brass);
+    box-shadow: 0 14px 40px rgba(0,0,0,.38);
+  }
+  .door-fill-offer.is-open { display: flex; }
+  .door-fill-offer-text {
+    font-size: 12.5px; color: var(--ink); line-height: 1.35;
+    font-family: 'Space Grotesk', sans-serif; flex: 1 1 160px;
+  }
+  .door-fill-offer-text strong { color: var(--brass); font-weight: 600; }
+  .door-fill-offer-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .door-fill-offer-btn {
+    border: none; border-radius: 999px; padding: 8px 12px; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600;
+    background: var(--brass); color: var(--brass-ink);
+  }
+  .door-fill-offer-btn:hover { filter: brightness(1.06); }
+  .door-fill-offer-dismiss {
+    border: 1px solid var(--line); background: transparent; color: var(--ink-dim);
+    border-radius: 999px; padding: 7px 10px; cursor: pointer; font-size: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .door-fill-offer-dismiss:hover { border-color: var(--ink-dim); color: var(--ink); }
   @keyframes flip-door { 0% { transform: rotateY(0deg); } 50% { transform: rotateY(90deg); } 100% { transform: rotateY(0deg); } }
   .door-slot .door-content {
     position: absolute; inset: 0;
@@ -5429,7 +5456,7 @@
       '<div class="door-picker-row">' +
         finishOrder.map(id => buildDoorPickerOptionHtml(seriesId, id)).join('') +
       '</div>' +
-      '<div class="door-picker-hint">Kapak seçmek için tıkla</div>';
+      '<div class="door-picker-hint">Seçince bu gövdedeki boş kapaklar da dolar</div>';
 
     document.body.appendChild(picker);
 
@@ -5545,6 +5572,91 @@
     if (typeof renderRugPalette === 'function') renderRugPalette();
   }
 
+  function countEmptyDoors(exceptModId){
+    return modules.reduce((n, m) => {
+      if (exceptModId != null && m.id === exceptModId) return n;
+      return n + m.doors.filter(d => !d.material).length;
+    }, 0);
+  }
+
+  let doorFillOfferTimer = null;
+  let doorFillOfferMaterial = null;
+
+  function dismissDoorFillOffer(){
+    doorFillOfferMaterial = null;
+    if (doorFillOfferTimer) {
+      clearTimeout(doorFillOfferTimer);
+      doorFillOfferTimer = null;
+    }
+    const el = document.getElementById('door-fill-offer');
+    if (el) el.classList.remove('is-open');
+  }
+
+  function offerFillRemainingDoors(materialRef){
+    const empty = countEmptyDoors();
+    if (!empty || !getDoorMaterial(materialRef)) {
+      dismissDoorFillOffer();
+      return;
+    }
+    doorFillOfferMaterial = materialRef;
+    let el = document.getElementById('door-fill-offer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'door-fill-offer';
+      el.className = 'door-fill-offer';
+      el.innerHTML =
+        '<div class="door-fill-offer-text"></div>' +
+        '<div class="door-fill-offer-actions">' +
+          '<button type="button" class="door-fill-offer-btn" data-act="fill">Boş kapakları doldur</button>' +
+          '<button type="button" class="door-fill-offer-dismiss" data-act="dismiss">Vazgeç</button>' +
+        '</div>';
+      document.body.appendChild(el);
+      el.addEventListener('click', e => {
+        const btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        if (btn.dataset.act === 'fill' && doorFillOfferMaterial) {
+          const mat = doorFillOfferMaterial;
+          dismissDoorFillOffer();
+          applyDoorMaterialToEmpty(mat);
+        } else if (btn.dataset.act === 'dismiss') {
+          dismissDoorFillOffer();
+        }
+      });
+    }
+    const label = doorLabel(materialRef) || 'Seçilen kapak';
+    el.querySelector('.door-fill-offer-text').innerHTML =
+      '<strong>' + label + '</strong> ile dolaptaki <strong>' + empty + '</strong> boş kapağı doldurabilirsiniz.';
+    el.classList.add('is-open');
+    if (doorFillOfferTimer) clearTimeout(doorFillOfferTimer);
+    doorFillOfferTimer = setTimeout(dismissDoorFillOffer, 10000);
+  }
+
+  /** Dolaptaki tüm boş kapaklara aynı modeli uygula (dolu olanlara dokunmaz). */
+  function applyDoorMaterialToEmpty(materialRef){
+    if (!getDoorMaterial(materialRef)) return;
+    const refSeries = parseDoorRef(materialRef)?.seriesId;
+    const locked = getLockedDoorSeries();
+    if (locked && refSeries && locked !== refSeries) return;
+    if (refSeries) activeDoorSeries = refSeries;
+
+    let changed = false;
+    modules.forEach(mod => {
+      let local = false;
+      mod.doors.forEach(d => {
+        if (!d.material) {
+          d.material = materialRef;
+          local = true;
+          changed = true;
+        }
+      });
+      if (local) syncDoorHandleDirections(mod);
+    });
+    if (!changed) return;
+    dismissDoorFillOffer();
+    render();
+    maybeTrackWardrobeDesign(refSeries);
+  }
+
   function applyDoorMaterial(modId, doorIdx, materialRef){
     const mod = modules.find(m => m.id === modId);
     if (!mod || !getDoorMaterial(materialRef)) return;
@@ -5553,15 +5665,19 @@
     if (locked && refSeries && locked !== refSeries) return;
     selectedId = modId;
     mod.doors[doorIdx].material = materialRef;
+    // Aynı gövdedeki diğer boş kapakları da doldur (tek tek uğraşılmasın)
+    mod.doors.forEach((d, i) => {
+      if (i !== doorIdx && !d.material) d.material = materialRef;
+    });
     if (refSeries) activeDoorSeries = refSeries;
     syncDoorHandleDirections(mod);
     const el = els.get(modId);
     if (el) {
       const slots = el.querySelectorAll('.door-slot');
       slots.forEach((slot, i) => {
-        if (i === doorIdx) slot.classList.add('flipping');
+        slot.classList.add('flipping');
         fillDoorSlot(slot, mod, i);
-        if (i === doorIdx) setTimeout(() => slot.classList.remove('flipping'), 440);
+        setTimeout(() => slot.classList.remove('flipping'), 440);
       });
     }
     canvas.querySelectorAll('.body-frame').forEach(s => s.classList.remove('selected'));
@@ -5570,6 +5686,7 @@
     renderSidebar();
     updatePricingDisplay();
     maybeTrackWardrobeDesign(refSeries);
+    offerFillRemainingDoors(materialRef);
   }
 
   function toggleDrawer(modId, on){
