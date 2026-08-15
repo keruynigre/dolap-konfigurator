@@ -1574,6 +1574,7 @@
     background: var(--brass); color: var(--brass-ink); border-color: var(--brass); font-weight: 600;
   }
   .lead-row-actions button.lead-lost { color: var(--danger-text); border-color: rgba(201,139,124,.45); }
+  .lead-row-actions button.lead-download { border-color: rgba(201,163,90,.45); color: var(--brass); }
   .lead-row-actions button:disabled { opacity: 0.55; cursor: wait; }
   .leads-err { min-height: 18px; color: var(--danger-text); font-size: 12px; margin: 0 0 8px; }
   .app.is-locked { pointer-events: none; filter: grayscale(0.15); opacity: 0.45; }
@@ -1779,7 +1780,7 @@
     <div class="sets-sheet-head">
       <div>
         <h2 id="leads-title">Tekliflerim</h2>
-        <p id="leads-sub">Satışa dönüşen teklifleri işaretleyin; üretici panelinde dönüşüm görünür.</p>
+        <p id="leads-sub">PDF indirmeyi unuttuysanız buradan indirebilirsiniz. Satış oldu / Satılmadı ile sonucu işaretleyin.</p>
       </div>
       <button type="button" class="sets-sheet-close" id="leads-close">Kapat</button>
     </div>
@@ -3393,6 +3394,7 @@
           rugs: payload.rugs,
           totals: payload.totals,
           lineItems: payload.lineItems,
+          salesRep: payload.salesRep || '',
           discount: {
             listTotal: pricing.listTotal,
             pct: pricing.discountPct,
@@ -7322,6 +7324,7 @@
   const leadsErr = document.getElementById('leads-err');
   const leadsBtn = document.getElementById('dealer-leads-btn');
   const leadsPendingBadge = document.getElementById('leads-pending-badge');
+  let leadsById = {};
 
   function outcomeLabel(outcome){
     if (outcome === 'sold') return 'Satış';
@@ -7338,6 +7341,31 @@
   function setLeadsError(msg){
     if (!leadsErr) return;
     leadsErr.textContent = msg || '';
+  }
+
+  function leadToQuotePayload(lead){
+    if (!lead) return null;
+    const p = (lead.payload && typeof lead.payload === 'object') ? lead.payload : {};
+    const hasItems = Array.isArray(p.lineItems) && p.lineItems.length > 0;
+    const hasTotals = p.totals && typeof p.totals === 'object';
+    if (!hasItems && !hasTotals) return null;
+    return {
+      config: p.config || null,
+      accessories: p.accessories || [],
+      sets: p.sets || [],
+      rugs: p.rugs || [],
+      totals: p.totals || {},
+      lineItems: p.lineItems || [],
+      salesRep: p.salesRep || '',
+      discount: p.discount || null,
+      createdAt: p.createdAt || lead.created_at,
+      customer: {
+        name: lead.customer_name || '',
+        phone: lead.customer_phone || '',
+        email: lead.customer_email || '',
+        note: lead.customer_note || ''
+      }
+    };
   }
 
   function updateOpenLeadsBadge(count){
@@ -7388,6 +7416,7 @@
   async function refreshLeadsList(){
     if (!leadsList) return;
     setLeadsError('');
+    leadsById = {};
     leadsList.innerHTML = '<p class="sets-empty">Yükleniyor…</p>';
     const res = await window.DolapDealer.listQuoteLeads(50);
     if (!res || !res.ok) {
@@ -7405,6 +7434,7 @@
       if (ao !== bo) return ao - bo;
       return String(b.created_at || '').localeCompare(String(a.created_at || ''));
     });
+    leads.forEach(l => { if (l && l.id) leadsById[l.id] = l; });
     const openCount = leads.filter(l => (l.outcome || 'open') === 'open').length;
     updateOpenLeadsBadge(openCount);
     if (!leads.length) {
@@ -7412,7 +7442,7 @@
       return;
     }
     const pendingNote = openCount
-      ? '<p class="leads-err" style="color:var(--brass)">İşaret bekleyen: ' + openCount + ' teklif — Satış oldu veya Satılmadı seçin.</p>'
+      ? '<p class="leads-err" style="color:var(--brass)">İşaret bekleyen: ' + openCount + ' teklif — Satış oldu, Satılmadı veya İndir.</p>'
       : '';
     leadsList.innerHTML = pendingNote + leads.map(l => {
       const outcome = l.outcome || 'open';
@@ -7423,13 +7453,18 @@
       const noteBit = note
         ? ('<p class="lead-row-note"><span class="lbl">Not</span>' + escapeHtml(note) + '</p>')
         : '';
+      const canDownload = !!leadToQuotePayload(l);
       let actions = '';
+      if (canDownload) {
+        actions +=
+          '<button type="button" class="lead-download" data-lead-act="download" data-lead-id="' + escapeHtml(l.id) + '">İndir</button>';
+      }
       if (outcome === 'open') {
-        actions =
+        actions +=
           '<button type="button" class="lead-sold" data-lead-act="sold" data-lead-id="' + escapeHtml(l.id) + '">Satış oldu</button>' +
           '<button type="button" class="lead-lost" data-lead-act="lost" data-lead-id="' + escapeHtml(l.id) + '">Satılmadı</button>';
       } else {
-        actions =
+        actions +=
           '<button type="button" data-lead-act="open" data-lead-id="' + escapeHtml(l.id) + '">Teklife geri al</button>';
       }
       return (
@@ -7449,6 +7484,26 @@
         '</article>'
       );
     }).join('');
+  }
+
+  async function downloadLeadPdf(leadId){
+    setLeadsError('');
+    const lead = leadsById[leadId];
+    const payload = leadToQuotePayload(lead);
+    if (!payload) {
+      setLeadsError('Bu teklif için PDF verisi bulunamadı.');
+      return;
+    }
+    const btns = leadsList ? leadsList.querySelectorAll('button') : [];
+    btns.forEach(b => { b.disabled = true; });
+    try {
+      await downloadQuotePdf(payload);
+    } catch (err) {
+      console.error('Teklif PDF indirme hata', err);
+      setLeadsError('PDF indirilemedi. Tekrar deneyin.');
+    } finally {
+      btns.forEach(b => { b.disabled = false; });
+    }
   }
 
   async function markLeadOutcome(leadId, outcome){
@@ -7481,7 +7536,13 @@
   leadsList?.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-lead-act]');
     if (!btn) return;
-    markLeadOutcome(btn.getAttribute('data-lead-id'), btn.getAttribute('data-lead-act'));
+    const act = btn.getAttribute('data-lead-act');
+    const leadId = btn.getAttribute('data-lead-id');
+    if (act === 'download') {
+      downloadLeadPdf(leadId);
+      return;
+    }
+    markLeadOutcome(leadId, act);
   });
 
   document.getElementById('dealer-logout')?.addEventListener('click', async () => {
