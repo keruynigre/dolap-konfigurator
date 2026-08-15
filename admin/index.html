@@ -794,7 +794,8 @@
           <p class="ok hidden" id="admin-create-ok"></p>
         </div>
         <div class="card">
-          <h2>Yöneticiler</h2>
+          <h2>Yöneticiler <span class="badge ok" id="admin-online-summary" style="margin-left:8px;font-weight:500">Çevrimiçi 0</span></h2>
+          <p class="hint" style="padding:10px 14px 0;margin:0">Çevrimiçi: son 3 dakikada panelde aktif olan yöneticiler. Liste yaklaşık her 30 sn yenilenir.</p>
           <div class="table-wrap" style="max-height:none">
             <table>
               <thead>
@@ -802,6 +803,7 @@
                   <th>Ad</th>
                   <th>Kullanıcı adı</th>
                   <th>Durum</th>
+                  <th>Son görülme</th>
                   <th>Eklenme</th>
                   <th>İşlem</th>
                 </tr>
@@ -886,9 +888,11 @@
     days_since: 1, dealer_count: 1, last_seen_at: 1
   };
   let adminTouchTimer = null;
+  let adminPresenceTimer = null;
   let pendingPasswordSetup = false;
   const ADMIN_DEVICE_KEY = 'dolapAdminDeviceId';
   const ADMIN_TOUCH_MS = 60000;
+  const ADMIN_PRESENCE_MS = 30000;
 
   const loginView = document.getElementById('login-view');
   const appView = document.getElementById('app-view');
@@ -912,6 +916,8 @@
   function stopAdminTouch() {
     if (adminTouchTimer) clearInterval(adminTouchTimer);
     adminTouchTimer = null;
+    if (adminPresenceTimer) clearInterval(adminPresenceTimer);
+    adminPresenceTimer = null;
   }
 
   async function touchAdminSession() {
@@ -930,6 +936,10 @@
     stopAdminTouch();
     touchAdminSession();
     adminTouchTimer = setInterval(touchAdminSession, ADMIN_TOUCH_MS);
+    adminPresenceTimer = setInterval(() => {
+      const tab = document.querySelector('.tab.active');
+      if (tab && tab.dataset.tab === 'admins') loadAdmins();
+    }, ADMIN_PRESENCE_MS);
   }
 
   async function claimAdminSession() {
@@ -1303,6 +1313,7 @@
       document.getElementById('tab-leads').classList.toggle('hidden', tab !== 'leads');
       document.getElementById('tab-prices').classList.toggle('hidden', tab !== 'prices');
       document.getElementById('tab-admins').classList.toggle('hidden', tab !== 'admins');
+      if (tab === 'admins') loadAdmins();
     });
   });
 
@@ -2581,7 +2592,7 @@
       : '';
     const { data, error } = await sb.rpc('admin_list_admins');
     if (error || !data || !data.ok) {
-      body.innerHTML = '<tr><td colspan="5" class="muted">Liste yüklenemedi</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="muted">Liste yüklenemedi</td></tr>';
       return;
     }
     const canManage = !!data.can_manage;
@@ -2592,15 +2603,31 @@
       hint.textContent = 'Yöneticileri görebilirsiniz. Ekleme ve yetki kaldırma yalnızca ana yöneticiye açık.';
     }
     const rows = data.admins || [];
+    const onlineCount = Number(data.online_count);
+    const onlineSummary = document.getElementById('admin-online-summary');
+    if (onlineSummary) {
+      const n = Number.isFinite(onlineCount)
+        ? onlineCount
+        : rows.filter(a => !!a.live).length;
+      onlineSummary.textContent = 'Çevrimiçi ' + n;
+      onlineSummary.classList.toggle('ok', n > 0);
+    }
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="5" class="muted">Kayıt yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="6" class="muted">Kayıt yok</td></tr>';
       return;
     }
     body.innerHTML = rows.map(a => {
       const isSelf = a.user_id === selfId;
       const isManager = !!a.can_manage_admins;
       const confirmed = !!a.email_confirmed;
-      const status = confirmed ? 'Aktif' : '<span class="muted">Şifre yok</span>';
+      const live = !!a.live;
+      let status;
+      if (live) status = '<span class="badge ok">Çevrimiçi</span>';
+      else if (!confirmed) status = '<span class="badge warn">Şifre yok</span>';
+      else status = '<span class="badge">Çevrimdışı</span>';
+      const lastSeen = a.active_session_at
+        ? escapeHtml(fmtDateTime(a.active_session_at))
+        : '<span class="muted">—</span>';
       const parts = [];
       if (isSelf) parts.push('<span class="muted">Siz</span>');
       else if (isManager) parts.push('<span class="muted">Ana yönetici</span>');
@@ -2615,6 +2642,7 @@
         '<td>' + escapeHtml(a.display_name || '—') + (isManager ? ' <span class="muted">(ana)</span>' : '') + '</td>' +
         '<td>' + escapeHtml(toDisplayLogin(a.email || '')) + '</td>' +
         '<td>' + status + '</td>' +
+        '<td>' + lastSeen + '</td>' +
         '<td>' + escapeHtml(fmtDateTime(a.created_at)) + '</td>' +
         '<td class="price-actions">' + action + '</td>' +
       '</tr>';
