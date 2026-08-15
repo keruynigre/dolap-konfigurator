@@ -1876,7 +1876,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="js/supabase-config.js?v=4"></script>
-<script src="js/dealer-session.js?v=18"></script>
+<script src="js/dealer-session.js?v=19"></script>
 <script>
 (function(){
   const CANVAS_W = 667, CANVAS_H = 1000;
@@ -2361,8 +2361,6 @@
   };
   let remoteQuoteSeq = 0;
   let remoteQuoteTimer = null;
-  /** Admin hunisi: tüm kapaklar dolu iken bir kez say; eksik olunca sıfırlanır. */
-  let wardrobeDesignWasComplete = false;
   const els = new Map();
 
   function getSelectedSet(ref){
@@ -2525,18 +2523,9 @@
     return isWardrobeDesignComplete();
   }
 
-  /** Admin “Tasarım”: sahnedeki her gövdenin tüm kapakları dolu. */
+  /** Tüm gövdelerin kapakları dolu mu (teklif butonu için). */
   function isWardrobeDesignComplete(){
     return modules.length > 0 && modules.every(mod => mod.doors.every(d => !!d.material));
-  }
-
-  /** Eksik → tam geçişinde design_count +1 (aynı tamamlanmış halde kapak değiştirmek sayılmaz). */
-  function maybeTrackWardrobeDesign(seriesId){
-    const complete = isWardrobeDesignComplete();
-    if (complete && !wardrobeDesignWasComplete && seriesId && window.DolapDealer) {
-      window.DolapDealer.trackDesign(seriesId);
-    }
-    wardrobeDesignWasComplete = complete;
   }
 
   function moduleWidth(mod){
@@ -3226,8 +3215,11 @@
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
-    if (window.DolapDealer && window.DolapDealer.trackQuoteOpen) {
-      window.DolapDealer.trackQuoteOpen(getLockedDoorSeries() || activeDoorSeries || null);
+    if (window.DolapDealer) {
+      const series = getLockedDoorSeries() || activeDoorSeries || null;
+      // Admin “Tasarım”: Teklif Formu Gönder’e basıldığında sayılır.
+      if (window.DolapDealer.trackDesign) window.DolapDealer.trackDesign(series);
+      if (window.DolapDealer.trackQuoteOpen) window.DolapDealer.trackQuoteOpen(series);
     }
   }
 
@@ -5300,7 +5292,6 @@
     const mod = makeModule(type, mirrored);
     modules.push(mod);
     selectedId = mod.id;
-    maybeTrackWardrobeDesign(null);
     render({ enterId: mod.id, pulseSeams: true });
   }
 
@@ -5311,7 +5302,6 @@
       setTimeout(() => {
         modules = modules.filter(m => m.id !== id);
         if (selectedId === id) selectedId = null;
-        maybeTrackWardrobeDesign(null);
         render({ pulseSeams: true });
       }, 220);
     }
@@ -5659,7 +5649,6 @@
     if (!changed) return;
     dismissDoorFillOffer();
     render();
-    maybeTrackWardrobeDesign(refSeries);
   }
 
   function applyDoorMaterial(modId, doorIdx, materialRef){
@@ -5690,7 +5679,6 @@
     syncDoorSeriesUi();
     renderSidebar();
     updatePricingDisplay();
-    maybeTrackWardrobeDesign(refSeries);
     offerFillRemainingDoors(materialRef);
   }
 
@@ -5716,7 +5704,6 @@
     if (!mod?.doors?.[doorIdx]) return;
     mod.doors[doorIdx].material = null;
     selectedId = modId;
-    maybeTrackWardrobeDesign(null);
     render();
   }
 

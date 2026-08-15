@@ -298,11 +298,11 @@
     } catch (_) { /* ignore */ }
   }
 
-  /** Tasarım: çağıran taraf (tüm kapaklar dolunca) bir kez tetikler. */
+  /** Tasarım: Teklif Formu Gönder tıklanınca (form açılışı). */
   function trackDesign(seriesId) {
-    if (!seriesId) return;
-    lastTrackedSeries = seriesId;
-    track('design', seriesId);
+    const sid = seriesId || lastTrackedSeries || null;
+    if (sid) lastTrackedSeries = sid;
+    track('design', sid);
   }
 
   /** Teklif formu açıldı (gönderim değil). */
