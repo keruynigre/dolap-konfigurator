@@ -91,15 +91,17 @@
   }
 
   async function requireConfirmedAuthUser(sb) {
-    // Önce yerel oturum: getUser() ağ hatasında null dönerse signOut yapmak
-    // sekme değişiminde / uyanmada yanlışlıkla çıkışa yol açıyordu.
+    // Önce yerel oturum. JWT user'da email_confirmed_at bazen gelmez;
+    // !undefined → yanlışlıkla signOut yapıp yenilemede çıkışa yol açıyordu.
     const local = await sb.auth.getSession();
     const localUser = local && local.data && local.data.session && local.data.session.user;
-    if (localUser && localUser.email_confirmed_at) return { ok: true, user: localUser };
-    if (localUser && !localUser.email_confirmed_at) {
-      try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
-      clearSession();
-      return { ok: false, error: 'email_not_confirmed' };
+    if (localUser) {
+      if (localUser.email_confirmed_at === null) {
+        try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+        clearSession();
+        return { ok: false, error: 'email_not_confirmed' };
+      }
+      return { ok: true, user: localUser };
     }
 
     let remoteUser = null;
@@ -110,11 +112,13 @@
     } catch (_) {
       return { ok: false, error: 'auth_check_failed' };
     }
-    if (remoteUser && remoteUser.email_confirmed_at) return { ok: true, user: remoteUser };
-    if (remoteUser && !remoteUser.email_confirmed_at) {
-      try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
-      clearSession();
-      return { ok: false, error: 'email_not_confirmed' };
+    if (remoteUser) {
+      if (remoteUser.email_confirmed_at === null) {
+        try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+        clearSession();
+        return { ok: false, error: 'email_not_confirmed' };
+      }
+      return { ok: true, user: remoteUser };
     }
     return { ok: false, error: 'no_auth' };
   }
@@ -185,6 +189,11 @@
       const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event, session) => {
         if (event === 'INITIAL_SESSION') finish(session);
       });
+      sb.auth.getSession()
+        .then(({ data }) => {
+          if (data && data.session) finish(data.session);
+        })
+        .catch(() => { /* wait for INITIAL_SESSION / timeout */ });
       setTimeout(() => {
         sb.auth.getSession()
           .then(({ data }) => finish(data && data.session))
@@ -255,16 +264,27 @@
   async function resumeAuthSession() {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
-    // Auth storage hydrate olmadan getSession null dönerse oturumu silme.
     let session = await waitForAuthInit(sb);
     if (!session) {
       const again = await sb.auth.getSession();
       session = again && again.data && again.data.session;
     }
     if (!session) {
-      // Yerel bayi kaydı kalsın; auth yoksa kapıyı göster ama agresif silme yapma.
       return { ok: false, error: 'no_auth' };
     }
+
+    // Yenilemede: yerel bayi oturumu hâlâ açıksa login_auth'a gitmeden devam et.
+    const existing = loadSession();
+    if (existing && existing.session_id) {
+      try {
+        const { data } = await sb.rpc('dealer_heartbeat', { p_session_id: existing.session_id });
+        if (data && data.ok) {
+          startHeartbeat();
+          return { ok: true, session: existing, resumed: true };
+        }
+      } catch (_) { /* fall through to login_auth */ }
+    }
+
     return startDealerSessionFromAuth();
   }
 
