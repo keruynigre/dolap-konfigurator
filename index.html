@@ -7284,7 +7284,7 @@
   }
 
   function dealerLoginErrorText(code){
-    if (code === 'session_active') return 'Bu hesap başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+    if (code === 'session_active') return 'Bu hesap başka bir bilgisayarda açık (son 15 dk). Önce o oturumdan çıkış yapın veya 15 dk bekleyin.';
     if (code === 'device_required') return 'Cihaz doğrulanamadı. Tarayıcıda localStorage açık olmalı.';
     if (code === 'email_not_confirmed') return 'E-posta henüz doğrulanmadı. Gelen kutunuzdaki onay linkine tıklayın. Mail yoksa bu hesap kullanılamaz.';
     if (code === 'auth_link_invalid') return 'Davet / onay linki geçersiz veya süresi dolmuş. Panelden yeni bir davet gönderin.';
