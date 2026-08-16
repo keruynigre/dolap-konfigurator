@@ -11,6 +11,8 @@
   let heartbeatTimer = null;
   let lastTrackedSeries = null;
   let onSessionInvalid = null;
+  let heartbeatInFlight = false;
+  let rebindInFlight = null;
 
   function getClient() {
     if (client) return client;
@@ -89,12 +91,32 @@
   }
 
   async function requireConfirmedAuthUser(sb) {
-    const { data } = await sb.auth.getUser();
-    const user = data && data.user;
-    if (user && user.email_confirmed_at) return { ok: true, user };
-    try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
-    clearSession();
-    return { ok: false, error: 'email_not_confirmed' };
+    // Önce yerel oturum: getUser() ağ hatasında null dönerse signOut yapmak
+    // sekme değişiminde / uyanmada yanlışlıkla çıkışa yol açıyordu.
+    const local = await sb.auth.getSession();
+    const localUser = local && local.data && local.data.session && local.data.session.user;
+    if (localUser && localUser.email_confirmed_at) return { ok: true, user: localUser };
+    if (localUser && !localUser.email_confirmed_at) {
+      try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+      clearSession();
+      return { ok: false, error: 'email_not_confirmed' };
+    }
+
+    let remoteUser = null;
+    try {
+      const { data, error } = await sb.auth.getUser();
+      if (error) return { ok: false, error: 'auth_check_failed' };
+      remoteUser = data && data.user;
+    } catch (_) {
+      return { ok: false, error: 'auth_check_failed' };
+    }
+    if (remoteUser && remoteUser.email_confirmed_at) return { ok: true, user: remoteUser };
+    if (remoteUser && !remoteUser.email_confirmed_at) {
+      try { await sb.auth.signOut(); } catch (_) { /* ignore */ }
+      clearSession();
+      return { ok: false, error: 'email_not_confirmed' };
+    }
+    return { ok: false, error: 'no_auth' };
   }
 
   async function startDealerSessionFromAuth() {
@@ -233,9 +255,14 @@
   async function resumeAuthSession() {
     const sb = getClient();
     if (!sb) return { ok: false, error: 'supabase_unavailable' };
-    const { data } = await sb.auth.getSession();
-    if (!data || !data.session) {
-      clearSession();
+    // Auth storage hydrate olmadan getSession null dönerse oturumu silme.
+    let session = await waitForAuthInit(sb);
+    if (!session) {
+      const again = await sb.auth.getSession();
+      session = again && again.data && again.data.session;
+    }
+    if (!session) {
+      // Yerel bayi kaydı kalsın; auth yoksa kapıyı göster ama agresif silme yapma.
       return { ok: false, error: 'no_auth' };
     }
     return startDealerSessionFromAuth();
@@ -256,16 +283,35 @@
     }
   }
 
+  async function rebindDealerSession() {
+    if (rebindInFlight) return rebindInFlight;
+    rebindInFlight = (async () => {
+      const res = await startDealerSessionFromAuth();
+      return !!(res && res.ok);
+    })().finally(() => {
+      rebindInFlight = null;
+    });
+    return rebindInFlight;
+  }
+
   async function heartbeat() {
+    if (heartbeatInFlight) return;
     const s = loadSession();
     const sb = getClient();
     if (!s || !sb) return;
+    if (document.visibilityState === 'hidden') return;
+    heartbeatInFlight = true;
     try {
       const { data } = await sb.rpc('dealer_heartbeat', { p_session_id: s.session_id });
-      if (data && data.ok === false && (data.error === 'session_not_found')) {
-        invalidateLocalSession();
+      if (data && data.ok === false && data.error === 'session_not_found') {
+        // Sekme yarışı / takeover sonrası: önce aynı auth ile oturumu yeniden bağla.
+        const rebound = await rebindDealerSession();
+        if (!rebound) invalidateLocalSession();
       }
-    } catch (_) { /* ignore */ }
+    } catch (_) { /* ignore transient network */ }
+    finally {
+      heartbeatInFlight = false;
+    }
   }
 
   function startHeartbeat() {
