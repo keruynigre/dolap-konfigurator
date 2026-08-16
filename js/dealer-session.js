@@ -298,7 +298,7 @@
     } catch (_) { /* ignore */ }
   }
 
-  /** Tasarım: Teklif Formu Gönder tıklanınca (form açılışı). */
+  /** Tasarım: Teklifi Gönder başarılı olunca 1 sayılır. */
   function trackDesign(seriesId) {
     const sid = seriesId || lastTrackedSeries || null;
     if (sid) lastTrackedSeries = sid;

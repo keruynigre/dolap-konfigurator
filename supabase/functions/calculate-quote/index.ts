@@ -207,19 +207,13 @@ function priceByPairRule(count: number, single: number, pair: number) {
   return pairs * pair + odd * single;
 }
 
-/** Sipariş: 2+2+… (+1). Çiftli adedi = çift paketi, tekli = kalan 1. */
+/** Sipariş: Çiftli = çift paketi, Tekli = kalan 1. */
 function doorOrderSplit(count: number) {
   const n = Math.max(0, Math.round(Number(count) || 0));
-  const pairs = Math.floor(n / 2);
-  const singles = n % 2;
-  const parts: string[] = [];
-  for (let i = 0; i < pairs; i++) parts.push("2");
-  if (singles) parts.push("1");
   return {
-    pairs,
-    singles,
+    pairs: Math.floor(n / 2),
+    singles: n % 2,
     panelCount: n,
-    composition: parts.join("+") || "0",
   };
 }
 
@@ -424,7 +418,7 @@ Deno.serve(async (req) => {
       // Sipariş kolaylığı: aynı çeşit kapak 2'nin katları (çiftli) + kalan 1 (tekli)
       if (split.pairs > 0) {
         lineItems.push({
-          label: g.label + " Kapak · Çiftli (" + split.composition + ")",
+          label: g.label + " Kapak · Çiftli",
           qty: split.pairs,
           unitPrice: g.pair,
           lineTotal: split.pairs * g.pair,
@@ -434,7 +428,7 @@ Deno.serve(async (req) => {
       }
       if (split.singles > 0) {
         lineItems.push({
-          label: g.label + " Kapak · Tekli (" + split.composition + ")",
+          label: g.label + " Kapak · Tekli",
           qty: split.singles,
           unitPrice: g.single,
           lineTotal: split.singles * g.single,
