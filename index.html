@@ -6901,17 +6901,13 @@
   syncThemeToggle();
 
   const SIDEBAR_W_MIN = 300;
-  const SIDEBAR_W_MIN_LOCKED = 200;
-  const SIDEBAR_W_LOCKED = 212;
   const SIDEBAR_W_MAX = 500;
   const SIDEBAR_W_DEFAULT = 320;
   const SIDEBAR_W_KEY = 'dolapSidebarW';
   const sidebarResizer = document.getElementById('sidebar-resizer');
-  let seriesLockSidebarActive = false;
-  let sidebarWidthBeforeLock = null;
 
   function sidebarMinWidth(){
-    return seriesLockSidebarActive ? SIDEBAR_W_MIN_LOCKED : SIDEBAR_W_MIN;
+    return SIDEBAR_W_MIN;
   }
   function sidebarResizeMax(){
     const layoutW = layoutEl ? layoutEl.clientWidth : window.innerWidth;
@@ -6934,28 +6930,20 @@
       sidebarResizer.setAttribute('aria-valuemin', String(sidebarMinWidth()));
       sidebarResizer.setAttribute('aria-valuemax', String(sidebarResizeMax()));
     }
-    if (persist && !seriesLockSidebarActive) {
+    if (persist) {
       try { localStorage.setItem(SIDEBAR_W_KEY, String(w)); } catch (e) { /* ignore */ }
     }
     return w;
   }
-  /** Model kilitliyken menüyü daralt; kilit kalkınca önceki genişliğe dön. */
+  /** Model kilitliyken ipucu sınıfı; genişlik daraltılmaz (min 300px aynı kalır). */
   function syncSidebarForSeriesLock(locked){
     if (!layoutEl || !sidebarEl) return;
     const on = !!locked;
     layoutEl.classList.toggle('models-locked', on);
     sidebarEl.classList.toggle('models-locked', on);
-    if (on && !seriesLockSidebarActive) {
-      seriesLockSidebarActive = true;
-      sidebarWidthBeforeLock = currentSidebarWidth();
-      applySidebarWidth(Math.min(sidebarWidthBeforeLock, SIDEBAR_W_LOCKED), false);
-    } else if (!on && seriesLockSidebarActive) {
-      seriesLockSidebarActive = false;
-      const restore = sidebarWidthBeforeLock != null ? sidebarWidthBeforeLock : SIDEBAR_W_DEFAULT;
-      sidebarWidthBeforeLock = null;
-      applySidebarWidth(Math.max(SIDEBAR_W_MIN, restore), true);
-    } else if (sidebarResizer) {
+    if (sidebarResizer) {
       sidebarResizer.setAttribute('aria-valuemin', String(sidebarMinWidth()));
+      sidebarResizer.setAttribute('aria-valuemax', String(sidebarResizeMax()));
     }
   }
   function initSidebarResize(){
@@ -6998,7 +6986,7 @@
       window.addEventListener('pointercancel', onPointerUp);
     });
     sidebarResizer.addEventListener('dblclick', () => {
-      applySidebarWidth(seriesLockSidebarActive ? SIDEBAR_W_LOCKED : SIDEBAR_W_DEFAULT, true);
+      applySidebarWidth(SIDEBAR_W_DEFAULT, true);
     });
     sidebarResizer.addEventListener('keydown', (e) => {
       const step = e.shiftKey ? 32 : 16;
