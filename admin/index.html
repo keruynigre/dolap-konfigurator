@@ -149,6 +149,56 @@
     margin-top: 6px; font-family: 'Space Mono', monospace; font-size: 20px; color: var(--brass);
   }
   .kpi .sub { margin-top: 4px; font-size: 11px; color: var(--ink-dim); }
+  .pie-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px;
+    margin: 0 0 14px;
+  }
+  @media (max-width: 1100px) { .pie-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 640px) { .pie-grid { grid-template-columns: 1fr; } }
+  .pie-card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .pie-card h3 {
+    margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600;
+  }
+  .pie-body { display: flex; align-items: center; gap: 14px; }
+  .pie-donut {
+    position: relative; width: 108px; height: 108px; flex: 0 0 108px;
+    border-radius: 50%;
+    background: conic-gradient(var(--line) 0deg 360deg);
+  }
+  .pie-donut::after {
+    content: ''; position: absolute; inset: 26px; border-radius: 50%;
+    background: var(--panel); border: 1px solid var(--line);
+  }
+  .pie-center {
+    position: absolute; inset: 0; z-index: 1; display: grid; place-items: center;
+    text-align: center; pointer-events: none;
+  }
+  .pie-center .pie-main {
+    font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; color: var(--brass);
+    line-height: 1.1;
+  }
+  .pie-center .pie-sub {
+    margin-top: 2px; font-size: 10px; color: var(--ink-dim); text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .pie-legend { display: flex; flex-direction: column; gap: 7px; min-width: 0; flex: 1; }
+  .pie-legend-row {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink);
+    min-width: 0;
+  }
+  .pie-swatch {
+    width: 10px; height: 10px; border-radius: 2px; flex: 0 0 auto;
+  }
+  .pie-legend-row .pie-name {
+    flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .pie-legend-row .pie-val {
+    font-family: 'Space Mono', monospace; font-size: 11px; color: var(--brass); white-space: nowrap;
+  }
+  .pie-empty { font-size: 12px; color: var(--ink-dim); }
   .funnel {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
   }
@@ -570,6 +620,12 @@
         <div class="kpi"><div class="lbl">Halı</div><div class="val" id="insight-rugs-pct">%0</div><div class="sub" id="insight-rugs-sub">0 teklif</div></div>
         <div class="kpi"><div class="lbl">Köşe düzen</div><div class="val" id="insight-corner-pct">%0</div><div class="sub" id="insight-corner-sub">0 teklif</div></div>
         <div class="kpi"><div class="lbl">Düz düzen</div><div class="val" id="insight-flat-count">0</div><div class="sub">teklif</div></div>
+      </div>
+      <div class="pie-grid" id="insight-pie-grid" aria-label="Ürün ve model payları">
+        <div class="pie-card" id="pie-sets"></div>
+        <div class="pie-card" id="pie-accessories"></div>
+        <div class="pie-card" id="pie-rugs"></div>
+        <div class="pie-card" id="pie-series"></div>
       </div>
       <div class="grid-2" style="margin-bottom:14px">
         <div class="card">
@@ -2052,6 +2108,112 @@
     document.getElementById('insight-corner-pct').textContent = '%' + (s.corner_pct != null ? s.corner_pct : 0);
     document.getElementById('insight-corner-sub').textContent = (s.corner_count || 0) + ' teklif';
     document.getElementById('insight-flat-count').textContent = s.flat_count || 0;
+    renderInsightPies(s);
+  }
+
+  const PIE_COLORS = ['#c9a35a', '#8fbf8a', '#7eb6d6', '#c98b7c', '#b8a0d4', '#d4b483', '#6ea8a0', '#a8a49b'];
+
+  function clampPct(n) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return 0;
+    return Math.max(0, Math.min(100, v));
+  }
+
+  function pieConic(slices) {
+    const total = slices.reduce((sum, s) => sum + Math.max(0, Number(s.value) || 0), 0);
+    if (total <= 0) return 'conic-gradient(var(--line) 0deg 360deg)';
+    let deg = 0;
+    const parts = [];
+    slices.forEach((s, i) => {
+      const share = (Math.max(0, Number(s.value) || 0) / total) * 360;
+      const color = s.color || PIE_COLORS[i % PIE_COLORS.length];
+      const from = deg;
+      deg += share;
+      parts.push(color + ' ' + from.toFixed(2) + 'deg ' + deg.toFixed(2) + 'deg');
+    });
+    if (deg < 359.5) parts.push('var(--line) ' + deg.toFixed(2) + 'deg 360deg');
+    return 'conic-gradient(' + parts.join(', ') + ')';
+  }
+
+  function renderPieCard(el, title, slices, centerLabel, centerSub) {
+    if (!el) return;
+    const total = slices.reduce((sum, s) => sum + Math.max(0, Number(s.value) || 0), 0);
+    if (total <= 0) {
+      el.innerHTML =
+        '<h3>' + escapeHtml(title) + '</h3>' +
+        '<div class="pie-empty">Bu aralıkta veri yok</div>';
+      return;
+    }
+    const legend = slices.map((s, i) => {
+      const pct = Math.round((Math.max(0, Number(s.value) || 0) * 1000) / total) / 10;
+      const color = s.color || PIE_COLORS[i % PIE_COLORS.length];
+      return (
+        '<div class="pie-legend-row">' +
+          '<span class="pie-swatch" style="background:' + color + '"></span>' +
+          '<span class="pie-name" title="' + escapeHtml(s.label) + '">' + escapeHtml(s.label) + '</span>' +
+          '<span class="pie-val">%' + pct + '</span>' +
+        '</div>'
+      );
+    }).join('');
+    el.innerHTML =
+      '<h3>' + escapeHtml(title) + '</h3>' +
+      '<div class="pie-body">' +
+        '<div class="pie-donut" style="background:' + pieConic(slices) + '">' +
+          '<div class="pie-center">' +
+            '<div><div class="pie-main">' + escapeHtml(centerLabel || '') + '</div>' +
+            '<div class="pie-sub">' + escapeHtml(centerSub || '') + '</div></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pie-legend">' + legend + '</div>' +
+      '</div>';
+  }
+
+  function binaryAddonSlices(yesPct, yesLabel, noLabel) {
+    const yes = clampPct(yesPct);
+    const no = Math.round((100 - yes) * 10) / 10;
+    return [
+      { label: yesLabel || 'Var', value: yes, color: '#c9a35a' },
+      { label: noLabel || 'Yok', value: no, color: '#4a463d' }
+    ];
+  }
+
+  function renderInsightPies(summary) {
+    const s = summary || {};
+    const leadCount = Number(s.lead_count) || 0;
+    const addonOrEmpty = (pct, yesLabel, noLabel, centerSub) => {
+      if (leadCount <= 0) return { slices: [], center: '%0', sub: centerSub };
+      return {
+        slices: binaryAddonSlices(pct, yesLabel, noLabel),
+        center: '%' + clampPct(pct),
+        sub: centerSub
+      };
+    };
+    const sets = addonOrEmpty(s.with_sets_pct, 'Setli', 'Setsiz', 'setli');
+    renderPieCard(document.getElementById('pie-sets'), 'Yatak seti', sets.slices, sets.center, sets.sub);
+    const acc = addonOrEmpty(s.with_accessories_pct, 'Ek ürünlü', 'Ek ürünsüz', 'ek ürün');
+    renderPieCard(document.getElementById('pie-accessories'), 'Ek ürün', acc.slices, acc.center, acc.sub);
+    const rugs = addonOrEmpty(s.with_rugs_pct, 'Halılı', 'Halısız', 'halılı');
+    renderPieCard(document.getElementById('pie-rugs'), 'Halı', rugs.slices, rugs.center, rugs.sub);
+
+    const seriesSlices = (leadsSeriesCache || [])
+      .map(row => ({
+        label: SERIES_LABELS[row.series_id] || row.series_id || '—',
+        value: Number(row.lead_count) || 0
+      }))
+      .filter(x => x.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .map((row, i) => Object.assign(row, { color: PIE_COLORS[i % PIE_COLORS.length] }));
+    const seriesTotal = seriesSlices.reduce((n, x) => n + x.value, 0);
+    const topShare = seriesTotal
+      ? Math.round((seriesSlices[0].value * 1000) / seriesTotal) / 10
+      : 0;
+    renderPieCard(
+      document.getElementById('pie-series'),
+      'Dolap modeli',
+      seriesSlices,
+      seriesSlices.length ? ('%' + topShare) : '%0',
+      seriesSlices.length ? seriesSlices[0].label : 'pay'
+    );
   }
 
   function outcomeLabel(outcome) {
