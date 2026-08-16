@@ -931,7 +931,10 @@
       localStorage.setItem(ADMIN_DEVICE_KEY, id);
       return id;
     } catch (_) {
-      return 'adev-fallback-' + String(Date.now());
+      if (!getAdminDeviceId._fallback) {
+        getAdminDeviceId._fallback = 'adev-fallback-' + String(Date.now());
+      }
+      return getAdminDeviceId._fallback;
     }
   }
 
@@ -944,14 +947,34 @@
 
   async function touchAdminSession() {
     const { data, error } = await sb.rpc('admin_touch_session', { p_device_id: getAdminDeviceId() });
-    if (error || !data || !data.ok) {
+    if (data && data.ok) return true;
+
+    // Geçici ağ / boş device: önce yeniden claim et, hemen çıkış yapma.
+    const code = (data && data.error) || (error && error.message) || '';
+    if (code === 'session_taken' || code === 'forbidden' || !data) {
+      const claim = await claimAdminSession();
+      if (claim.ok) {
+        const again = await sb.rpc('admin_touch_session', { p_device_id: getAdminDeviceId() });
+        if (again.data && again.data.ok) return true;
+      }
+      if (claim.error === 'session_active') {
+        stopAdminTouch();
+        await sb.auth.signOut();
+        showLogin();
+        loginErr.textContent = 'Bu admin hesabı başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
+        return false;
+      }
+    }
+
+    // Kalıcı cihaz çakışması dışında yenilemede oturumu düşürme
+    if (code === 'session_taken') {
       stopAdminTouch();
       await sb.auth.signOut();
       showLogin();
       loginErr.textContent = 'Oturum başka bir bilgisayara taşındı veya sona erdi.';
       return false;
     }
-    return true;
+    return false;
   }
 
   function startAdminTouch() {
@@ -999,7 +1022,12 @@
     const { data: { session } } = await sb.auth.getSession();
     if (!session) return false;
     const { data, error } = await sb.from('admin_profiles').select('user_id, display_name').eq('user_id', session.user.id).maybeSingle();
-    if (error || !data) {
+    if (error) {
+      // Ağ / RLS geçici hatasında çıkış yapma
+      if (opts.surfaceError) loginErr.textContent = 'Admin doğrulanamadı. Sayfayı yenileyin.';
+      return false;
+    }
+    if (!data) {
       await sb.auth.signOut();
       return false;
     }
@@ -1010,7 +1038,6 @@
         showPasswordSetup(session.user.email);
         return false;
       }
-      await sb.auth.signOut();
       if (opts.surfaceError) {
         if (claim.error === 'session_active') {
           loginErr.textContent = 'Bu admin hesabı başka bir bilgisayarda açık. Önce o oturumdan çıkış yapın.';
@@ -1019,6 +1046,10 @@
         } else {
           loginErr.textContent = 'Oturum doğrulanamadı.';
         }
+      }
+      // session_active dışındaki claim hatalarında auth'u silme (yenilemede düşmesin)
+      if (claim.error === 'session_active' || claim.error === 'not_admin') {
+        await sb.auth.signOut();
       }
       return false;
     }
@@ -2615,8 +2646,14 @@
         resolve(session || null);
       };
       const { data: { subscription: sub } } = sb.auth.onAuthStateChange((event, session) => {
-        if (event === 'INITIAL_SESSION') finish(session);
+        // null INITIAL_SESSION ile erken bitirme — yenilemede yanlış çıkışa yol açıyordu
+        if (event === 'INITIAL_SESSION' && session) finish(session);
       });
+      sb.auth.getSession()
+        .then(({ data }) => {
+          if (data && data.session) finish(data.session);
+        })
+        .catch(() => { /* timeout */ });
       setTimeout(() => {
         sb.auth.getSession()
           .then(({ data }) => finish(data && data.session))
