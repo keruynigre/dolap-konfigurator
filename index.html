@@ -2725,12 +2725,10 @@
     const items = buildQuoteLineItems();
     const listHtml = items.length
       ? '<div class="q-list">' + items.map(item => {
-          const unit = String(item.unit || '').trim();
-          const qtyLabel = unit ? ('× ' + item.qty + ' ' + unit) : ('× ' + item.qty);
           return (
           '<div class="q-row">' +
             '<span class="q-name">' + escapeHtml(item.label) + '</span>' +
-            '<span class="q-qty">' + escapeHtml(qtyLabel) + '</span>' +
+            '<span class="q-qty">× ' + escapeHtml(String(item.qty)) + '</span>' +
             '<span class="q-price">' + escapeHtml(priceFmt.format(item.lineTotal)) + '</span>' +
           '</div>'
           );
@@ -3021,14 +3019,10 @@
 
     const rowsHtml = items.length
       ? items.map(item => {
-          const unit = String(item.unit || '').trim();
-          const qtyLabel = unit
-            ? ('× ' + item.qty + ' ' + unit)
-            : ('× ' + item.qty);
           return (
           '<tr>' +
             '<td>' + escapeHtml(item.label) + '</td>' +
-            '<td class="num">' + escapeHtml(qtyLabel) + '</td>' +
+            '<td class="num">× ' + escapeHtml(String(item.qty)) + '</td>' +
             '<td class="num">' + escapeHtml(priceFmt.format(item.lineTotal)) + '</td>' +
           '</tr>'
           );
