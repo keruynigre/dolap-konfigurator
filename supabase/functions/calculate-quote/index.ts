@@ -207,6 +207,22 @@ function priceByPairRule(count: number, single: number, pair: number) {
   return pairs * pair + odd * single;
 }
 
+/** Sipariş: 2+2+… (+1). Çiftli adedi = çift paketi, tekli = kalan 1. */
+function doorOrderSplit(count: number) {
+  const n = Math.max(0, Math.round(Number(count) || 0));
+  const pairs = Math.floor(n / 2);
+  const singles = n % 2;
+  const parts: string[] = [];
+  for (let i = 0; i < pairs; i++) parts.push("2");
+  if (singles) parts.push("1");
+  return {
+    pairs,
+    singles,
+    panelCount: n,
+    composition: parts.join("+") || "0",
+  };
+}
+
 function parseRef(ref: unknown): { seriesId: string; finishId: string } | null {
   const raw = String(ref || "").trim();
   if (!raw) return null;
@@ -334,6 +350,8 @@ Deno.serve(async (req) => {
       qty: number;
       unitPrice: number;
       lineTotal: number;
+      unit?: string;
+      doorPanels?: number;
     }> = [];
 
     let bodyTotal = 0;
@@ -400,14 +418,30 @@ Deno.serve(async (req) => {
 
     let doorsTotal = 0;
     for (const g of Object.values(doorGroups)) {
+      const split = doorOrderSplit(g.qty);
       const lineTotal = priceByPairRule(g.qty, g.single, g.pair);
       doorsTotal += lineTotal;
-      lineItems.push({
-        label: g.label + " Kapak",
-        qty: g.qty,
-        unitPrice: g.single,
-        lineTotal,
-      });
+      // Sipariş kolaylığı: aynı çeşit kapak 2'nin katları (çiftli) + kalan 1 (tekli)
+      if (split.pairs > 0) {
+        lineItems.push({
+          label: g.label + " Kapak · Çiftli (" + split.composition + ")",
+          qty: split.pairs,
+          unitPrice: g.pair,
+          lineTotal: split.pairs * g.pair,
+          unit: "çiftli",
+          doorPanels: split.pairs * 2,
+        });
+      }
+      if (split.singles > 0) {
+        lineItems.push({
+          label: g.label + " Kapak · Tekli (" + split.composition + ")",
+          qty: split.singles,
+          unitPrice: g.single,
+          lineTotal: split.singles * g.single,
+          unit: "tekli",
+          doorPanels: split.singles,
+        });
+      }
     }
 
     let accTotal = 0;

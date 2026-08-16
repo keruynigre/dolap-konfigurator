@@ -2560,9 +2560,10 @@
   }
 
   function buildQuoteLineItems(){
-    const items = (remoteQuote.lineItems || []).filter(it =>
+    const raw = (remoteQuote.lineItems || []).filter(it =>
       !String(it.label || '').startsWith('Halı · ')
     );
+    const items = expandDoorLineItemsForOrder(raw);
     listSelectedRugs().forEach(r => {
       if (r.price == null || !r.qty) return;
       items.push({
@@ -2573,6 +2574,56 @@
       });
     });
     return items;
+  }
+
+  /** Aynı çeşit kapak: 2+2+…(+1) → çiftli paket + tekli satır (sipariş kolaylığı). */
+  function expandDoorLineItemsForOrder(items){
+    const out = [];
+    (items || []).forEach(it => {
+      const label = String(it.label || '');
+      const unit = String(it.unit || '').trim();
+      const alreadySplit = unit === 'çiftli' || unit === 'tekli' ||
+        /Kapak · Çiftli/i.test(label) || /Kapak · Tekli/i.test(label);
+      if (alreadySplit || !/Kapak$/i.test(label.trim())) {
+        out.push(it);
+        return;
+      }
+      const qty = Math.max(0, Math.round(Number(it.qty) || 0));
+      if (!qty) return;
+      const pairs = Math.floor(qty / 2);
+      const singles = qty % 2;
+      const parts = [];
+      for (let i = 0; i < pairs; i++) parts.push('2');
+      if (singles) parts.push('1');
+      const composition = parts.join('+') || '0';
+      const singlePrice = Number(it.unitPrice) || 0;
+      const lineTotal = Number(it.lineTotal) || 0;
+      const pairPrice = pairs > 0
+        ? Math.round(((lineTotal - singles * singlePrice) / pairs) * 100) / 100
+        : 0;
+      const base = label.replace(/\s*Kapak\s*$/i, '').trim();
+      if (pairs > 0) {
+        out.push({
+          label: base + ' Kapak · Çiftli (' + composition + ')',
+          qty: pairs,
+          unitPrice: pairPrice,
+          lineTotal: Math.round(pairs * pairPrice * 100) / 100,
+          unit: 'çiftli',
+          doorPanels: pairs * 2
+        });
+      }
+      if (singles > 0) {
+        out.push({
+          label: base + ' Kapak · Tekli (' + composition + ')',
+          qty: singles,
+          unitPrice: singlePrice,
+          lineTotal: Math.round(singles * singlePrice * 100) / 100,
+          unit: 'tekli',
+          doorPanels: singles
+        });
+      }
+    });
+    return out;
   }
 
   function roundQuoteMoney(n){
@@ -2677,13 +2728,17 @@
     const d = getQuoteDiscount();
     const items = buildQuoteLineItems();
     const listHtml = items.length
-      ? '<div class="q-list">' + items.map(item =>
+      ? '<div class="q-list">' + items.map(item => {
+          const unit = String(item.unit || '').trim();
+          const qtyLabel = unit ? ('× ' + item.qty + ' ' + unit) : ('× ' + item.qty);
+          return (
           '<div class="q-row">' +
             '<span class="q-name">' + escapeHtml(item.label) + '</span>' +
-            '<span class="q-qty">× ' + item.qty + '</span>' +
+            '<span class="q-qty">' + escapeHtml(qtyLabel) + '</span>' +
             '<span class="q-price">' + escapeHtml(priceFmt.format(item.lineTotal)) + '</span>' +
           '</div>'
-        ).join('') + '</div>'
+          );
+        }).join('') + '</div>'
       : '<div>Ürün seçilmedi</div>';
 
     const dimLine = !modules.length
@@ -2969,13 +3024,19 @@
     const salesRep = String(payload.salesRep || '').trim();
 
     const rowsHtml = items.length
-      ? items.map(item =>
+      ? items.map(item => {
+          const unit = String(item.unit || '').trim();
+          const qtyLabel = unit
+            ? ('× ' + item.qty + ' ' + unit)
+            : ('× ' + item.qty);
+          return (
           '<tr>' +
             '<td>' + escapeHtml(item.label) + '</td>' +
-            '<td class="num">× ' + item.qty + '</td>' +
+            '<td class="num">' + escapeHtml(qtyLabel) + '</td>' +
             '<td class="num">' + escapeHtml(priceFmt.format(item.lineTotal)) + '</td>' +
           '</tr>'
-        ).join('')
+          );
+        }).join('')
       : '<tr><td colspan="3" class="muted">Ürün seçilmedi</td></tr>';
 
     // html2canvas için grid/flex yerine tablo; stil ayrı eklenir (iç style yakalamayı bozar)
