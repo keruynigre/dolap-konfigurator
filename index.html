@@ -6253,9 +6253,6 @@
 
   function canPlaceBedSetsBesideWardrobe(){
     if (!modules.length) return false;
-    const t = getLayoutTotals();
-    // Köşe düzeni görsel olarak geniş → yatak altta kalsın
-    if (t.mode === 'corner') return false;
     const doorSlots = modules.reduce((n, m) => n + (BODIES[m.type]?.doors || 0), 0);
     return doorSlots <= 12;
   }
