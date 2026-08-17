@@ -3683,8 +3683,6 @@
         setQuoteError(quoteLeadErrorMessage(res && res.error));
         return;
       }
-      // Admin “Tasarım”: Teklifi Gönder başarılı olunca 1 sayılır.
-      if (window.DolapDealer.trackDesign) window.DolapDealer.trackDesign(series);
       openQuotePreview(payload);
       if (typeof syncOpenLeadsBadge === 'function') syncOpenLeadsBadge();
     } catch (err) {

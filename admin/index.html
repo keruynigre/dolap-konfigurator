@@ -200,7 +200,7 @@
   }
   .pie-empty { font-size: 12px; color: var(--ink-dim); }
   .funnel {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px;
   }
   @media (max-width: 900px) { .funnel { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 700px) { .funnel { grid-template-columns: 1fr; } }
@@ -452,26 +452,20 @@
           <div class="step-rate">başlangıç</div>
         </div>
         <div class="funnel-step">
-          <div class="step-lbl">2 · Tasarım</div>
-          <div class="step-val" id="funnel-designs">0</div>
-          <div class="step-rate" id="funnel-s2d">%0 dönüşüm</div>
-        </div>
-        <div class="funnel-step">
-          <div class="step-lbl">3 · Form açıldı</div>
+          <div class="step-lbl">2 · Form açıldı</div>
           <div class="step-val" id="funnel-quote-opens">0</div>
-          <div class="step-rate" id="funnel-d2o">tasarımdan %0</div>
+          <div class="step-rate" id="funnel-s2o">oturumdan %0</div>
         </div>
         <div class="funnel-step">
-          <div class="step-lbl">4 · Form gönderildi</div>
+          <div class="step-lbl">3 · Form gönderildi</div>
           <div class="step-val" id="funnel-quotes">0</div>
           <div class="step-rate" id="funnel-o2q">formdan %0</div>
         </div>
       </div>
       <p class="muted" id="funnel-abandon-note" style="margin:-6px 0 14px;font-size:12px;line-height:1.45">
-        Yarım kalan: tasarım var teklif yok · form açılıp gönderilmeyen.
+        Form açılıp gönderilmeyen.
       </p>
       <div class="kpis kpis-6" id="coaching-kpis" style="margin-bottom:14px">
-        <div class="kpi"><div class="lbl">Tasarım / oturum</div><div class="val" id="coach-depth-design">—</div><div class="sub">kullanım derinliği</div></div>
         <div class="kpi"><div class="lbl">Gönderim / oturum</div><div class="val" id="coach-depth-quote">—</div><div class="sub" id="coach-depth-open-sub">form açılış / oturum —</div></div>
         <div class="kpi"><div class="lbl">Ort. satış süresi</div><div class="val" id="coach-sale-avg">—</div><div class="sub" id="coach-sale-sub">teklif → satış</div></div>
         <div class="kpi"><div class="lbl">7 günde satış</div><div class="val" id="coach-sale-7d">0</div><div class="sub" id="coach-sale-3d">3 günde 0</div></div>
@@ -562,11 +556,9 @@
                   <th class="sortable num" data-sort="active_seconds" title="Sırala">Süre<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_session_seconds" title="Sırala">Ort.<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="session_count" title="Sırala">Oturum<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="design_count" title="Sırala">Tasarım<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="quote_open_count" title="Sırala">Form<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="quote_count" title="Sırala">Gönderim<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="unfinished_count" title="Sırala">Yarım<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="design_to_quote_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="dealer-rows"></tbody>
@@ -580,10 +572,9 @@
               <thead>
                 <tr id="series-head" data-sort-table="series">
                   <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
-                  <th class="sortable num is-desc" data-sort="design_count" title="Sırala">Tasarım<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_open_count" title="Sırala">Form<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="quote_open_count" title="Sırala">Form<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="quote_count" title="Sırala">Gönderim<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="design_to_quote_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="series-rows"></tbody>
@@ -944,7 +935,7 @@
   let trendActiveKey = '';
   const tableSort = {
     dealers: { key: 'live', dir: 'desc' },
-    series: { key: 'design_count', dir: 'desc' },
+    series: { key: 'quote_count', dir: 'desc' },
     leadsSeries: { key: 'lead_count', dir: 'desc' },
     leadsDealer: { key: 'lead_count', dir: 'desc' },
     insightDoors: { key: 'lead_count', dir: 'desc' },
@@ -1578,18 +1569,17 @@
     document.getElementById('kpi-inactive').textContent = t.inactive_dealers || 0;
 
     document.getElementById('funnel-sessions').textContent = t.session_count || 0;
-    document.getElementById('funnel-designs').textContent = t.design_count || 0;
     document.getElementById('funnel-quote-opens').textContent = t.quote_open_count || 0;
     document.getElementById('funnel-quotes').textContent = t.quote_count || 0;
-    document.getElementById('funnel-s2d').textContent = fmtPct(t.session_to_design_pct) + ' oturum→tasarım';
-    document.getElementById('funnel-d2o').textContent = 'tasarımdan ' + fmtPct(t.design_to_quote_open_pct);
-    document.getElementById('funnel-o2q').textContent = 'formdan ' + fmtPct(t.quote_open_to_submit_pct);
+    const sess = Number(t.session_count) || 0;
+    const opens = Number(t.quote_open_count) || 0;
+    const sessionToOpen = sess ? Math.round((opens * 1000) / sess) / 10 : 0;
+    document.getElementById('funnel-s2o').textContent = 'oturumdan ' + fmtPct(sessionToOpen);
+    document.getElementById('funnel-o2q').textContent = 'formdan ' + fmtPct(openToSubmitPct(t));
     const abandonNote = document.getElementById('funnel-abandon-note');
     if (abandonNote) {
       abandonNote.textContent =
-        'Yarım kalan: tasarım var teklif yok ' + (t.unfinished_count || 0) +
-        ' · form açılıp gönderilmeyen ' + (t.form_abandon_count || 0) +
-        ' · tasarım→gönderim ' + fmtPct(t.design_to_quote_pct);
+        'Form açılıp gönderilmeyen ' + (t.form_abandon_count || 0);
     }
 
     dailyTrendCache = data.daily || [];
@@ -1621,8 +1611,6 @@
     depth = depth || {};
     speed = speed || {};
     repeats = repeats || {};
-    document.getElementById('coach-depth-design').textContent =
-      depth.designs_per_session != null ? String(depth.designs_per_session) : '—';
     document.getElementById('coach-depth-quote').textContent =
       depth.quotes_per_session != null ? String(depth.quotes_per_session) : '—';
     document.getElementById('coach-depth-open-sub').textContent =
@@ -1764,7 +1752,7 @@
           label: fmtTrendDay(day),
           title: fmtTrendDayLong(day),
           session_count: Number(d.session_count) || 0,
-          design_count: Number(d.design_count) || 0,
+          quote_open_count: Number(d.quote_open_count) || 0,
           quote_count: Number(d.quote_count) || 0,
           active_seconds: Number(d.active_seconds) || 0
         };
@@ -1796,14 +1784,14 @@
           label: label,
           title: title,
           session_count: 0,
-          design_count: 0,
+          quote_open_count: 0,
           quote_count: 0,
           active_seconds: 0
         });
       }
       const bucket = map.get(key);
       bucket.session_count += Number(d.session_count) || 0;
-      bucket.design_count += Number(d.design_count) || 0;
+      bucket.quote_open_count += Number(d.quote_open_count) || 0;
       bucket.quote_count += Number(d.quote_count) || 0;
       bucket.active_seconds += Number(d.active_seconds) || 0;
     });
@@ -1832,8 +1820,8 @@
       '<div class="trend-detail-title">' + escapeHtml(grainWord + ': ' + bucket.title) + '</div>' +
       '<div class="trend-detail-stats">' +
         '<div><span>Oturum</span> ' + bucket.session_count + '</div>' +
-        '<div><span>Tasarım</span> ' + bucket.design_count + '</div>' +
-        '<div><span>Teklif</span> ' + bucket.quote_count + '</div>' +
+        '<div><span>Form</span> ' + (bucket.quote_open_count || 0) + '</div>' +
+        '<div><span>Gönderim</span> ' + bucket.quote_count + '</div>' +
         '<div><span>Süre</span> ' + escapeHtml(fmtMinutes(bucket.active_seconds || 0)) + '</div>' +
       '</div>';
   }
@@ -1925,6 +1913,16 @@
     setTrendDetail(buckets.find(b => b.key === trendActiveKey) || buckets[buckets.length - 1] || null);
   });
 
+  function openToSubmitPct(row) {
+    if (row && row.quote_open_to_submit_pct != null && row.quote_open_to_submit_pct !== '') {
+      const v = Number(row.quote_open_to_submit_pct);
+      if (isFinite(v)) return v;
+    }
+    const open = Number(row && row.quote_open_count) || 0;
+    const sent = Number(row && row.quote_count) || 0;
+    return open ? Math.round((sent * 1000) / open) / 10 : 0;
+  }
+
   function dealerSortValue(d, key) {
     if (key === 'live') {
       if (d.live) return 2;
@@ -1934,6 +1932,7 @@
     if (key === 'code' || key === 'name' || key === 'city' || key === 'email') {
       return String(d[key] || '').toLocaleLowerCase('tr');
     }
+    if (key === 'quote_open_to_submit_pct') return openToSubmitPct(d);
     return Number(d[key]) || 0;
   }
 
@@ -1955,16 +1954,15 @@
     const rows = sortRows(filtered, tableSort.dealers, dealerSortValue);
     const body = document.getElementById('dealer-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="11" class="muted">' +
+      body.innerHTML = '<tr><td colspan="9" class="muted">' +
         (liveOnly ? 'Şu anda çevrimiçi mağaza yok' : 'Davet edilen mağaza yok') +
         '</td></tr>';
       return;
     }
     body.innerHTML = rows.map(d => {
       const idle = !d.session_count;
-      const conv = idle ? '—' : fmtPct(d.design_to_quote_pct);
-      const badgeClass = idle ? 'warn' : (Number(d.design_to_quote_pct) >= 20 ? 'ok' : '');
-      const unfinished = Number(d.unfinished_count) || 0;
+      const conv = idle ? '—' : fmtPct(openToSubmitPct(d));
+      const badgeClass = idle ? 'warn' : (openToSubmitPct(d) >= 20 ? 'ok' : '');
       return '<tr>' +
         '<td>' + escapeHtml(d.name || '—') + '</td>' +
         '<td>' + escapeHtml(d.email || '—') + '</td>' +
@@ -1972,10 +1970,8 @@
         '<td class="num">' + fmtMinutes(d.active_seconds) + '</td>' +
         '<td class="num">' + (idle ? '—' : fmtMinutes(d.avg_session_seconds)) + '</td>' +
         '<td class="num">' + d.session_count + '</td>' +
-        '<td class="num">' + d.design_count + '</td>' +
         '<td class="num">' + (d.quote_open_count || 0) + '</td>' +
         '<td class="num">' + d.quote_count + '</td>' +
-        '<td class="num">' + (unfinished ? '<span class="badge warn">' + unfinished + '</span>' : '0') + '</td>' +
         '<td class="num"><span class="badge ' + badgeClass + '">' + conv + '</span></td>' +
       '</tr>';
     }).join('');
@@ -1985,6 +1981,7 @@
     if (key === 'series_id') {
       return String(SERIES_LABELS[s.series_id] || s.series_id || '').toLocaleLowerCase('tr');
     }
+    if (key === 'quote_open_to_submit_pct') return openToSubmitPct(s);
     return Number(s[key]) || 0;
   }
 
@@ -1993,15 +1990,14 @@
     const rows = sortRows(seriesCache, tableSort.series, seriesSortValue);
     const body = document.getElementById('series-rows');
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="5" class="muted">Bu aralıkta veri yok</td></tr>';
+      body.innerHTML = '<tr><td colspan="4" class="muted">Bu aralıkta veri yok</td></tr>';
       return;
     }
     body.innerHTML = rows.map(s =>
       '<tr><td>' + escapeHtml(SERIES_LABELS[s.series_id] || s.series_id) +
-      '</td><td class="num">' + s.design_count +
       '</td><td class="num">' + (s.quote_open_count || 0) +
       '</td><td class="num">' + s.quote_count +
-      '</td><td class="num"><span class="badge">' + fmtPct(s.design_to_quote_pct) + '</span></td></tr>'
+      '</td><td class="num"><span class="badge">' + fmtPct(openToSubmitPct(s)) + '</span></td></tr>'
     ).join('');
   }
 
