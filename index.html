@@ -3115,21 +3115,11 @@
           rowsHtml +
         '</tbody></table>' +
         '<table class="totals"><tbody>' +
-          '<tr><td>Gövde</td><td class="num">' + escapeHtml(priceFmt.format(pricing.body || 0)) + '</td></tr>' +
-          '<tr><td>Kapak</td><td class="num">' + escapeHtml(priceFmt.format(pricing.doors || 0)) + '</td></tr>' +
-          '<tr><td>Çekmece</td><td class="num">' + escapeHtml(priceFmt.format(pricing.drawer || 0)) + '</td></tr>' +
-          '<tr><td>Ek Ürün</td><td class="num">' + escapeHtml(priceFmt.format(pricing.accessories || 0)) + '</td></tr>' +
-          ((pricing.sets)
-            ? '<tr><td>Yatak seti</td><td class="num">' + escapeHtml(priceFmt.format(pricing.sets || 0)) + '</td></tr>'
-            : '') +
-          ((pricing.rugs)
-            ? '<tr><td>Halı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.rugs || 0)) + '</td></tr>'
-            : '') +
-          ((pricing.discountAmount > 0.005)
-            ? '<tr><td>Katalog tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.listTotal != null ? pricing.listTotal : (pricing.total || 0) + (pricing.discountAmount || 0))) + '</td></tr>' +
-              '<tr><td>İskonto' + (pricing.discountPct ? ' (%' + escapeHtml(formatQuotePct(pricing.discountPct)) + ')' : '') + '</td><td class="num">−' + escapeHtml(priceFmt.format(pricing.discountAmount)) + '</td></tr>' +
-              '<tr class="grand"><td>Teklif tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>'
-            : '<tr class="grand"><td>Toplam</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>') +
+          '<tr><td>Liste tutarı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.listTotal != null ? pricing.listTotal : ((pricing.total || 0) + (pricing.discountAmount || 0)))) + '</td></tr>' +
+          '<tr><td>İskonto tutarı' + ((pricing.discountAmount > 0.005 && pricing.discountPct) ? ' (%' + escapeHtml(formatQuotePct(pricing.discountPct)) + ')' : '') + '</td><td class="num">' +
+            ((pricing.discountAmount > 0.005) ? '−' + escapeHtml(priceFmt.format(pricing.discountAmount)) : escapeHtml(priceFmt.format(0))) +
+          '</td></tr>' +
+          '<tr class="grand"><td>Teklif fiyatı</td><td class="num">' + escapeHtml(priceFmt.format(pricing.total || 0)) + '</td></tr>' +
         '</tbody></table>' +
         '<p class="foot">Bu teklif ' + escapeHtml(validStr) + ' tarihine kadar geçerlidir. Bambi dolap konfigüratöründen oluşturulmuştur.</p>' +
         '<p class="legal">Bambi Yatak teklifte yer alan ürün, fiyat ve ödeme koşullarında değişiklik yapma hakkını teklif onaylanana kadar saklı tutar.</p>' +
@@ -5075,7 +5065,7 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     paintIsoScene(ctx, w, h, {
       isLight: document.documentElement.getAttribute('data-theme') === 'light',
-      zoom: 3.15,
+      zoom: 2.9,
       showDims: true,
       showDrops: false,
       updateHits: false,
