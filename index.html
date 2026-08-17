@@ -429,6 +429,28 @@
     display: flex; align-items: flex-end; gap: 18px;
     padding-left: 44px; width: max-content;
   }
+  .canvas-extras-row {
+    display: flex; align-items: flex-end; gap: 22px;
+    padding-left: 44px; width: max-content;
+  }
+  .canvas-extras-row .accessories-row,
+  .canvas-extras-row .sets-row {
+    padding-left: 0;
+    margin-top: 0;
+  }
+  .iso-mini {
+    appearance: none; -webkit-appearance: none;
+    display: flex; flex-direction: column; align-items: center;
+    gap: 0; margin: 0; padding: 0; border: none; background: transparent;
+    cursor: pointer; flex: 0 0 auto; color: inherit;
+  }
+  .iso-mini canvas {
+    display: block; width: 418px; height: 296px;
+    border-radius: 6px; border: 1px solid var(--line);
+    background: radial-gradient(ellipse at 50% 38%, var(--iso-stage-a) 0%, var(--iso-stage-b) 72%);
+  }
+  .iso-mini:hover canvas { border-color: var(--brass); }
+  .iso-mini .acc-cap { margin-top: 8px; }
   .accessory-stage {
     position: relative; display: flex; flex-direction: column; align-items: center;
     cursor: pointer; transition: opacity 0.15s, transform 0.15s;
@@ -679,10 +701,23 @@
     flex: 1; overflow: auto; padding: 72px 20px 36px;
     display: flex; justify-content: center; align-items: flex-start;
   }
-  .quote-preview-paper {
+  .quote-preview-stack {
+    display: flex; flex-direction: column; gap: 28px; align-items: center;
     width: min(794px, 100%);
+  }
+  .quote-preview-paper {
+    width: 100%;
     background: #fff;
     box-shadow: 0 16px 48px rgba(0,0,0,.4);
+  }
+  .quote-preview-paper.is-scene {
+    min-height: 1123px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 36px; box-sizing: border-box;
+  }
+  .quote-preview-paper.is-scene[hidden] { display: none; }
+  .quote-preview-paper.is-scene img {
+    display: block; max-width: 100%; max-height: 1050px; object-fit: contain;
   }
   .quote-pdf-root {
     box-sizing: border-box; width: 794px; max-width: 100%; padding: 28px 32px;
@@ -738,6 +773,16 @@
   }
   .quote-pdf-root .foot { margin-top: 22px; font-size: 11px; line-height: 1.45; color: #8a847a; }
   .quote-pdf-root .legal { margin: 8px 0 0; font-size: 11px; line-height: 1.45; color: #8a847a; }
+  .canvas.is-quote-capture .door-actions,
+  .canvas.is-quote-capture .stage-chrome,
+  .canvas.is-quote-capture .dim-height,
+  .canvas.is-quote-capture .dim-total,
+  .canvas.is-quote-capture .module-label {
+    display: none !important;
+  }
+  .canvas.is-quote-capture .body-frame.selected .body-img {
+    outline: none; filter: none;
+  }
 
   @media print {
     body { background: #fff !important; }
@@ -749,7 +794,13 @@
     .quote-preview-scroll {
       display: block !important; overflow: visible !important; padding: 0 !important;
     }
-    .quote-preview-paper { width: 100% !important; box-shadow: none !important; }
+    .quote-preview-stack { width: 100% !important; gap: 0 !important; }
+    .quote-preview-paper {
+      width: 100% !important; box-shadow: none !important;
+      page-break-after: always; break-after: page;
+    }
+    .quote-preview-paper:last-child { page-break-after: auto; break-after: auto; }
+    .quote-preview-paper.is-scene { min-height: 100vh !important; padding: 12mm !important; }
     .quote-pdf-root { width: 100% !important; padding: 0 !important; }
   }
 
@@ -1868,7 +1919,10 @@
     </button>
   </div>
   <div class="quote-preview-scroll">
-    <div class="quote-preview-paper" id="quote-preview-paper"></div>
+    <div class="quote-preview-stack">
+      <div class="quote-preview-paper" id="quote-preview-paper"></div>
+      <div class="quote-preview-paper is-scene" id="quote-preview-scene" hidden></div>
+    </div>
   </div>
 </div>
 
@@ -2504,11 +2558,15 @@
   const quotePdfSuccessBtn = document.getElementById('quote-pdf-success');
   const quotePreview = document.getElementById('quote-preview');
   const quotePreviewPaper = document.getElementById('quote-preview-paper');
+  const quotePreviewScene = document.getElementById('quote-preview-scene');
   const quotePreviewPrint = document.getElementById('quote-preview-print');
   const quotePreviewShare = document.getElementById('quote-preview-share');
   const quotePreviewClose = document.getElementById('quote-preview-close');
   let lastQuotePayload = null;
   let quotePdfPromise = null;
+  let lastDesignSceneDataUrl = null;
+  let lastDesignSceneKey = '';
+  let designScenePromise = null;
 
   function hasSelectedAccessories(){
     for (const qty of selectedAccessories.values()) {
@@ -3146,6 +3204,152 @@
     return blob;
   }
 
+  function parseCssRgb(color){
+    const m = String(color || '').match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    if (!m) return [32, 31, 29];
+    return [Number(m[1]), Number(m[2]), Number(m[3])];
+  }
+
+  function designSceneCacheKey(){
+    const doors = modules.map(m =>
+      m.id + ':' + m.type + ':' + (m.drawer ? 1 : 0) + ':' + (m.mirrored ? 1 : 0) + ':' +
+      m.doors.map(d => (d.material || '') + (d.mirrored ? 'm' : '')).join(',')
+    ).join('|');
+    const sets = [...selectedSets.entries()].map(([k, v]) =>
+      k + ':' + (v && v.qty || 0) + ':' + (v && v.size || '')
+    ).join(',');
+    const acc = [...selectedAccessories.entries()].map(([k, v]) => k + ':' + v).join(',');
+    const rugs = [...selectedRugs.entries()].map(([k, v]) => k + ':' + v).join(',');
+    return [
+      doors, sets, acc, rugs,
+      document.documentElement.getAttribute('data-theme') || '',
+      canvas.classList.contains('doors-ghost') ? 'g' : ''
+    ].join('~');
+  }
+
+  function cropCanvasToContent(src, bgRgb, pad){
+    const w = src.width;
+    const h = src.height;
+    if (!w || !h) return src;
+    const ctx = src.getContext('2d', { willReadFrequently: true });
+    const data = ctx.getImageData(0, 0, w, h).data;
+    const [br, bg, bb] = bgRgb;
+    const thresh = 22;
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (data[i + 3] < 10) continue;
+        if (
+          Math.abs(data[i] - br) +
+          Math.abs(data[i + 1] - bg) +
+          Math.abs(data[i + 2] - bb) <= thresh
+        ) continue;
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+    }
+    if (maxX < minX || maxY < minY) return src;
+    const p = Math.max(0, pad | 0);
+    minX = Math.max(0, minX - p);
+    minY = Math.max(0, minY - p);
+    maxX = Math.min(w - 1, maxX + p);
+    maxY = Math.min(h - 1, maxY + p);
+    const cw = maxX - minX + 1;
+    const ch = maxY - minY + 1;
+    if (cw >= w - 2 && ch >= h - 2) return src;
+    const out = document.createElement('canvas');
+    out.width = cw;
+    out.height = ch;
+    out.getContext('2d').drawImage(src, minX, minY, cw, ch, 0, 0, cw, ch);
+    return out;
+  }
+
+  function downscaleCanvas(src, maxW){
+    if (!src || src.width <= maxW) return src;
+    const scale = maxW / src.width;
+    const out = document.createElement('canvas');
+    out.width = Math.round(src.width * scale);
+    out.height = Math.round(src.height * scale);
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, 0, 0, out.width, out.height);
+    return out;
+  }
+
+  function waitForElementImages(root){
+    const imgs = root ? [...root.querySelectorAll('img')] : [];
+    return Promise.all(imgs.map((img) => {
+      if (img.complete && img.naturalWidth) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+
+  async function captureDesignScene(){
+    const stack = canvas.querySelector('.canvas-stack');
+    if (!stack || typeof html2canvas !== 'function') return '';
+    canvas.classList.add('is-quote-capture');
+    try {
+      drawIsoMini();
+      await waitForElementImages(stack);
+      await waitFrames(2);
+      const bg = getComputedStyle(canvas).backgroundColor || '#201f1d';
+      const shot = await html2canvas(stack, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: bg,
+        foreignObjectRendering: false,
+        scrollX: 0,
+        scrollY: -window.scrollY
+      });
+      if (!shot.width || !shot.height) return '';
+      const cropped = cropCanvasToContent(shot, parseCssRgb(bg), 28);
+      const sized = downscaleCanvas(cropped, 1600);
+      return sized.toDataURL('image/jpeg', 0.88);
+    } catch (err) {
+      console.error('Tasarım görseli alınamadı', err);
+      return '';
+    } finally {
+      canvas.classList.remove('is-quote-capture');
+    }
+  }
+
+  async function ensureDesignSceneImage(){
+    const key = designSceneCacheKey();
+    if (lastDesignSceneDataUrl && lastDesignSceneKey === key) return lastDesignSceneDataUrl;
+    if (!designScenePromise) {
+      designScenePromise = captureDesignScene().then((url) => {
+        lastDesignSceneDataUrl = url;
+        lastDesignSceneKey = designSceneCacheKey();
+        return url;
+      }).finally(() => {
+        designScenePromise = null;
+      });
+    }
+    return designScenePromise;
+  }
+
+  function readImageSize(src){
+    return new Promise((resolve) => {
+      if (!src) {
+        resolve(null);
+        return;
+      }
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
   async function createQuotePdfBlob(payload){
     const data = payload || lastQuotePayload || buildQuotePayload();
     const filename = quotePdfFilename(data.customer);
@@ -3153,6 +3357,7 @@
     if (typeof html2canvas !== 'function' || typeof JsPDF !== 'function') {
       throw new Error('pdf_lib_missing');
     }
+    const sceneImage = await ensureDesignSceneImage();
 
     const style = document.createElement('style');
     style.setAttribute('data-quote-pdf', '1');
@@ -3197,6 +3402,7 @@
     try {
       const logoImg = sheet.querySelector('img.quote-pdf-logo');
       await paintQuoteLogoBlack(logoImg);
+      await waitForElementImages(sheet);
       await waitFrames(3);
       if (!sheet.offsetHeight || !sheet.offsetWidth) throw new Error('pdf_layout_empty');
 
@@ -3238,6 +3444,25 @@
         left -= (pageH - margin);
       }
 
+      if (sceneImage) {
+        const sceneSize = await readImageSize(sceneImage);
+        if (sceneSize && sceneSize.w && sceneSize.h) {
+          pdf.addPage();
+          const sceneMargin = 10;
+          const maxW = pageW - sceneMargin * 2;
+          const maxH = pageH - sceneMargin * 2;
+          let drawW = maxW;
+          let drawH = (sceneSize.h / sceneSize.w) * drawW;
+          if (drawH > maxH) {
+            drawH = maxH;
+            drawW = (sceneSize.w / sceneSize.h) * drawH;
+          }
+          const sx = (pageW - drawW) / 2;
+          const sy = (pageH - drawH) / 2;
+          pdf.addImage(sceneImage, 'JPEG', sx, sy, drawW, drawH, undefined, 'FAST');
+        }
+      }
+
       const blob = await assertPdfBlob(pdf.output('blob'));
       return { blob, filename };
     } finally {
@@ -3266,6 +3491,7 @@
     quoteModal.classList.add('open');
     quoteModal.setAttribute('aria-hidden', 'false');
     document.getElementById('quote-name').focus();
+    ensureDesignSceneImage().catch(() => {});
     if (window.DolapDealer && window.DolapDealer.trackQuoteOpen) {
       window.DolapDealer.trackQuoteOpen(getLockedDoorSeries() || activeDoorSeries || null);
     }
@@ -3276,11 +3502,21 @@
     quoteModal.setAttribute('aria-hidden', 'true');
   }
 
-  function openQuotePreview(payload){
+  async function openQuotePreview(payload){
     const data = payload || lastQuotePayload;
     if (!quotePreview || !quotePreviewPaper || !data) return;
+    const sceneImage = await ensureDesignSceneImage();
     quotePreviewPaper.innerHTML = buildQuotePdfHtml(data);
     paintQuoteLogoBlack(quotePreviewPaper.querySelector('img.quote-pdf-logo'));
+    if (quotePreviewScene) {
+      if (sceneImage) {
+        quotePreviewScene.innerHTML = '<img src="' + sceneImage + '" alt="Tasarım">';
+        quotePreviewScene.hidden = false;
+      } else {
+        quotePreviewScene.innerHTML = '';
+        quotePreviewScene.hidden = true;
+      }
+    }
     closeQuoteModal();
     quotePreview.classList.add('open');
     quotePreview.setAttribute('aria-hidden', 'false');
@@ -3524,6 +3760,7 @@
   function toggleDoorsGhost(){
     doorsGhost = !doorsGhost;
     syncDoorsGhostUi();
+    drawIsoMini();
   }
 
   function updateIsoButton(){
@@ -4811,6 +5048,56 @@
     if (zoomLabel) zoomLabel.textContent = Math.round(isoZoom * 100) + '%';
   }
 
+  const ISO_MINI_W = 418;
+  const ISO_MINI_H = 296;
+
+  function drawIsoMini(){
+    const el = document.getElementById('iso-mini-canvas');
+    if (!el || !hasIsoLayout()) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = ISO_MINI_W;
+    const h = ISO_MINI_H;
+    const pixelW = Math.floor(w * dpr);
+    const pixelH = Math.floor(h * dpr);
+    if (el.width !== pixelW || el.height !== pixelH) {
+      el.width = pixelW;
+      el.height = pixelH;
+    }
+    const ctx = el.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintIsoScene(ctx, w, h, {
+      isLight: document.documentElement.getAttribute('data-theme') === 'light',
+      zoom: 3.15,
+      showDims: true,
+      showDrops: false,
+      updateHits: false,
+      clear: true
+    });
+  }
+
+  function buildIsoMini(){
+    if (!hasIsoLayout()) return null;
+    const wrap = document.createElement('button');
+    wrap.type = 'button';
+    wrap.className = 'iso-mini';
+    wrap.title = 'İzometrik görünümü aç';
+    wrap.setAttribute('aria-label', 'İzometrik görünüm');
+    const cnv = document.createElement('canvas');
+    cnv.id = 'iso-mini-canvas';
+    cnv.width = ISO_MINI_W;
+    cnv.height = ISO_MINI_H;
+    wrap.appendChild(cnv);
+    const cap = document.createElement('div');
+    cap.className = 'acc-cap';
+    cap.textContent = 'İzometrik';
+    wrap.appendChild(cap);
+    wrap.addEventListener('click', (e) => {
+      e.preventDefault();
+      openIsoModal();
+    });
+    return wrap;
+  }
+
   /** Ortak izometrik sahne boyaması (ekran + teklif anlık görüntüsü). */
   function paintIsoScene(ctx, w, h, opts){
     opts = opts || {};
@@ -5083,6 +5370,7 @@
     isoDragModId = null;
     isoHoverModId = null;
     isoStage.classList.remove('is-dragging');
+    drawIsoMini();
   }
 
   function pointInPoly(x, y, pts){
@@ -6323,11 +6611,15 @@
 
       if (hasAcc && hasRugs) {
         while (rugsRow.firstChild) accRow.appendChild(rugsRow.firstChild);
-        stack.appendChild(accRow);
-      } else if (hasAcc) {
-        stack.appendChild(accRow);
-      } else if (hasRugs) {
-        stack.appendChild(rugsRow);
+      }
+      const extrasSrc = hasAcc ? accRow : (hasRugs ? rugsRow : null);
+      const isoMini = extrasSrc ? buildIsoMini() : null;
+      if (extrasSrc || isoMini) {
+        const extrasRow = document.createElement('div');
+        extrasRow.className = 'canvas-extras-row';
+        if (extrasSrc) extrasRow.appendChild(extrasSrc);
+        if (isoMini) extrasRow.appendChild(isoMini);
+        stack.appendChild(extrasRow);
       }
       if (hasSets && !setsBeside) stack.appendChild(setsRow);
       canvas.appendChild(stack);
@@ -6338,6 +6630,7 @@
         const row = canvas.querySelector('.modules-row');
         if (dimTotal && row) layoutCornerDimTotal(dimTotal, getLayoutTotals(), row);
       }
+      requestAnimationFrame(drawIsoMini);
     }
 
     if (opts.pulseSeams) setTimeout(pulseSeams, 30);
@@ -6893,6 +7186,7 @@
     try { localStorage.setItem('dolapTheme', next); } catch (e) { /* ignore */ }
     syncThemeToggle();
     if (isoModal.classList.contains('open')) drawIsoFrame();
+    drawIsoMini();
   }
 
   document.querySelectorAll('[data-theme-set]').forEach(btn => {
