@@ -703,21 +703,24 @@
   }
   .quote-preview-stack {
     display: flex; flex-direction: column; gap: 28px; align-items: center;
-    width: min(794px, 100%);
+    width: min(1123px, 100%);
   }
   .quote-preview-paper {
-    width: 100%;
+    width: min(794px, 100%);
     background: #fff;
     box-shadow: 0 16px 48px rgba(0,0,0,.4);
   }
   .quote-preview-paper.is-scene {
-    min-height: 1123px;
+    width: min(1123px, 100%);
+    aspect-ratio: 297 / 210;
+    min-height: 0;
+    height: auto;
     display: flex; align-items: center; justify-content: center;
-    padding: 36px; box-sizing: border-box;
+    padding: 18px; box-sizing: border-box;
   }
   .quote-preview-paper.is-scene[hidden] { display: none; }
   .quote-preview-paper.is-scene img {
-    display: block; max-width: 100%; max-height: 1050px; object-fit: contain;
+    display: block; max-width: 100%; max-height: 100%; object-fit: contain;
   }
   .quote-pdf-root {
     box-sizing: border-box; width: 794px; max-width: 100%; padding: 28px 32px;
@@ -800,7 +803,10 @@
       page-break-after: always; break-after: page;
     }
     .quote-preview-paper:last-child { page-break-after: auto; break-after: auto; }
-    .quote-preview-paper.is-scene { min-height: 100vh !important; padding: 12mm !important; }
+    .quote-preview-paper.is-scene {
+      width: 100% !important; min-height: 0 !important; height: auto !important;
+      aspect-ratio: 297 / 210; padding: 6mm !important;
+    }
     .quote-pdf-root { width: 100% !important; padding: 0 !important; }
   }
 
@@ -3312,7 +3318,7 @@
       });
       if (!shot.width || !shot.height) return '';
       const cropped = cropCanvasToContent(shot, parseCssRgb(bg), 28);
-      const sized = downscaleCanvas(cropped, 1600);
+      const sized = downscaleCanvas(cropped, 2200);
       return sized.toDataURL('image/jpeg', 0.88);
     } catch (err) {
       console.error('Tasarım görseli alınamadı', err);
@@ -3447,18 +3453,20 @@
       if (sceneImage) {
         const sceneSize = await readImageSize(sceneImage);
         if (sceneSize && sceneSize.w && sceneSize.h) {
-          pdf.addPage();
-          const sceneMargin = 10;
-          const maxW = pageW - sceneMargin * 2;
-          const maxH = pageH - sceneMargin * 2;
+          pdf.addPage('a4', 'landscape');
+          const landW = pdf.internal.pageSize.getWidth();
+          const landH = pdf.internal.pageSize.getHeight();
+          const sceneMargin = 6;
+          const maxW = landW - sceneMargin * 2;
+          const maxH = landH - sceneMargin * 2;
           let drawW = maxW;
           let drawH = (sceneSize.h / sceneSize.w) * drawW;
           if (drawH > maxH) {
             drawH = maxH;
             drawW = (sceneSize.w / sceneSize.h) * drawH;
           }
-          const sx = (pageW - drawW) / 2;
-          const sy = (pageH - drawH) / 2;
+          const sx = (landW - drawW) / 2;
+          const sy = (landH - drawH) / 2;
           pdf.addImage(sceneImage, 'JPEG', sx, sy, drawW, drawH, undefined, 'FAST');
         }
       }
