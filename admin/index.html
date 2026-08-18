@@ -454,12 +454,12 @@
         <div class="funnel-step">
           <div class="step-lbl">2 · Form açıldı</div>
           <div class="step-val" id="funnel-quote-opens">0</div>
-          <div class="step-rate" id="funnel-s2o">oturumdan %0</div>
+          <div class="step-rate" id="funnel-s2o">oturum → form %0</div>
         </div>
         <div class="funnel-step">
           <div class="step-lbl">3 · Form gönderildi</div>
           <div class="step-val" id="funnel-quotes">0</div>
-          <div class="step-rate" id="funnel-o2q">formdan %0</div>
+          <div class="step-rate" id="funnel-o2q">form → gönderim %0</div>
         </div>
       </div>
       <p class="muted" id="funnel-abandon-note" style="margin:-6px 0 14px;font-size:12px;line-height:1.45">
@@ -556,9 +556,9 @@
                   <th class="sortable num" data-sort="active_seconds" title="Sırala">Süre<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_session_seconds" title="Sırala">Ort.<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="session_count" title="Sırala">Oturum<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_open_count" title="Sırala">Form<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_count" title="Sırala">Gönderim<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_open_count" title="Teklif formunun açılma sayısı">Form açılış<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_count" title="Gönderilen teklif formu">Gönderim<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Açılan formların kaçı gönderildi">Form → gönderim<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="dealer-rows"></tbody>
@@ -572,9 +572,9 @@
               <thead>
                 <tr id="series-head" data-sort-table="series">
                   <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
-                  <th class="sortable num is-desc" data-sort="quote_open_count" title="Sırala">Form<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_count" title="Sırala">Gönderim<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num is-desc" data-sort="quote_open_count" title="Teklif formunun açılma sayısı">Form açılış<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_count" title="Gönderilen teklif formu">Gönderim<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="quote_open_to_submit_pct" title="Açılan formların kaçı gönderildi">Form → gönderim<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="series-rows"></tbody>
@@ -628,7 +628,7 @@
                   <th class="sortable" data-sort="series_id" title="Sırala">Model<span class="sort-ind"></span></th>
                   <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="sold_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_pct" title="Gönderilen tekliflerin kaçı satış oldu">Teklif → satış<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_price" title="Sırala">Ort. tutar<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_doors" title="Sırala">Ort. kapak<span class="sort-ind"></span></th>
                 </tr>
@@ -664,7 +664,7 @@
                   <th class="sortable" data-sort="band" title="Sırala">Kapak<span class="sort-ind"></span></th>
                   <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="sold_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_pct" title="Gönderilen tekliflerin kaçı satış oldu">Teklif → satış<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_price" title="Sırala">Ort. tutar<span class="sort-ind"></span></th>
                 </tr>
               </thead>
@@ -681,7 +681,7 @@
                   <th class="sortable" data-sort="band" title="Sırala">Dilim<span class="sort-ind"></span></th>
                   <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="sold_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_pct" title="Gönderilen tekliflerin kaçı satış oldu">Teklif → satış<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_price" title="Sırala">Ort. tutar<span class="sort-ind"></span></th>
                 </tr>
               </thead>
@@ -700,7 +700,7 @@
                   <th class="sortable" data-sort="layout_mode" title="Sırala">Düzen<span class="sort-ind"></span></th>
                   <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="sold_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_pct" title="Gönderilen tekliflerin kaçı satış oldu">Teklif → satış<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="avg_price" title="Sırala">Ort. tutar<span class="sort-ind"></span></th>
                 </tr>
               </thead>
@@ -718,7 +718,7 @@
                   <th class="sortable num is-desc" data-sort="lead_count" title="Sırala">Teklif<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="pct" title="Sırala">Pay<span class="sort-ind"></span></th>
                   <th class="sortable num" data-sort="sold_count" title="Sırala">Satış<span class="sort-ind"></span></th>
-                  <th class="sortable num" data-sort="sold_pct" title="Sırala">Dönüşüm<span class="sort-ind"></span></th>
+                  <th class="sortable num" data-sort="sold_pct" title="Gönderilen tekliflerin kaçı satış oldu">Teklif → satış<span class="sort-ind"></span></th>
                 </tr>
               </thead>
               <tbody id="insight-addons-rows"></tbody>
@@ -1574,12 +1574,12 @@
     const sess = Number(t.session_count) || 0;
     const opens = Number(t.quote_open_count) || 0;
     const sessionToOpen = sess ? Math.round((opens * 1000) / sess) / 10 : 0;
-    document.getElementById('funnel-s2o').textContent = 'oturumdan ' + fmtPct(sessionToOpen);
-    document.getElementById('funnel-o2q').textContent = 'formdan ' + fmtPct(openToSubmitPct(t));
+    document.getElementById('funnel-s2o').textContent = 'oturum → form ' + fmtPct(sessionToOpen);
+    document.getElementById('funnel-o2q').textContent = 'form → gönderim ' + fmtPct(openToSubmitPct(t));
     const abandonNote = document.getElementById('funnel-abandon-note');
     if (abandonNote) {
       abandonNote.textContent =
-        'Form açılıp gönderilmeyen ' + (t.form_abandon_count || 0);
+        'Form açılıp gönderilmeyen ' + formAbandonCount(t);
     }
 
     dailyTrendCache = data.daily || [];
@@ -1913,11 +1913,13 @@
     setTrendDetail(buckets.find(b => b.key === trendActiveKey) || buckets[buckets.length - 1] || null);
   });
 
+  function formAbandonCount(row) {
+    const open = Number(row && row.quote_open_count) || 0;
+    const sent = Number(row && row.quote_count) || 0;
+    return Math.max(0, open - sent);
+  }
+
   function openToSubmitPct(row) {
-    if (row && row.quote_open_to_submit_pct != null && row.quote_open_to_submit_pct !== '') {
-      const v = Number(row.quote_open_to_submit_pct);
-      if (isFinite(v)) return v;
-    }
     const open = Number(row && row.quote_open_count) || 0;
     const sent = Number(row && row.quote_count) || 0;
     return open ? Math.round((sent * 1000) / open) / 10 : 0;
@@ -1962,7 +1964,7 @@
     body.innerHTML = rows.map(d => {
       const idle = !d.session_count;
       const conv = idle ? '—' : fmtPct(openToSubmitPct(d));
-      const badgeClass = idle ? 'warn' : (openToSubmitPct(d) >= 20 ? 'ok' : '');
+      const badgeClass = idle ? 'warn' : (openToSubmitPct(d) >= 50 ? 'ok' : '');
       return '<tr>' +
         '<td>' + escapeHtml(d.name || '—') + '</td>' +
         '<td>' + escapeHtml(d.email || '—') + '</td>' +
